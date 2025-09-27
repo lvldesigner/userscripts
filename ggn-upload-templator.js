@@ -4,6 +4,7 @@
 // @version      0.1
 // @description  Auto-fill upload forms using torrent file data with configurable templates
 // @author       leveldesigner
+// @license      Unlicense
 // @icon         https://gazellegames.net/favicon.ico
 // @match        https://*.gazellegames.net/upload.php*
 // @grant        none

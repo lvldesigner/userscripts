@@ -4,6 +4,7 @@
 // @version      0.1
 // @description  Fetch and queue DDL links from whitelisted domains, with keybindings and toasts.
 // @author       leveldesigner
+// @license      Unlicense
 // @match        https://*.downmagaz.net/*
 // @match        https://*.sanet.st/*
 // @match        https://*.magsguru.com/*
