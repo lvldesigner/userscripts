@@ -12,392 +12,492 @@
 (function () {
   "use strict";
 
-  const TARGET_FORM_SELECTOR = "#upload_table";
-  const SUBMIT_KEYBINDING = true; // Set to true to enable Ctrl+Enter form submission
-
-  // Fields to ignore by default (user can still enable them manually)
-  const IGNORED_FIELDS_BY_DEFAULT = [
-    "linkgroup",
-    "groupid",
-    "apikey",
-    "type",
-    "amazonuri",
-    "googleplaybooksuri",
-    "goodreadsuri",
-    "isbn",
-    "scan_dpi",
-    "other_dpi",
-    "release_desc",
-    "anonymous",
-    "dont_check_rules",
-    "title",
-    "tags",
-    "image",
-    "gameswebsiteuri",
-    "wikipediauri",
-    "album_desc",
-    "submit_upload",
-  ];
+  // Default configuration - can be overridden by user settings
+  const DEFAULT_CONFIG = {
+    TARGET_FORM_SELECTOR: "#upload_table",
+    SUBMIT_KEYBINDING: true,
+    IGNORED_FIELDS_BY_DEFAULT: [
+      "linkgroup",
+      "groupid",
+      "apikey",
+      "type",
+      "amazonuri",
+      "googleplaybooksuri",
+      "goodreadsuri",
+      "isbn",
+      "scan_dpi",
+      "other_dpi",
+      "release_desc",
+      "anonymous",
+      "dont_check_rules",
+      "title",
+      "tags",
+      "image",
+      "gameswebsiteuri",
+      "wikipediauri",
+      "album_desc",
+      "submit_upload",
+    ],
+  };
 
   // CSS Styles - Dark Theme with Explicit Styles
   const UI_STYLES = `
     #upload-buddy-ui {
-        background: #1a1a1a !important;
-        border: 1px solid #404040 !important;
-        border-radius: 6px !important;
-        padding: 15px !important;
-        margin: 15px 0 !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-        color: #e0e0e0 !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        background: #1a1a1a;
+        border: 1px solid #404040;
+        border-radius: 6px;
+        padding: 15px;
+        margin: 15px 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #e0e0e0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
     .upload-buddy-controls {
-        display: flex !important;
-        gap: 10px !important;
-        align-items: center !important;
-        flex-wrap: wrap !important;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
     }
 
     .ub-btn {
-        padding: 8px 16px !important;
-        border: none !important;
-        border-radius: 4px !important;
-        cursor: pointer !important;
-        font-size: 14px !important;
-        font-weight: 500 !important;
-        transition: all 0.2s ease !important;
-        text-decoration: none !important;
-        outline: none !important;
-        box-sizing: border-box !important;
-        height: auto !important;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        outline: none;
+        box-sizing: border-box;
+        height: auto;
     }
 
     .ub-btn-primary {
-        background: #0d7377 !important;
-        color: #ffffff !important;
-        border: 1px solid #0d7377 !important;
+        background: #0d7377;
+        color: #ffffff;
+        border: 1px solid #0d7377;
     }
 
     .ub-btn-primary:hover {
-        background: #0a5d61 !important;
-        border-color: #0a5d61 !important;
-        transform: translateY(-1px) !important;
+        background: #0a5d61;
+        border-color: #0a5d61;
+        transform: translateY(-1px);
     }
 
     .ub-btn-danger {
-        background: #d32f2f !important;
-        color: #ffffff !important;
-        border: 1px solid #d32f2f !important;
+        background: #d32f2f;
+        color: #ffffff;
+        border: 1px solid #d32f2f;
     }
 
     .ub-btn-danger:hover:not(:disabled) {
-        background: #b71c1c !important;
-        border-color: #b71c1c !important;
-        transform: translateY(-1px) !important;
+        background: #b71c1c;
+        border-color: #b71c1c;
+        transform: translateY(-1px);
     }
 
     .ub-btn:disabled {
-        opacity: 0.5 !important;
-        cursor: not-allowed !important;
-        transform: none !important;
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
     }
 
     .ub-btn:not(:disabled):active {
-        transform: translateY(0) !important;
+        transform: translateY(0);
     }
 
     .ub-select {
-        padding: 8px 12px !important;
-        border: 1px solid #404040 !important;
-        border-radius: 4px !important;
-        font-size: 14px !important;
-        min-width: 200px !important;
-        background: #2a2a2a !important;
-        color: #e0e0e0 !important;
-        box-sizing: border-box !important;
-        outline: none !important;
-        height: auto !important;
+        padding: 8px 12px;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        font-size: 14px;
+        min-width: 200px;
+        background: #2a2a2a;
+        color: #e0e0e0;
+        box-sizing: border-box;
+        outline: none;
+        height: auto;
+        margin: 0 !important;
     }
 
     .ub-select:focus {
-        border-color: #0d7377 !important;
-        box-shadow: 0 0 0 2px rgba(13, 115, 119, 0.2) !important;
+        border-color: #0d7377;
+        box-shadow: 0 0 0 2px rgba(13, 115, 119, 0.2);
     }
 
     .ub-modal {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        background: rgba(0, 0, 0, 0.8) !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        z-index: 10000 !important;
-        padding: 20px !important;
-        box-sizing: border-box !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        padding: 20px;
+        box-sizing: border-box;
     }
 
     .ub-modal-content {
-        background: #1a1a1a !important;
-        border: 1px solid #404040 !important;
-        border-radius: 8px !important;
-        padding: 24px !important;
-        max-width: 800px !important;
-        max-height: 80vh !important;
-        overflow-y: auto !important;
-        width: 90% !important;
-        color: #e0e0e0 !important;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
-        box-sizing: border-box !important;
+        background: #1a1a1a;
+        border: 1px solid #404040;
+        border-radius: 8px;
+        padding: 24px;
+        max-width: 800px;
+        max-height: 80vh;
+        overflow-y: auto;
+        width: 90%;
+        color: #e0e0e0;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        box-sizing: border-box;
     }
 
     .ub-modal h2 {
-        margin: 0 0 20px 0 !important;
-        color: #ffffff !important;
-        font-size: 24px !important;
-        font-weight: 600 !important;
-        text-align: left !important;
+        margin: 0 0 20px 0;
+        color: #ffffff;
+        font-size: 24px;
+        font-weight: 600;
+        text-align: left;
+        position: relative;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .ub-modal-back-btn {
+        background: none;
+        border: none;
+        color: #e0e0e0;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 4px;
+        transition: color 0.2s ease, background-color 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        font-family: monospace;
+        font-weight: bold;
+    }
+
+    .ub-modal-back-btn:hover {
+        color: #ffffff;
+        background-color: #333333;
     }
 
     .ub-form-group {
-        margin-bottom: 15px !important;
+        margin-bottom: 15px;
     }
 
     .ub-form-group label {
-        display: block !important;
-        margin-bottom: 5px !important;
-        font-weight: 500 !important;
-        color: #b0b0b0 !important;
-        font-size: 14px !important;
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #b0b0b0;
+        font-size: 14px;
     }
 
     .ub-form-group input, .ub-form-group textarea {
-        width: 100% !important;
-        padding: 8px 12px !important;
-        border: 1px solid #404040 !important;
-        border-radius: 4px !important;
-        font-size: 14px !important;
-        box-sizing: border-box !important;
-        background: #2a2a2a !important;
-        color: #e0e0e0 !important;
-        outline: none !important;
-        transition: border-color 0.2s ease !important;
-        height: auto !important;
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        font-size: 14px;
+        box-sizing: border-box;
+        background: #2a2a2a;
+        color: #e0e0e0;
+        outline: none;
+        transition: border-color 0.2s ease;
+        height: auto;
     }
 
     .ub-form-group input:focus, .ub-form-group textarea:focus {
-        border-color: #0d7377 !important;
-        box-shadow: 0 0 0 2px rgba(13, 115, 119, 0.2) !important;
+        border-color: #0d7377;
+        box-shadow: 0 0 0 2px rgba(13, 115, 119, 0.2);
     }
 
     .ub-form-group input::placeholder, .ub-form-group textarea::placeholder {
-        color: #666666 !important;
+        color: #666666;
     }
 
     .ub-field-list {
-        max-height: 300px !important;
-        overflow-y: auto !important;
-        border: 1px solid #404040 !important;
-        border-radius: 4px !important;
-        padding: 10px !important;
-        background: #0f0f0f !important;
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        padding: 10px;
+        background: #0f0f0f;
     }
 
     .ub-field-row {
-        display: flex !important;
-        align-items: center !important;
-        gap: 10px !important;
-        margin-bottom: 8px !important;
-        padding: 8px !important;
-        background: #2a2a2a !important;
-        border-radius: 4px !important;
-        border: 1px solid #404040 !important;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+        padding: 8px;
+        background: #2a2a2a;
+        border-radius: 4px;
+        border: 1px solid #404040;
     }
 
     .ub-field-row:hover {
-        background: #333333 !important;
+        background: #333333;
     }
 
     .ub-field-row:not(:has(input[type="checkbox"]:checked)) {
-        opacity: 0.6 !important;
+        opacity: 0.6;
     }
 
     .ub-field-row.ub-hidden {
-        display: none !important;
+        display: none;
     }
 
     .ub-field-row input[type="checkbox"] {
+        width: auto;
+        margin: 0;
+        accent-color: #0d7377;
+        cursor: pointer;
+    }
+
+    .ub-field-row label {
+        min-width: 150px;
+        margin: 0;
+        font-size: 13px;
+        color: #b0b0b0;
+        cursor: help;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .ub-field-row input[type="text"], .ub-field-row select {
+        flex: 1;
+        margin: 0;
+        padding: 6px 8px;
+        border: 1px solid #404040;
+        border-radius: 3px;
+        background: #1a1a1a;
+        color: #e0e0e0;
+        font-size: 12px;
+        outline: none;
+        height: auto;
+    }
+
+    .ub-field-row input[type="text"]:focus {
+        border-color: #0d7377;
+        box-shadow: 0 0 0 1px rgba(13, 115, 119, 0.3);
+    }
+
+    .ub-preview {
+        color: #888888;
+        font-style: italic;
+        font-size: 11px;
+        min-width: 100px;
+        word-break: break-all;
+        text-align: right;
+    }
+
+    .ub-preview.active {
+        color: #4dd0e1;
+        font-weight: bold;
+        font-style: normal;
+    }
+
+    .ub-modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #404040;
+    }
+
+    .ub-status {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #2e7d32;
+        color: #ffffff;
+        padding: 12px 20px;
+        border-radius: 6px;
+        z-index: 10001;
+        font-size: 14px;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        border: 1px solid #4caf50;
+        animation: slideInRight 0.3s ease-out;
+    }
+
+    .ub-status.error {
+        background: #d32f2f;
+        border-color: #f44336;
+    }
+
+    @keyframes slideInRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    .ub-template-list {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        background: #0f0f0f;
+    }
+
+    .ub-template-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        border-bottom: 1px solid #404040;
+        background: #2a2a2a;
+        transition: background-color 0.2s ease;
+    }
+
+    .ub-template-item:hover {
+        background: #333333;
+    }
+
+    .ub-template-item:last-child {
+        border-bottom: none;
+    }
+
+    .ub-template-name {
+        font-weight: 500;
+        color: #e0e0e0;
+        flex: 1;
+        margin-right: 10px;
+    }
+
+    .ub-template-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .ub-btn-small {
+        padding: 6px 12px;
+        font-size: 12px;
+        min-width: auto;
+    }
+
+    .ub-btn-secondary {
+        background: #555555;
+        color: #ffffff;
+        border: 1px solid #555555;
+    }
+
+    .ub-btn-secondary:hover:not(:disabled) {
+        background: #666666;
+        border-color: #666666;
+        transform: translateY(-1px);
+    }
+
+    /* Tab styles for modal */
+    .ub-modal-tabs {
+        display: flex;
+        border-bottom: 1px solid #404040;
+        margin-bottom: 20px;
+    }
+
+    .ub-tab-btn {
+        padding: 12px 20px;
+        background: transparent;
+        border: none;
+        color: #b0b0b0;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        border-bottom: 2px solid transparent;
+        transition: all 0.2s ease;
+        height: auto;
+    }
+
+    .ub-tab-btn:hover {
+        color: #e0e0e0;
+        background: #2a2a2a;
+    }
+
+    .ub-tab-btn.active {
+        color: #ffffff;
+        border-bottom-color: #0d7377;
+    }
+
+    .ub-tab-content {
+        display: none;
+    }
+
+    .ub-tab-content.active {
+        display: block;
+    }
+
+    /* Checkbox label styling */
+    .ub-checkbox-label {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        padding: 8px 12px !important;
+        background: #2a2a2a !important;
+        border: 1px solid #404040 !important;
+        border-radius: 4px !important;
+        cursor: pointer !important;
+        transition: border-color 0.2s ease !important;
+        margin: 0 !important;
+    }
+
+    .ub-checkbox-label:hover {
+        border-color: #0d7377 !important;
+    }
+
+    .ub-checkbox-label input[type="checkbox"] {
         width: auto !important;
         margin: 0 !important;
         accent-color: #0d7377 !important;
         cursor: pointer !important;
     }
 
-    .ub-field-row label {
-        min-width: 150px !important;
-        margin: 0 !important;
-        font-size: 13px !important;
-        color: #b0b0b0 !important;
-        cursor: help !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-        white-space: nowrap !important;
-    }
-
-    .ub-field-row input[type="text"], .ub-field-row select {
-        flex: 1 !important;
-        margin: 0 !important;
-        padding: 6px 8px !important;
-        border: 1px solid #404040 !important;
-        border-radius: 3px !important;
-        background: #1a1a1a !important;
-        color: #e0e0e0 !important;
-        font-size: 12px !important;
-        outline: none !important;
-        height: auto !important;
-    }
-
-    .ub-field-row input[type="text"]:focus {
-        border-color: #0d7377 !important;
-        box-shadow: 0 0 0 1px rgba(13, 115, 119, 0.3) !important;
-    }
-
-    .ub-preview {
-        color: #888888 !important;
-        font-style: italic !important;
-        font-size: 11px !important;
-        min-width: 100px !important;
-        word-break: break-all !important;
-        text-align: right !important;
-    }
-
-    .ub-preview.active {
-        color: #4dd0e1 !important;
-        font-weight: bold !important;
-        font-style: normal !important;
-    }
-
-    .ub-modal-actions {
-        display: flex !important;
-        gap: 10px !important;
-        justify-content: flex-end !important;
-        margin-top: 20px !important;
-        padding-top: 20px !important;
-        border-top: 1px solid #404040 !important;
-    }
-
-    .ub-status {
-        position: fixed !important;
-        top: 20px !important;
-        right: 20px !important;
-        background: #2e7d32 !important;
-        color: #ffffff !important;
-        padding: 12px 20px !important;
-        border-radius: 6px !important;
-        z-index: 10001 !important;
+    .ub-checkbox-text {
         font-size: 14px !important;
         font-weight: 500 !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-        border: 1px solid #4caf50 !important;
-        animation: slideInRight 0.3s ease-out !important;
-    }
-
-    .ub-status.error {
-        background: #d32f2f !important;
-        border-color: #f44336 !important;
-    }
-
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%) !important;
-            opacity: 0 !important;
-        }
-        to {
-            transform: translateX(0) !important;
-            opacity: 1 !important;
-        }
-    }
-
-    .ub-template-list {
-        max-height: 400px !important;
-        overflow-y: auto !important;
-        border: 1px solid #404040 !important;
-        border-radius: 4px !important;
-        background: #0f0f0f !important;
-    }
-
-    .ub-template-item {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: space-between !important;
-        padding: 12px 16px !important;
-        border-bottom: 1px solid #404040 !important;
-        background: #2a2a2a !important;
-        transition: background-color 0.2s ease !important;
-    }
-
-    .ub-template-item:hover {
-        background: #333333 !important;
-    }
-
-    .ub-template-item:last-child {
-        border-bottom: none !important;
-    }
-
-    .ub-template-name {
-        font-weight: 500 !important;
-        color: #e0e0e0 !important;
-        flex: 1 !important;
-        margin-right: 10px !important;
-    }
-
-    .ub-template-actions {
-        display: flex !important;
-        gap: 8px !important;
-    }
-
-    .ub-btn-small {
-        padding: 6px 12px !important;
-        font-size: 12px !important;
-        min-width: auto !important;
-    }
-
-    .ub-btn-secondary {
-        background: #555555 !important;
-        color: #ffffff !important;
-        border: 1px solid #555555 !important;
-    }
-
-    .ub-btn-secondary:hover:not(:disabled) {
-        background: #666666 !important;
-        border-color: #666666 !important;
-        transform: translateY(-1px) !important;
+        color: #b0b0b0 !important;
+        user-select: none !important;
     }
 
     /* Scrollbar styling for webkit browsers */
     .ub-field-list::-webkit-scrollbar,
     .ub-modal-content::-webkit-scrollbar {
-        width: 8px !important;
+        width: 8px;
     }
 
     .ub-field-list::-webkit-scrollbar-track,
     .ub-modal-content::-webkit-scrollbar-track {
-        background: #0f0f0f !important;
-        border-radius: 4px !important;
+        background: #0f0f0f;
+        border-radius: 4px;
     }
 
     .ub-field-list::-webkit-scrollbar-thumb,
     .ub-modal-content::-webkit-scrollbar-thumb {
-        background: #404040 !important;
-        border-radius: 4px !important;
+        background: #404040;
+        border-radius: 4px;
     }
 
     .ub-field-list::-webkit-scrollbar-thumb:hover,
     .ub-modal-content::-webkit-scrollbar-thumb:hover {
-        background: #555555 !important;
+        background: #555555;
     }
   `;
 
@@ -496,14 +596,21 @@
         localStorage.getItem("upload-buddy-selected") || null;
       this.hideUnselectedFields = JSON.parse(
         localStorage.getItem("upload-buddy-hide-unselected") || "true",
-      ); // Remember toggle state across page reloads
+      );
+
+      // Load user settings or use defaults
+      this.config = {
+        ...DEFAULT_CONFIG,
+        ...JSON.parse(localStorage.getItem("upload-buddy-settings") || "{}"),
+      };
+
       this.init();
     }
 
     init() {
       this.injectUI();
       this.watchFileInputs();
-      if (SUBMIT_KEYBINDING) {
+      if (this.config.SUBMIT_KEYBINDING) {
         this.setupSubmitKeybinding();
       }
     }
@@ -539,7 +646,7 @@
     // Get current form data
     getCurrentFormData() {
       const formData = {};
-      const formSelector = TARGET_FORM_SELECTOR || "form";
+      const formSelector = this.config.TARGET_FORM_SELECTOR || "form";
       const targetForm = document.querySelector(formSelector);
       const inputs = targetForm
         ? targetForm.querySelectorAll(
@@ -636,37 +743,37 @@
     injectUI() {
       this.injectStyles();
 
-      // Find a good place to inject the UI (near form or file input)
-      const formSelector = TARGET_FORM_SELECTOR || "form";
-      const form = document.querySelector(formSelector);
-      const fileInput = TARGET_FORM_SELECTOR
-        ? form?.querySelector('input[type="file"]')
-        : document.querySelector('input[type="file"]');
-      const targetElement = fileInput || form;
+      // Always find the first file input on the page for UI injection
+      const fileInput = document.querySelector('input[type="file"]');
 
-      if (!targetElement) return;
+      if (!fileInput) return;
 
       // Create UI container
       const uiContainer = document.createElement("div");
       uiContainer.id = "upload-buddy-ui";
       uiContainer.innerHTML = `
-                <div class="upload-buddy-controls">
-                    <button type="button" id="create-template-btn" class="ub-btn ub-btn-primary">⚙️ Create Template</button>
-                    <select id="template-selector" class="ub-select">
-                        <option value="">Select Template</option>
-                        <option value="none" ${this.selectedTemplate === "none" ? "selected" : ""}>None</option>
-                        ${Object.keys(this.templates)
-                          .map(
-                            (name) =>
-                              `<option value="${name}" ${name === this.selectedTemplate ? "selected" : ""}>${name}</option>`,
-                          )
-                          .join("")}
-                    </select>
-                    <button id="manage-templates-btn" type="button" class="ub-btn ub-btn-primary" title="Manage Templates">⚙️</button>
+                <div class="upload-buddy-controls" style="align-items: flex-end;">
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        <label for="template-selector" style="font-size: 12px; color: #b0b0b0; margin: 0;">Select template</label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="template-selector" class="ub-select">
+                                <option value="">Select Template</option>
+                                <option value="none" ${this.selectedTemplate === "none" ? "selected" : ""}>None</option>
+                                ${Object.keys(this.templates)
+                                  .map(
+                                    (name) =>
+                                      `<option value="${name}" ${name === this.selectedTemplate ? "selected" : ""}>${name}</option>`,
+                                  )
+                                  .join("")}
+                            </select>
+                        </div>
+                    </div>
+                    <button type="button" id="create-template-btn" class="ub-btn ub-btn-primary">+ Create Template</button>
+                     <button id="manage-templates-btn" type="button" class="ub-btn ub-btn-secondary" title="Manage Templates & Settings">Settings</button>
                 </div>
             `;
 
-      targetElement.parentNode.insertBefore(uiContainer, targetElement);
+      fileInput.parentNode.insertBefore(uiContainer, fileInput);
 
       // Bind events
       document
@@ -680,7 +787,7 @@
         .addEventListener("change", (e) => this.selectTemplate(e.target.value));
       document
         .getElementById("manage-templates-btn")
-        .addEventListener("click", () => this.showTemplateManager());
+        .addEventListener("click", () => this.showTemplateAndSettingsManager());
     }
 
     // Inject CSS styles
@@ -705,9 +812,9 @@
 
       // Check if there's already a torrent file selected and parse it
       let selectedTorrentName = "";
-      const fileInputs = TARGET_FORM_SELECTOR
+      const fileInputs = this.config.TARGET_FORM_SELECTOR
         ? document.querySelectorAll(
-            `${TARGET_FORM_SELECTOR} input[type="file"]`,
+            `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
           )
         : document.querySelectorAll('input[type="file"]');
 
@@ -733,7 +840,10 @@
       modal.className = "ub-modal";
       modal.innerHTML = `
                 <div class="ub-modal-content">
-                    <h2>${editTemplateName ? "Edit Template" : "Create Template"}</h2>
+                    <h2>
+                        ${editTemplateName ? '<button class="ub-modal-back-btn" id="back-to-manager" title="Back to Template Manager">&lt;</button>' : ""}
+                        ${editTemplateName ? "Edit Template" : "Create Template"}
+                    </h2>
 
                     <div class="ub-form-group">
                         <label for="template-name">Template Name:</label>
@@ -751,16 +861,18 @@
                     </div>
 
                     <div class="ub-form-group">
-                        <label>Form Fields:</label>
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <span></span>
-                            <button type="button" class="ub-btn" id="toggle-unselected">Show Unselected</button>
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
+                            <label style="margin: 0;">Form Fields:</label>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <input type="text" id="field-filter" placeholder="Filter fields..." style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #2a2a2a; color: #e0e0e0; font-size: 12px; min-width: 150px;">
+                                <button type="button" class="ub-btn ub-btn-secondary" id="toggle-unselected" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">Show Unselected</button>
+                            </div>
                         </div>
                         <div class="ub-field-list">
                               ${Object.entries(formData)
                                 .map(([name, fieldData]) => {
                                   const isIgnoredByDefault =
-                                    IGNORED_FIELDS_BY_DEFAULT.includes(
+                                    this.config.IGNORED_FIELDS_BY_DEFAULT.includes(
                                       name.toLowerCase(),
                                     );
 
@@ -853,6 +965,57 @@
 
       // Toggle unselected fields visibility
       const toggleBtn = modal.querySelector("#toggle-unselected");
+      const filterInput = modal.querySelector("#field-filter");
+
+      // Field filtering functionality
+      const filterFields = () => {
+        const filterValue = filterInput.value.toLowerCase();
+        const fieldRows = modal.querySelectorAll(".ub-field-row");
+        const fieldList = modal.querySelector(".ub-field-list");
+        let visibleCount = 0;
+
+        // Remove existing no-results message
+        const existingMessage = fieldList.querySelector(".ub-no-results");
+        if (existingMessage) {
+          existingMessage.remove();
+        }
+
+        fieldRows.forEach((row) => {
+          const checkbox = row.querySelector('input[type="checkbox"]');
+          const label = row.querySelector("label");
+          const fieldName = checkbox.dataset.field.toLowerCase();
+          const labelText = label.textContent.toLowerCase();
+
+          // Check if field matches filter (substring search on field name and label)
+          const matchesFilter =
+            !filterValue ||
+            fieldName.includes(filterValue) ||
+            labelText.includes(filterValue);
+
+          // Apply visibility rules: filter + unselected visibility
+          const shouldShowBasedOnSelection =
+            checkbox.checked || !this.hideUnselectedFields;
+          const shouldShow = matchesFilter && shouldShowBasedOnSelection;
+
+          if (shouldShow) {
+            row.classList.remove("ub-hidden");
+            visibleCount++;
+          } else {
+            row.classList.add("ub-hidden");
+          }
+        });
+
+        // Show no results message if filter is active and no fields are visible
+        if (filterValue && visibleCount === 0) {
+          const noResultsMessage = document.createElement("div");
+          noResultsMessage.className = "ub-no-results";
+          noResultsMessage.style.cssText =
+            "padding: 20px; text-align: center; color: #888; font-style: italic;";
+          noResultsMessage.textContent = `No fields found matching "${filterValue}"`;
+          fieldList.appendChild(noResultsMessage);
+        }
+      };
+
       const toggleUnselectedFields = () => {
         this.hideUnselectedFields = !this.hideUnselectedFields;
         localStorage.setItem(
@@ -864,17 +1027,8 @@
           ? "Show Unselected"
           : "Hide Unselected";
 
-        const fieldRows = modal.querySelectorAll(".ub-field-row");
-        fieldRows.forEach((row) => {
-          const checkbox = row.querySelector('input[type="checkbox"]');
-          if (!checkbox.checked) {
-            if (this.hideUnselectedFields) {
-              row.classList.add("ub-hidden");
-            } else {
-              row.classList.remove("ub-hidden");
-            }
-          }
-        });
+        // Re-apply filter which will handle all visibility logic
+        filterFields();
       };
 
       // Initialize button text and field visibility based on current state
@@ -883,19 +1037,10 @@
         : "Hide Unselected";
 
       // Apply initial visibility state
-      const fieldRows = modal.querySelectorAll(".ub-field-row");
-      fieldRows.forEach((row) => {
-        const checkbox = row.querySelector('input[type="checkbox"]');
-        if (!checkbox.checked) {
-          if (this.hideUnselectedFields) {
-            row.classList.add("ub-hidden");
-          } else {
-            row.classList.remove("ub-hidden");
-          }
-        }
-      });
+      filterFields();
 
       toggleBtn.addEventListener("click", toggleUnselectedFields);
+      filterInput.addEventListener("input", filterFields);
 
       const updatePreviews = () => {
         const mask = maskInput.value;
@@ -934,15 +1079,8 @@
 
       // Update visibility when checkboxes change
       modal.addEventListener("change", (e) => {
-        if (e.target.type === "checkbox" && this.hideUnselectedFields) {
-          const row = e.target.closest(".ub-field-row");
-          if (row) {
-            if (e.target.checked) {
-              row.classList.remove("ub-hidden");
-            } else {
-              row.classList.add("ub-hidden");
-            }
-          }
+        if (e.target.type === "checkbox") {
+          filterFields(); // Re-apply all visibility rules including filter
         }
       });
 
@@ -961,6 +1099,24 @@
           document.body.removeChild(modal);
         }
       });
+
+      // Close on Esc key
+      const handleEscKey = (e) => {
+        if (e.key === "Escape" && document.body.contains(modal)) {
+          document.body.removeChild(modal);
+          document.removeEventListener("keydown", handleEscKey);
+        }
+      };
+      document.addEventListener("keydown", handleEscKey);
+
+      // Back to template manager button
+      const backBtn = modal.querySelector("#back-to-manager");
+      if (backBtn) {
+        backBtn.addEventListener("click", () => {
+          document.body.removeChild(modal);
+          this.showTemplateAndSettingsManager();
+        });
+      }
     }
 
     // Save template from modal
@@ -1012,9 +1168,10 @@
         const checkbox = row.querySelector('input[type="checkbox"]');
         if (checkbox) {
           const fieldName = checkbox.dataset.field;
-          const isDefaultIgnored = IGNORED_FIELDS_BY_DEFAULT.includes(
-            fieldName.toLowerCase(),
-          );
+          const isDefaultIgnored =
+            this.config.IGNORED_FIELDS_BY_DEFAULT.includes(
+              fieldName.toLowerCase(),
+            );
           const isCurrentlyChecked = checkbox.checked;
 
           // If this field differs from the default behavior, track it
@@ -1101,9 +1258,9 @@
     async checkAndApplyToExistingTorrent(templateName) {
       if (!templateName || templateName === "none") return;
 
-      const fileInputs = TARGET_FORM_SELECTOR
+      const fileInputs = this.config.TARGET_FORM_SELECTOR
         ? document.querySelectorAll(
-            `${TARGET_FORM_SELECTOR} input[type="file"]`,
+            `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
           )
         : document.querySelectorAll('input[type="file"]');
 
@@ -1133,7 +1290,9 @@
         if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
           e.preventDefault();
 
-          const targetForm = document.querySelector(TARGET_FORM_SELECTOR);
+          const targetForm = document.querySelector(
+            this.config.TARGET_FORM_SELECTOR,
+          );
           if (targetForm) {
             // Look for submit button within the form
             const submitButton =
@@ -1158,34 +1317,69 @@
       });
     }
 
-    // Show template manager modal
-    showTemplateManager() {
-      if (Object.keys(this.templates).length === 0) {
-        alert("No templates found. Create a template first.");
-        return;
-      }
-
+    // Show combined template and settings manager modal
+    showTemplateAndSettingsManager() {
       const modal = document.createElement("div");
       modal.className = "ub-modal";
       modal.innerHTML = `
                 <div class="ub-modal-content">
-                    <h2>Manage Templates</h2>
-                    <div class="ub-template-list">
-                        ${Object.keys(this.templates)
-                          .map(
-                            (name) => `
-                            <div class="ub-template-item">
-                                <span class="ub-template-name">${this.escapeHtml(name)}</span>
-                                <div class="ub-template-actions">
-                                    <button class="ub-btn ub-btn-secondary ub-btn-small" data-action="edit" data-template="${this.escapeHtml(name)}">Edit</button>
-                                    <button class="ub-btn ub-btn-secondary ub-btn-small" data-action="clone" data-template="${this.escapeHtml(name)}">Clone</button>
-                                    <button class="ub-btn ub-btn-danger ub-btn-small" data-action="delete" data-template="${this.escapeHtml(name)}">Delete</button>
-                                </div>
-                            </div>
-                          `,
-                          )
-                          .join("")}
+                    <div class="ub-modal-tabs">
+                        <button class="ub-tab-btn active" data-tab="templates">Templates</button>
+                        <button class="ub-tab-btn" data-tab="settings">Settings</button>
                     </div>
+
+                    <div class="ub-tab-content active" id="templates-tab">
+                        ${
+                          Object.keys(this.templates).length === 0
+                            ? '<div style="padding: 20px; text-align: center; color: #888;">No templates found. Create a template first.</div>'
+                            : `<div class="ub-template-list">
+                            ${Object.keys(this.templates)
+                              .map(
+                                (name) => `
+                                <div class="ub-template-item">
+                                    <span class="ub-template-name">${this.escapeHtml(name)}</span>
+                                    <div class="ub-template-actions">
+                                        <button class="ub-btn ub-btn-secondary ub-btn-small" data-action="edit" data-template="${this.escapeHtml(name)}">Edit</button>
+                                        <button class="ub-btn ub-btn-secondary ub-btn-small" data-action="clone" data-template="${this.escapeHtml(name)}">Clone</button>
+                                        <button class="ub-btn ub-btn-danger ub-btn-small" data-action="delete" data-template="${this.escapeHtml(name)}">Delete</button>
+                                    </div>
+                                </div>
+                              `,
+                              )
+                              .join("")}
+                          </div>`
+                        }
+                    </div>
+
+                    <div class="ub-tab-content" id="settings-tab">
+                        <div class="ub-form-group">
+                            <label for="setting-form-selector">Target Form Selector:</label>
+                            <input type="text" id="setting-form-selector" value="${this.escapeHtml(this.config.TARGET_FORM_SELECTOR)}" placeholder="#upload_table">
+                        </div>
+
+                        <div class="ub-form-group">
+                            <label class="ub-checkbox-label">
+                                <input type="checkbox" id="setting-submit-keybinding" ${this.config.SUBMIT_KEYBINDING ? "checked" : ""}>
+                                <span class="ub-checkbox-text">⚡ Enable Ctrl+Enter form submission</span>
+                            </label>
+                        </div>
+
+                        <div class="ub-form-group">
+                            <label for="setting-ignored-fields">Ignored Fields (one per line):</label>
+                            <textarea id="setting-ignored-fields" rows="8" placeholder="linkgroup&#10;groupid&#10;apikey">${this.config.IGNORED_FIELDS_BY_DEFAULT.join("\n")}</textarea>
+                        </div>
+
+                        <div class="ub-form-group">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="ub-btn ub-btn-primary" id="save-settings">Save Settings</button>
+                                    <button class="ub-btn ub-btn-secondary" id="reset-settings">Reset to Defaults</button>
+                                </div>
+                                <button class="ub-btn ub-btn-danger" id="delete-all-config">Delete All Local Config</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="ub-modal-actions">
                         <button class="ub-btn" id="close-manager">Close</button>
                     </div>
@@ -1194,7 +1388,53 @@
 
       document.body.appendChild(modal);
 
-      // Bind events
+      // Tab switching
+      modal.querySelectorAll(".ub-tab-btn").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          const tabName = e.target.dataset.tab;
+
+          // Update tab buttons
+          modal
+            .querySelectorAll(".ub-tab-btn")
+            .forEach((b) => b.classList.remove("active"));
+          e.target.classList.add("active");
+
+          // Update tab content
+          modal
+            .querySelectorAll(".ub-tab-content")
+            .forEach((c) => c.classList.remove("active"));
+          modal.querySelector(`#${tabName}-tab`).classList.add("active");
+        });
+      });
+
+      // Settings handlers
+      modal.querySelector("#save-settings")?.addEventListener("click", () => {
+        this.saveSettings(modal);
+      });
+
+      modal.querySelector("#reset-settings")?.addEventListener("click", () => {
+        if (
+          confirm(
+            "Reset all settings to defaults? This will require a page reload.",
+          )
+        ) {
+          this.resetSettings(modal);
+        }
+      });
+
+      modal
+        .querySelector("#delete-all-config")
+        ?.addEventListener("click", () => {
+          if (
+            confirm(
+              "⚠️ WARNING: This will permanently delete ALL Upload Buddy data including templates, settings, and selected template.\n\nThis action CANNOT be undone!\n\nAre you sure you want to continue?",
+            )
+          ) {
+            this.deleteAllConfig();
+          }
+        });
+
+      // Template actions
       modal.addEventListener("click", (e) => {
         if (e.target === modal) {
           document.body.removeChild(modal);
@@ -1212,13 +1452,11 @@
               break;
             case "clone":
               this.cloneTemplate(templateName);
-              // Refresh the modal content instead of closing
               this.refreshTemplateManager(modal);
               break;
             case "delete":
               if (confirm(`Delete template "${templateName}"?`)) {
                 this.deleteTemplate(templateName);
-                // Refresh the modal content instead of closing
                 this.refreshTemplateManager(modal);
               }
               break;
@@ -1229,6 +1467,91 @@
       modal.querySelector("#close-manager").addEventListener("click", () => {
         document.body.removeChild(modal);
       });
+
+      // Close on Esc key for template manager
+      const handleEscKey = (e) => {
+        if (e.key === "Escape" && document.body.contains(modal)) {
+          document.body.removeChild(modal);
+          document.removeEventListener("keydown", handleEscKey);
+        }
+      };
+      document.addEventListener("keydown", handleEscKey);
+    }
+
+    // Save settings from modal
+    saveSettings(modal) {
+      const formSelector = modal
+        .querySelector("#setting-form-selector")
+        .value.trim();
+      const submitKeybinding = modal.querySelector(
+        "#setting-submit-keybinding",
+      ).checked;
+      const ignoredFieldsText = modal
+        .querySelector("#setting-ignored-fields")
+        .value.trim();
+      const ignoredFields = ignoredFieldsText
+        .split("\n")
+        .map((field) => field.trim())
+        .filter((field) => field);
+
+      this.config = {
+        TARGET_FORM_SELECTOR:
+          formSelector || DEFAULT_CONFIG.TARGET_FORM_SELECTOR,
+        SUBMIT_KEYBINDING: submitKeybinding,
+        IGNORED_FIELDS_BY_DEFAULT:
+          ignoredFields.length > 0
+            ? ignoredFields
+            : DEFAULT_CONFIG.IGNORED_FIELDS_BY_DEFAULT,
+      };
+
+      localStorage.setItem(
+        "upload-buddy-settings",
+        JSON.stringify(this.config),
+      );
+      this.showStatus(
+        "Settings saved successfully! Reload the page for some changes to take effect.",
+      );
+    }
+
+    // Reset settings to defaults
+    resetSettings(modal) {
+      localStorage.removeItem("upload-buddy-settings");
+      this.config = { ...DEFAULT_CONFIG };
+
+      // Update the form fields
+      modal.querySelector("#setting-form-selector").value =
+        this.config.TARGET_FORM_SELECTOR;
+      modal.querySelector("#setting-submit-keybinding").checked =
+        this.config.SUBMIT_KEYBINDING;
+      modal.querySelector("#setting-ignored-fields").value =
+        this.config.IGNORED_FIELDS_BY_DEFAULT.join("\n");
+
+      this.showStatus(
+        "Settings reset to defaults! Reload the page for changes to take effect.",
+      );
+    }
+
+    // Delete all local configuration
+    deleteAllConfig() {
+      // Remove all localStorage items related to Upload Buddy
+      localStorage.removeItem("upload-buddy-templates");
+      localStorage.removeItem("upload-buddy-selected");
+      localStorage.removeItem("upload-buddy-hide-unselected");
+      localStorage.removeItem("upload-buddy-settings");
+
+      // Reset instance variables
+      this.templates = {};
+      this.selectedTemplate = null;
+      this.hideUnselectedFields = true;
+      this.config = { ...DEFAULT_CONFIG };
+
+      // Update UI
+      this.updateTemplateSelector();
+
+      this.showStatus(
+        "All local configuration deleted! Reload the page for changes to take full effect.",
+        "success",
+      );
     }
 
     // Delete template by name
@@ -1312,9 +1635,9 @@
 
     // Watch file inputs for changes
     watchFileInputs() {
-      const fileInputs = TARGET_FORM_SELECTOR
+      const fileInputs = this.config.TARGET_FORM_SELECTOR
         ? document.querySelectorAll(
-            `${TARGET_FORM_SELECTOR} input[type="file"]`,
+            `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
           )
         : document.querySelectorAll('input[type="file"]');
 
@@ -1351,8 +1674,8 @@
 
       Object.entries(template.fieldMappings).forEach(
         ([fieldName, valueTemplate]) => {
-          const formPrefix = TARGET_FORM_SELECTOR
-            ? `${TARGET_FORM_SELECTOR} `
+          const formPrefix = this.config.TARGET_FORM_SELECTOR
+            ? `${this.config.TARGET_FORM_SELECTOR} `
             : "";
 
           // First check if this is a radio button field
