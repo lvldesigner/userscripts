@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Upload Buddy - Torrent Template Manager
+// @name         GGn Upload Templator
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  Auto-fill upload forms using torrent file data with configurable templates
@@ -42,7 +42,7 @@
 
   // CSS Styles - Dark Theme with Explicit Styles
   const UI_STYLES = `
-    #upload-buddy-ui {
+    #ggn-upload-templator-ui {
         background: #1a1a1a;
         border: 1px solid #404040;
         border-radius: 6px;
@@ -53,14 +53,14 @@
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     }
 
-    .upload-buddy-controls {
+    .ggn-upload-templator-controls {
         display: flex;
         gap: 10px;
         align-items: center;
         flex-wrap: wrap;
     }
 
-    .ub-btn {
+    .gut-btn {
         padding: 8px 16px;
         border: none;
         border-radius: 4px;
@@ -74,41 +74,41 @@
         height: auto;
     }
 
-    .ub-btn-primary {
+    .gut-btn-primary {
         background: #0d7377;
         color: #ffffff;
         border: 1px solid #0d7377;
     }
 
-    .ub-btn-primary:hover {
+    .gut-btn-primary:hover {
         background: #0a5d61;
         border-color: #0a5d61;
         transform: translateY(-1px);
     }
 
-    .ub-btn-danger {
+    .gut-btn-danger {
         background: #d32f2f;
         color: #ffffff;
         border: 1px solid #d32f2f;
     }
 
-    .ub-btn-danger:hover:not(:disabled) {
+    .gut-btn-danger:hover:not(:disabled) {
         background: #b71c1c;
         border-color: #b71c1c;
         transform: translateY(-1px);
     }
 
-    .ub-btn:disabled {
+    .gut-btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
         transform: none;
     }
 
-    .ub-btn:not(:disabled):active {
+    .gut-btn:not(:disabled):active {
         transform: translateY(0);
     }
 
-    .ub-select {
+    .gut-select {
         padding: 8px 12px;
         border: 1px solid #404040;
         border-radius: 4px;
@@ -122,12 +122,12 @@
         margin: 0 !important;
     }
 
-    .ub-select:focus {
+    .gut-select:focus {
         border-color: #0d7377;
         box-shadow: 0 0 0 2px rgba(13, 115, 119, 0.2);
     }
 
-    .ub-modal {
+    .gut-modal {
         position: fixed;
         top: 0;
         left: 0;
@@ -142,7 +142,7 @@
         box-sizing: border-box;
     }
 
-    .ub-modal-content {
+    .gut-modal-content {
         background: #1a1a1a;
         border: 1px solid #404040;
         border-radius: 8px;
@@ -156,7 +156,7 @@
         box-sizing: border-box;
     }
 
-    .ub-modal h2 {
+    .gut-modal h2 {
         margin: 0 0 20px 0;
         color: #ffffff;
         font-size: 24px;
@@ -168,7 +168,7 @@
         gap: 10px;
     }
 
-    .ub-modal-back-btn {
+    .gut-modal-back-btn {
         background: none;
         border: none;
         color: #e0e0e0;
@@ -187,16 +187,16 @@
         font-weight: bold;
     }
 
-    .ub-modal-back-btn:hover {
+    .gut-modal-back-btn:hover {
         color: #ffffff;
         background-color: #333333;
     }
 
-    .ub-form-group {
+    .gut-form-group {
         margin-bottom: 15px;
     }
 
-    .ub-form-group label {
+    .gut-form-group label {
         display: block;
         margin-bottom: 5px;
         font-weight: 500;
@@ -204,7 +204,7 @@
         font-size: 14px;
     }
 
-    .ub-form-group input, .ub-form-group textarea {
+    .gut-form-group input, .gut-form-group textarea {
         width: 100%;
         padding: 8px 12px;
         border: 1px solid #404040;
@@ -218,16 +218,16 @@
         height: auto;
     }
 
-    .ub-form-group input:focus, .ub-form-group textarea:focus {
+    .gut-form-group input:focus, .gut-form-group textarea:focus {
         border-color: #0d7377;
         box-shadow: 0 0 0 2px rgba(13, 115, 119, 0.2);
     }
 
-    .ub-form-group input::placeholder, .ub-form-group textarea::placeholder {
+    .gut-form-group input::placeholder, .gut-form-group textarea::placeholder {
         color: #666666;
     }
 
-    .ub-field-list {
+    .gut-field-list {
         max-height: 300px;
         overflow-y: auto;
         border: 1px solid #404040;
@@ -236,7 +236,7 @@
         background: #0f0f0f;
     }
 
-    .ub-field-row {
+    .gut-field-row {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -247,26 +247,26 @@
         border: 1px solid #404040;
     }
 
-    .ub-field-row:hover {
+    .gut-field-row:hover {
         background: #333333;
     }
 
-    .ub-field-row:not(:has(input[type="checkbox"]:checked)) {
+    .gut-field-row:not(:has(input[type="checkbox"]:checked)) {
         opacity: 0.6;
     }
 
-    .ub-field-row.ub-hidden {
+    .gut-field-row.gut-hidden {
         display: none;
     }
 
-    .ub-field-row input[type="checkbox"] {
+    .gut-field-row input[type="checkbox"] {
         width: auto;
         margin: 0;
         accent-color: #0d7377;
         cursor: pointer;
     }
 
-    .ub-field-row label {
+    .gut-field-row label {
         min-width: 150px;
         margin: 0;
         font-size: 13px;
@@ -277,7 +277,7 @@
         white-space: nowrap;
     }
 
-    .ub-field-row input[type="text"], .ub-field-row select {
+    .gut-field-row input[type="text"], .gut-field-row select {
         flex: 1;
         margin: 0;
         padding: 6px 8px;
@@ -290,12 +290,12 @@
         height: auto;
     }
 
-    .ub-field-row input[type="text"]:focus {
+    .gut-field-row input[type="text"]:focus {
         border-color: #0d7377;
         box-shadow: 0 0 0 1px rgba(13, 115, 119, 0.3);
     }
 
-    .ub-preview {
+    .gut-preview {
         color: #888888;
         font-style: italic;
         font-size: 11px;
@@ -304,13 +304,13 @@
         text-align: right;
     }
 
-    .ub-preview.active {
+    .gut-preview.active {
         color: #4dd0e1;
         font-weight: bold;
         font-style: normal;
     }
 
-    .ub-modal-actions {
+    .gut-modal-actions {
         display: flex;
         gap: 10px;
         justify-content: flex-end;
@@ -319,7 +319,7 @@
         border-top: 1px solid #404040;
     }
 
-    .ub-status {
+    .gut-status {
         position: fixed;
         top: 20px;
         right: 20px;
@@ -335,7 +335,7 @@
         animation: slideInRight 0.3s ease-out;
     }
 
-    .ub-status.error {
+    .gut-status.error {
         background: #d32f2f;
         border-color: #f44336;
     }
@@ -351,7 +351,7 @@
         }
     }
 
-    .ub-template-list {
+    .gut-template-list {
         max-height: 400px;
         overflow-y: auto;
         border: 1px solid #404040;
@@ -359,7 +359,7 @@
         background: #0f0f0f;
     }
 
-    .ub-template-item {
+    .gut-template-item {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -369,52 +369,52 @@
         transition: background-color 0.2s ease;
     }
 
-    .ub-template-item:hover {
+    .gut-template-item:hover {
         background: #333333;
     }
 
-    .ub-template-item:last-child {
+    .gut-template-item:last-child {
         border-bottom: none;
     }
 
-    .ub-template-name {
+    .gut-template-name {
         font-weight: 500;
         color: #e0e0e0;
         flex: 1;
         margin-right: 10px;
     }
 
-    .ub-template-actions {
+    .gut-template-actions {
         display: flex;
         gap: 8px;
     }
 
-    .ub-btn-small {
+    .gut-btn-small {
         padding: 6px 12px;
         font-size: 12px;
         min-width: auto;
     }
 
-    .ub-btn-secondary {
+    .gut-btn-secondary {
         background: #555555;
         color: #ffffff;
         border: 1px solid #555555;
     }
 
-    .ub-btn-secondary:hover:not(:disabled) {
+    .gut-btn-secondary:hover:not(:disabled) {
         background: #666666;
         border-color: #666666;
         transform: translateY(-1px);
     }
 
     /* Tab styles for modal */
-    .ub-modal-tabs {
+    .gut-modal-tabs {
         display: flex;
         border-bottom: 1px solid #404040;
         margin-bottom: 20px;
     }
 
-    .ub-tab-btn {
+    .gut-tab-btn {
         padding: 12px 20px;
         background: transparent;
         border: none;
@@ -427,26 +427,26 @@
         height: auto;
     }
 
-    .ub-tab-btn:hover {
+    .gut-tab-btn:hover {
         color: #e0e0e0;
         background: #2a2a2a;
     }
 
-    .ub-tab-btn.active {
+    .gut-tab-btn.active {
         color: #ffffff;
         border-bottom-color: #0d7377;
     }
 
-    .ub-tab-content {
+    .gut-tab-content {
         display: none;
     }
 
-    .ub-tab-content.active {
+    .gut-tab-content.active {
         display: block;
     }
 
     /* Checkbox label styling */
-    .ub-checkbox-label {
+    .gut-checkbox-label {
         display: flex !important;
         align-items: center !important;
         gap: 10px !important;
@@ -459,18 +459,18 @@
         margin: 0 !important;
     }
 
-    .ub-checkbox-label:hover {
+    .gut-checkbox-label:hover {
         border-color: #0d7377 !important;
     }
 
-    .ub-checkbox-label input[type="checkbox"] {
+    .gut-checkbox-label input[type="checkbox"] {
         width: auto !important;
         margin: 0 !important;
         accent-color: #0d7377 !important;
         cursor: pointer !important;
     }
 
-    .ub-checkbox-text {
+    .gut-checkbox-text {
         font-size: 14px !important;
         font-weight: 500 !important;
         color: #b0b0b0 !important;
@@ -478,25 +478,25 @@
     }
 
     /* Scrollbar styling for webkit browsers */
-    .ub-field-list::-webkit-scrollbar,
-    .ub-modal-content::-webkit-scrollbar {
+    .gut-field-list::-webkit-scrollbar,
+    .gut-modal-content::-webkit-scrollbar {
         width: 8px;
     }
 
-    .ub-field-list::-webkit-scrollbar-track,
-    .ub-modal-content::-webkit-scrollbar-track {
+    .gut-field-list::-webkit-scrollbar-track,
+    .gut-modal-content::-webkit-scrollbar-track {
         background: #0f0f0f;
         border-radius: 4px;
     }
 
-    .ub-field-list::-webkit-scrollbar-thumb,
-    .ub-modal-content::-webkit-scrollbar-thumb {
+    .gut-field-list::-webkit-scrollbar-thumb,
+    .gut-modal-content::-webkit-scrollbar-thumb {
         background: #404040;
         border-radius: 4px;
     }
 
-    .ub-field-list::-webkit-scrollbar-thumb:hover,
-    .ub-modal-content::-webkit-scrollbar-thumb:hover {
+    .gut-field-list::-webkit-scrollbar-thumb:hover,
+    .gut-modal-content::-webkit-scrollbar-thumb:hover {
         background: #555555;
     }
   `;
@@ -587,21 +587,23 @@
     }
   }
 
-  class UploadBuddy {
+  class GGnUploadTemplator {
     constructor() {
       this.templates = JSON.parse(
-        localStorage.getItem("upload-buddy-templates") || "{}",
+        localStorage.getItem("ggn-upload-templator-templates") || "{}",
       );
       this.selectedTemplate =
-        localStorage.getItem("upload-buddy-selected") || null;
+        localStorage.getItem("ggn-upload-templator-selected") || null;
       this.hideUnselectedFields = JSON.parse(
-        localStorage.getItem("upload-buddy-hide-unselected") || "true",
+        localStorage.getItem("ggn-upload-templator-hide-unselected") || "true",
       );
 
       // Load user settings or use defaults
       this.config = {
         ...DEFAULT_CONFIG,
-        ...JSON.parse(localStorage.getItem("upload-buddy-settings") || "{}"),
+        ...JSON.parse(
+          localStorage.getItem("ggn-upload-templator-settings") || "{}",
+        ),
       };
 
       this.init();
@@ -750,13 +752,13 @@
 
       // Create UI container
       const uiContainer = document.createElement("div");
-      uiContainer.id = "upload-buddy-ui";
+      uiContainer.id = "ggn-upload-templator-ui";
       uiContainer.innerHTML = `
-                <div class="upload-buddy-controls" style="align-items: flex-end;">
+                <div class="ggn-upload-templator-controls" style="align-items: flex-end;">
                     <div style="display: flex; flex-direction: column; gap: 5px;">
                         <label for="template-selector" style="font-size: 12px; color: #b0b0b0; margin: 0;">Select template</label>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <select id="template-selector" class="ub-select">
+                            <select id="template-selector" class="gut-select">
                                 <option value="">Select Template</option>
                                 <option value="none" ${this.selectedTemplate === "none" ? "selected" : ""}>None</option>
                                 ${Object.keys(this.templates)
@@ -768,8 +770,8 @@
                             </select>
                         </div>
                     </div>
-                    <button type="button" id="create-template-btn" class="ub-btn ub-btn-primary">+ Create Template</button>
-                     <button id="manage-templates-btn" type="button" class="ub-btn ub-btn-secondary" title="Manage Templates & Settings">Settings</button>
+                    <button type="button" id="create-template-btn" class="gut-btn gut-btn-primary">+ Create Template</button>
+                     <button id="manage-templates-btn" type="button" class="gut-btn gut-btn-secondary" title="Manage Templates & Settings">Settings</button>
                 </div>
             `;
 
@@ -792,10 +794,10 @@
 
     // Inject CSS styles
     injectStyles() {
-      if (document.getElementById("upload-buddy-styles")) return;
+      if (document.getElementById("ggn-upload-templator-styles")) return;
 
       const styles = document.createElement("style");
-      styles.id = "upload-buddy-styles";
+      styles.id = "ggn-upload-templator-styles";
       styles.textContent = UI_STYLES;
 
       document.head.appendChild(styles);
@@ -837,38 +839,38 @@
       }
 
       const modal = document.createElement("div");
-      modal.className = "ub-modal";
+      modal.className = "gut-modal";
       modal.innerHTML = `
-                <div class="ub-modal-content">
+                <div class="gut-modal-content">
                     <h2>
-                        ${editTemplateName ? '<button class="ub-modal-back-btn" id="back-to-manager" title="Back to Template Manager">&lt;</button>' : ""}
+                        ${editTemplateName ? '<button class="gut-modal-back-btn" id="back-to-manager" title="Back to Template Manager">&lt;</button>' : ""}
                         ${editTemplateName ? "Edit Template" : "Create Template"}
                     </h2>
 
-                    <div class="ub-form-group">
+                    <div class="gut-form-group">
                         <label for="template-name">Template Name:</label>
                         <input type="text" id="template-name" placeholder="e.g., Magazine Template" value="${editTemplateName ? this.escapeHtml(editTemplateName) : ""}">
                     </div>
 
-                    <div class="ub-form-group">
+                    <div class="gut-form-group">
                         <label for="torrent-mask">Torrent Name Mask:</label>
                         <input type="text" id="torrent-mask" placeholder="e.g., {magazine} - Issue {issue} - {month}-{year}.{ext}" value="${editTemplate ? this.escapeHtml(editTemplate.mask) : ""}">
                     </div>
 
-                    <div class="ub-form-group">
+                    <div class="gut-form-group">
                         <label for="sample-torrent">Sample Torrent Name (for preview):</label>
                         <input type="text" id="sample-torrent" value="${this.escapeHtml(selectedTorrentName)}" placeholder="e.g., PCWorld - Issue 05 - 01-2024.zip">
                     </div>
 
-                    <div class="ub-form-group">
+                    <div class="gut-form-group">
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
                             <label style="margin: 0;">Form Fields:</label>
                             <div style="display: flex; align-items: center; gap: 10px;">
                                 <input type="text" id="field-filter" placeholder="Filter fields..." style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #2a2a2a; color: #e0e0e0; font-size: 12px; min-width: 150px;">
-                                <button type="button" class="ub-btn ub-btn-secondary" id="toggle-unselected" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">Show Unselected</button>
+                                <button type="button" class="gut-btn gut-btn-secondary" id="toggle-unselected" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">Show Unselected</button>
                             </div>
                         </div>
-                        <div class="ub-field-list">
+                        <div class="gut-field-list">
                               ${Object.entries(formData)
                                 .map(([name, fieldData]) => {
                                   const isIgnoredByDefault =
@@ -903,12 +905,12 @@
                                   }
 
                                   return `
-                                 <div class="ub-field-row ${isIgnoredByDefault && !isInTemplate && !shouldBeChecked ? "ub-hidden" : ""}">
+                                 <div class="gut-field-row ${isIgnoredByDefault && !isInTemplate && !shouldBeChecked ? "gut-hidden" : ""}">
                                      <input type="checkbox" ${shouldBeChecked ? "checked" : ""} data-field="${name}">
                                      <label title="${name}">${fieldData.label}:</label>
                                       ${
                                         fieldData.type === "select"
-                                          ? `<select data-template="${name}" class="template-input ub-select">
+                                          ? `<select data-template="${name}" class="template-input gut-select">
                                            ${fieldData.options
                                              .map((option) => {
                                                let selected = option.selected;
@@ -925,7 +927,7 @@
                                           : fieldData.inputType === "checkbox"
                                             ? `<input type="checkbox" ${templateValue !== null ? (templateValue ? "checked" : "") : fieldData.value ? "checked" : ""} data-template="${name}" class="template-input">`
                                             : fieldData.inputType === "radio"
-                                              ? `<select data-template="${name}" class="template-input ub-select">
+                                              ? `<select data-template="${name}" class="template-input gut-select">
                                            ${fieldData.radioOptions
                                              .map((option) => {
                                                let selected = option.checked;
@@ -941,7 +943,7 @@
                                          </select>`
                                               : `<input type="text" value="${templateValue !== null ? this.escapeHtml(String(templateValue)) : this.escapeHtml(String(fieldData.value))}" data-template="${name}" class="template-input">`
                                       }
-                                     <span class="ub-preview" data-preview="${name}"></span>
+                                     <span class="gut-preview" data-preview="${name}"></span>
                                  </div>
                             `;
                                 })
@@ -949,9 +951,9 @@
                         </div>
                     </div>
 
-                    <div class="ub-modal-actions">
-                        <button class="ub-btn" id="cancel-template">Cancel</button>
-                        <button class="ub-btn ub-btn-primary" id="save-template">${editTemplateName ? "Update Template" : "Save Template"}</button>
+                    <div class="gut-modal-actions">
+                        <button class="gut-btn" id="cancel-template">Cancel</button>
+                        <button class="gut-btn gut-btn-primary" id="save-template">${editTemplateName ? "Update Template" : "Save Template"}</button>
                     </div>
                 </div>
             `;
@@ -970,12 +972,12 @@
       // Field filtering functionality
       const filterFields = () => {
         const filterValue = filterInput.value.toLowerCase();
-        const fieldRows = modal.querySelectorAll(".ub-field-row");
-        const fieldList = modal.querySelector(".ub-field-list");
+        const fieldRows = modal.querySelectorAll(".gut-field-row");
+        const fieldList = modal.querySelector(".gut-field-list");
         let visibleCount = 0;
 
         // Remove existing no-results message
-        const existingMessage = fieldList.querySelector(".ub-no-results");
+        const existingMessage = fieldList.querySelector(".gut-no-results");
         if (existingMessage) {
           existingMessage.remove();
         }
@@ -998,17 +1000,17 @@
           const shouldShow = matchesFilter && shouldShowBasedOnSelection;
 
           if (shouldShow) {
-            row.classList.remove("ub-hidden");
+            row.classList.remove("gut-hidden");
             visibleCount++;
           } else {
-            row.classList.add("ub-hidden");
+            row.classList.add("gut-hidden");
           }
         });
 
         // Show no results message if filter is active and no fields are visible
         if (filterValue && visibleCount === 0) {
           const noResultsMessage = document.createElement("div");
-          noResultsMessage.className = "ub-no-results";
+          noResultsMessage.className = "gut-no-results";
           noResultsMessage.style.cssText =
             "padding: 20px; text-align: center; color: #888; font-style: italic;";
           noResultsMessage.textContent = `No fields found matching "${filterValue}"`;
@@ -1019,7 +1021,7 @@
       const toggleUnselectedFields = () => {
         this.hideUnselectedFields = !this.hideUnselectedFields;
         localStorage.setItem(
-          "upload-buddy-hide-unselected",
+          "ggn-upload-templator-hide-unselected",
           JSON.stringify(this.hideUnselectedFields),
         );
 
@@ -1053,17 +1055,17 @@
 
           if (input.type === "checkbox") {
             preview.textContent = input.checked ? "✓ checked" : "✗ unchecked";
-            preview.className = "ub-preview";
+            preview.className = "gut-preview";
           } else {
             const inputValue = input.value || "";
             const interpolated = this.interpolate(inputValue, extracted);
 
             if (inputValue.includes("{") && Object.keys(extracted).length > 0) {
               preview.textContent = `→ ${interpolated}`;
-              preview.className = "ub-preview active";
+              preview.className = "gut-preview active";
             } else {
               preview.textContent = "";
-              preview.className = "ub-preview";
+              preview.className = "gut-preview";
             }
           }
         });
@@ -1143,7 +1145,7 @@
 
       const fieldMappings = {};
       const checkedFields = modal.querySelectorAll(
-        '.ub-field-row input[type="checkbox"]:checked',
+        '.gut-field-row input[type="checkbox"]:checked',
       );
 
       checkedFields.forEach((checkbox) => {
@@ -1161,7 +1163,7 @@
       });
 
       // Capture custom unselected fields (different from default ignored list)
-      const allFieldRows = modal.querySelectorAll(".ub-field-row");
+      const allFieldRows = modal.querySelectorAll(".gut-field-row");
       const customUnselectedFields = [];
 
       allFieldRows.forEach((row) => {
@@ -1192,7 +1194,7 @@
         delete this.templates[editingTemplateName];
         if (this.selectedTemplate === editingTemplateName) {
           this.selectedTemplate = name;
-          localStorage.setItem("upload-buddy-selected", name);
+          localStorage.setItem("ggn-upload-templator-selected", name);
         }
       }
 
@@ -1206,7 +1208,7 @@
       };
 
       localStorage.setItem(
-        "upload-buddy-templates",
+        "ggn-upload-templator-templates",
         JSON.stringify(this.templates),
       );
       this.updateTemplateSelector();
@@ -1239,9 +1241,9 @@
       this.selectedTemplate = templateName || null;
 
       if (templateName) {
-        localStorage.setItem("upload-buddy-selected", templateName);
+        localStorage.setItem("ggn-upload-templator-selected", templateName);
       } else {
-        localStorage.removeItem("upload-buddy-selected");
+        localStorage.removeItem("ggn-upload-templator-selected");
       }
 
       if (templateName === "none") {
@@ -1320,28 +1322,28 @@
     // Show combined template and settings manager modal
     showTemplateAndSettingsManager() {
       const modal = document.createElement("div");
-      modal.className = "ub-modal";
+      modal.className = "gut-modal";
       modal.innerHTML = `
-                <div class="ub-modal-content">
-                    <div class="ub-modal-tabs">
-                        <button class="ub-tab-btn active" data-tab="templates">Templates</button>
-                        <button class="ub-tab-btn" data-tab="settings">Settings</button>
+                <div class="gut-modal-content">
+                    <div class="gut-modal-tabs">
+                        <button class="gut-tab-btn active" data-tab="templates">Templates</button>
+                        <button class="gut-tab-btn" data-tab="settings">Settings</button>
                     </div>
 
-                    <div class="ub-tab-content active" id="templates-tab">
+                    <div class="gut-tab-content active" id="templates-tab">
                         ${
                           Object.keys(this.templates).length === 0
                             ? '<div style="padding: 20px; text-align: center; color: #888;">No templates found. Create a template first.</div>'
-                            : `<div class="ub-template-list">
+                            : `<div class="gut-template-list">
                             ${Object.keys(this.templates)
                               .map(
                                 (name) => `
-                                <div class="ub-template-item">
-                                    <span class="ub-template-name">${this.escapeHtml(name)}</span>
-                                    <div class="ub-template-actions">
-                                        <button class="ub-btn ub-btn-secondary ub-btn-small" data-action="edit" data-template="${this.escapeHtml(name)}">Edit</button>
-                                        <button class="ub-btn ub-btn-secondary ub-btn-small" data-action="clone" data-template="${this.escapeHtml(name)}">Clone</button>
-                                        <button class="ub-btn ub-btn-danger ub-btn-small" data-action="delete" data-template="${this.escapeHtml(name)}">Delete</button>
+                                <div class="gut-template-item">
+                                    <span class="gut-template-name">${this.escapeHtml(name)}</span>
+                                    <div class="gut-template-actions">
+                                        <button class="gut-btn gut-btn-secondary gut-btn-small" data-action="edit" data-template="${this.escapeHtml(name)}">Edit</button>
+                                        <button class="gut-btn gut-btn-secondary gut-btn-small" data-action="clone" data-template="${this.escapeHtml(name)}">Clone</button>
+                                        <button class="gut-btn gut-btn-danger gut-btn-small" data-action="delete" data-template="${this.escapeHtml(name)}">Delete</button>
                                     </div>
                                 </div>
                               `,
@@ -1351,37 +1353,37 @@
                         }
                     </div>
 
-                    <div class="ub-tab-content" id="settings-tab">
-                        <div class="ub-form-group">
+                    <div class="gut-tab-content" id="settings-tab">
+                        <div class="gut-form-group">
                             <label for="setting-form-selector">Target Form Selector:</label>
                             <input type="text" id="setting-form-selector" value="${this.escapeHtml(this.config.TARGET_FORM_SELECTOR)}" placeholder="#upload_table">
                         </div>
 
-                        <div class="ub-form-group">
-                            <label class="ub-checkbox-label">
+                        <div class="gut-form-group">
+                            <label class="gut-checkbox-label">
                                 <input type="checkbox" id="setting-submit-keybinding" ${this.config.SUBMIT_KEYBINDING ? "checked" : ""}>
-                                <span class="ub-checkbox-text">⚡ Enable Ctrl+Enter form submission</span>
+                                <span class="gut-checkbox-text">⚡ Enable Ctrl+Enter form submission</span>
                             </label>
                         </div>
 
-                        <div class="ub-form-group">
+                        <div class="gut-form-group">
                             <label for="setting-ignored-fields">Ignored Fields (one per line):</label>
                             <textarea id="setting-ignored-fields" rows="8" placeholder="linkgroup&#10;groupid&#10;apikey">${this.config.IGNORED_FIELDS_BY_DEFAULT.join("\n")}</textarea>
                         </div>
 
-                        <div class="ub-form-group">
+                        <div class="gut-form-group">
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div style="display: flex; gap: 10px;">
-                                    <button class="ub-btn ub-btn-primary" id="save-settings">Save Settings</button>
-                                    <button class="ub-btn ub-btn-secondary" id="reset-settings">Reset to Defaults</button>
+                                    <button class="gut-btn gut-btn-primary" id="save-settings">Save Settings</button>
+                                    <button class="gut-btn gut-btn-secondary" id="reset-settings">Reset to Defaults</button>
                                 </div>
-                                <button class="ub-btn ub-btn-danger" id="delete-all-config">Delete All Local Config</button>
+                                <button class="gut-btn gut-btn-danger" id="delete-all-config">Delete All Local Config</button>
                             </div>
                         </div>
                     </div>
 
-                    <div class="ub-modal-actions">
-                        <button class="ub-btn" id="close-manager">Close</button>
+                    <div class="gut-modal-actions">
+                        <button class="gut-btn" id="close-manager">Close</button>
                     </div>
                 </div>
             `;
@@ -1389,19 +1391,19 @@
       document.body.appendChild(modal);
 
       // Tab switching
-      modal.querySelectorAll(".ub-tab-btn").forEach((btn) => {
+      modal.querySelectorAll(".gut-tab-btn").forEach((btn) => {
         btn.addEventListener("click", (e) => {
           const tabName = e.target.dataset.tab;
 
           // Update tab buttons
           modal
-            .querySelectorAll(".ub-tab-btn")
+            .querySelectorAll(".gut-tab-btn")
             .forEach((b) => b.classList.remove("active"));
           e.target.classList.add("active");
 
           // Update tab content
           modal
-            .querySelectorAll(".ub-tab-content")
+            .querySelectorAll(".gut-tab-content")
             .forEach((c) => c.classList.remove("active"));
           modal.querySelector(`#${tabName}-tab`).classList.add("active");
         });
@@ -1427,7 +1429,7 @@
         ?.addEventListener("click", () => {
           if (
             confirm(
-              "⚠️ WARNING: This will permanently delete ALL Upload Buddy data including templates, settings, and selected template.\n\nThis action CANNOT be undone!\n\nAre you sure you want to continue?",
+              "⚠️ WARNING: This will permanently delete ALL GGn Upload Templator data including templates, settings, and selected template.\n\nThis action CANNOT be undone!\n\nAre you sure you want to continue?",
             )
           ) {
             this.deleteAllConfig();
@@ -1505,7 +1507,7 @@
       };
 
       localStorage.setItem(
-        "upload-buddy-settings",
+        "ggn-upload-templator-settings",
         JSON.stringify(this.config),
       );
       this.showStatus(
@@ -1515,7 +1517,7 @@
 
     // Reset settings to defaults
     resetSettings(modal) {
-      localStorage.removeItem("upload-buddy-settings");
+      localStorage.removeItem("ggn-upload-templator-settings");
       this.config = { ...DEFAULT_CONFIG };
 
       // Update the form fields
@@ -1533,11 +1535,11 @@
 
     // Delete all local configuration
     deleteAllConfig() {
-      // Remove all localStorage items related to Upload Buddy
-      localStorage.removeItem("upload-buddy-templates");
-      localStorage.removeItem("upload-buddy-selected");
-      localStorage.removeItem("upload-buddy-hide-unselected");
-      localStorage.removeItem("upload-buddy-settings");
+      // Remove all localStorage items related to GGn Upload Templator
+      localStorage.removeItem("ggn-upload-templator-templates");
+      localStorage.removeItem("ggn-upload-templator-selected");
+      localStorage.removeItem("ggn-upload-templator-hide-unselected");
+      localStorage.removeItem("ggn-upload-templator-settings");
 
       // Reset instance variables
       this.templates = {};
@@ -1558,13 +1560,13 @@
     deleteTemplate(templateName) {
       delete this.templates[templateName];
       localStorage.setItem(
-        "upload-buddy-templates",
+        "ggn-upload-templator-templates",
         JSON.stringify(this.templates),
       );
 
       if (this.selectedTemplate === templateName) {
         this.selectedTemplate = null;
-        localStorage.removeItem("upload-buddy-selected");
+        localStorage.removeItem("ggn-upload-templator-selected");
       }
 
       this.updateTemplateSelector();
@@ -1586,7 +1588,7 @@
       };
 
       localStorage.setItem(
-        "upload-buddy-templates",
+        "ggn-upload-templator-templates",
         JSON.stringify(this.templates),
       );
 
@@ -1605,7 +1607,7 @@
 
     // Refresh template manager modal content
     refreshTemplateManager(modal) {
-      const templateList = modal.querySelector(".ub-template-list");
+      const templateList = modal.querySelector(".gut-template-list");
       if (!templateList) return;
 
       if (Object.keys(this.templates).length === 0) {
@@ -1620,12 +1622,12 @@
       templateList.innerHTML = Object.keys(this.templates)
         .map(
           (name) => `
-          <div class="ub-template-item">
-              <span class="ub-template-name">${this.escapeHtml(name)}</span>
-              <div class="ub-template-actions">
-                  <button class="ub-btn ub-btn-secondary ub-btn-small" data-action="edit" data-template="${this.escapeHtml(name)}">Edit</button>
-                  <button class="ub-btn ub-btn-secondary ub-btn-small" data-action="clone" data-template="${this.escapeHtml(name)}">Clone</button>
-                  <button class="ub-btn ub-btn-danger ub-btn-small" data-action="delete" data-template="${this.escapeHtml(name)}">Delete</button>
+          <div class="gut-template-item">
+              <span class="gut-template-name">${this.escapeHtml(name)}</span>
+              <div class="gut-template-actions">
+                  <button class="gut-btn gut-btn-secondary gut-btn-small" data-action="edit" data-template="${this.escapeHtml(name)}">Edit</button>
+                  <button class="gut-btn gut-btn-secondary gut-btn-small" data-action="clone" data-template="${this.escapeHtml(name)}">Clone</button>
+                  <button class="gut-btn gut-btn-danger gut-btn-small" data-action="delete" data-template="${this.escapeHtml(name)}">Delete</button>
               </div>
           </div>
         `,
@@ -1765,11 +1767,11 @@
 
     // Show status message
     showStatus(message, type = "success") {
-      const existing = document.querySelector(".ub-status");
+      const existing = document.querySelector(".gut-status");
       if (existing) existing.remove();
 
       const status = document.createElement("div");
-      status.className = "ub-status";
+      status.className = "gut-status";
       status.textContent = message;
       if (type === "error") {
         status.classList.add("error");
@@ -1794,8 +1796,11 @@
 
   // Initialize when DOM is ready
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", () => new UploadBuddy());
+    document.addEventListener(
+      "DOMContentLoaded",
+      () => new GGnUploadTemplator(),
+    );
   } else {
-    new UploadBuddy();
+    new GGnUploadTemplator();
   }
 })();
