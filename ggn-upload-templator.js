@@ -248,6 +248,7 @@
         background: #2a2a2a;
         border-radius: 4px;
         border: 1px solid #404040;
+        flex-wrap: wrap;
     }
 
     .gut-field-row:hover {
@@ -302,9 +303,10 @@
         color: #888888;
         font-style: italic;
         font-size: 11px;
-        min-width: 100px;
         word-break: break-all;
-        text-align: right;
+        flex-basis: 100%;
+        margin-top: 4px;
+        padding-left: 20px;
     }
 
     .gut-preview.active {
@@ -502,6 +504,70 @@
     .gut-modal-content::-webkit-scrollbar-thumb:hover {
         background: #555555;
     }
+
+    /* Extracted variables section */
+    .gut-extracted-vars {
+        border: 1px solid #404040;
+        border-radius: 4px;
+        background: #0f0f0f;
+        padding: 12px;
+        min-height: 80px;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .gut-extracted-vars:has(.gut-no-variables) {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .gut-no-variables {
+        color: #666666;
+        font-style: italic;
+        text-align: center;
+        padding: 20px 10px;
+    }
+
+    .gut-variable-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        margin-bottom: 6px;
+        background: #2a2a2a;
+        border: 1px solid #404040;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+    }
+
+    .gut-variable-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .gut-variable-item:hover {
+        background: #333333;
+    }
+
+    .gut-variable-name {
+        font-weight: 500;
+        color: #4dd0e1;
+        font-family: monospace;
+        font-size: 13px;
+    }
+
+    .gut-variable-value {
+        color: #e0e0e0;
+        font-size: 12px;
+        max-width: 60%;
+        word-break: break-all;
+        text-align: right;
+    }
+
+    .gut-variable-value.empty {
+        color: #888888;
+        font-style: italic;
+    }
   `;
 
   // Torrent utility class
@@ -621,7 +687,7 @@
     }
 
     // Parse torrent name using template mask
-    parseTemplate(mask, torrentName) {
+    parseTemplate(mask, torrentName, greedyMatching = true) {
       if (!mask || !torrentName) return {};
 
       // Convert template mask to regex with named groups
@@ -634,13 +700,31 @@
         .replace(/\\\\/g, "___ESCAPED_BACKSLASH___")
         // Escape all regex special characters
         .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-        // Convert ${field} to named groups (non-greedy, matches any character)
-        .replace(/\\\$\\\{([^}]+)\\\}/g, "(?<$1>.*?)")
+        // Convert ${field} to named groups
+        // Use greedy or non-greedy based on the greedyMatching parameter
+        .replace(/\\\$\\\{([^}]+)\\\}/g, (match, varName, offset, string) => {
+          if (greedyMatching) {
+            // When greedy matching is enabled, use greedy quantifiers for all variables
+            return `(?<${varName}>.+)`;
+          } else {
+            // Default behavior: non-greedy for variables with more variables after them, greedy for the last
+            const remainingString = string.slice(offset + match.length);
+            const hasMoreVariables = /\\\$\\\{[^}]+\\\}/.test(remainingString);
+
+            if (hasMoreVariables) {
+              return `(?<${varName}>.*?)`; // Non-greedy for variables with more variables after them
+            } else {
+              return `(?<${varName}>.+)`; // Greedy for the last variable (requires at least 1 char)
+            }
+          }
+        })
         // Restore escaped characters as literal matches
         .replace(/___ESCAPED_DOLLAR___/g, "\\$")
         .replace(/___ESCAPED_LBRACE___/g, "\\{")
         .replace(/___ESCAPED_RBRACE___/g, "\\}")
         .replace(/___ESCAPED_BACKSLASH___/g, "\\\\");
+
+      console.log("DEBUG", regexPattern);
 
       try {
         const regex = new RegExp(regexPattern, "i");
@@ -869,13 +953,27 @@
                     </div>
 
                     <div class="gut-form-group">
+                        <label for="sample-torrent">Sample Torrent Name (for preview):</label>
+                        <input type="text" id="sample-torrent" value="${this.escapeHtml(selectedTorrentName)}" placeholder="e.g., PCWorld - Issue 05 - 01-2024.zip">
+                    </div>
+
+                    <div class="gut-form-group" style="margin-bottom: 8px;">
                         <label for="torrent-mask">Torrent Name Mask:</label>
-                        <input type="text" id="torrent-mask" placeholder="e.g., {magazine} - Issue {issue} - {month}-{year}.{ext}" value="${editTemplate ? this.escapeHtml(editTemplate.mask) : ""}">
+                        <input type="text" id="torrent-mask" placeholder="e.g., \${magazine} - Issue \${issue} - \${month}-\${year}.\${ext}" value="${editTemplate ? this.escapeHtml(editTemplate.mask) : ""}">
                     </div>
 
                     <div class="gut-form-group">
-                        <label for="sample-torrent">Sample Torrent Name (for preview):</label>
-                        <input type="text" id="sample-torrent" value="${this.escapeHtml(selectedTorrentName)}" placeholder="e.g., PCWorld - Issue 05 - 01-2024.zip">
+                        <label style="display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: #888888; font-weight: normal;" title="When enabled, patterns capture as much text as possible. When disabled, uses smart matching that's usually more precise.">
+                            <input type="checkbox" id="greedy-matching" ${editTemplate ? (editTemplate.greedyMatching !== false ? "checked" : "") : "checked"} style="margin: 0; accent-color: #0d7377; width: auto;">
+                            <span>Greedy matching</span>
+                        </label>
+                    </div>
+
+                    <div class="gut-form-group">
+                        <label>Extracted Variables:</label>
+                        <div id="extracted-variables" class="gut-extracted-vars">
+                            <div class="gut-no-variables">No variables defined yet. Add variables like \${name} to your mask.</div>
+                        </div>
                     </div>
 
                     <div class="gut-form-group">
@@ -1063,7 +1161,28 @@
       const updatePreviews = () => {
         const mask = maskInput.value;
         const sample = sampleInput.value;
-        const extracted = this.parseTemplate(mask, sample);
+        const greedyMatching = modal.querySelector("#greedy-matching").checked;
+        const extracted = this.parseTemplate(mask, sample, greedyMatching);
+
+        // Update extracted variables section
+        const extractedVarsContainer = modal.querySelector(
+          "#extracted-variables",
+        );
+        if (Object.keys(extracted).length === 0) {
+          extractedVarsContainer.innerHTML =
+            '<div class="gut-no-variables">No variables defined yet. Add variables like ${name} to your mask.</div>';
+        } else {
+          extractedVarsContainer.innerHTML = Object.entries(extracted)
+            .map(
+              ([varName, varValue]) => `
+              <div class="gut-variable-item">
+                <span class="gut-variable-name">\${${this.escapeHtml(varName)}}</span>
+                <span class="gut-variable-value ${varValue ? "" : "empty"}">${varValue ? this.escapeHtml(varValue) : "(empty)"}</span>
+              </div>
+            `,
+            )
+            .join("");
+        }
 
         templateInputs.forEach((input) => {
           const fieldName = input.dataset.template;
@@ -1076,7 +1195,10 @@
             const inputValue = input.value || "";
             const interpolated = this.interpolate(inputValue, extracted);
 
-            if (inputValue.includes("{") && Object.keys(extracted).length > 0) {
+            if (
+              inputValue.includes("${") &&
+              Object.keys(extracted).length > 0
+            ) {
               preview.textContent = `→ ${interpolated}`;
               preview.className = "gut-preview active";
             } else {
@@ -1098,7 +1220,11 @@
       // Update visibility when checkboxes change
       modal.addEventListener("change", (e) => {
         if (e.target.type === "checkbox") {
-          filterFields(); // Re-apply all visibility rules including filter
+          if (e.target.id === "greedy-matching") {
+            updatePreviews(); // Update previews when greedy matching changes
+          } else {
+            filterFields(); // Re-apply all visibility rules including filter
+          }
         }
       });
 
@@ -1214,9 +1340,12 @@
         }
       }
 
+      const greedyMatching = modal.querySelector("#greedy-matching").checked;
+
       this.templates[name] = {
         mask,
         fieldMappings,
+        greedyMatching,
         customUnselectedFields:
           customUnselectedFields.length > 0
             ? customUnselectedFields
@@ -1687,7 +1816,7 @@
       const template = this.templates[templateName];
       if (!template) return;
 
-      const extracted = this.parseTemplate(template.mask, torrentName);
+      const extracted = this.parseTemplate(template.mask, torrentName, template.greedyMatching !== false);
       let appliedCount = 0;
 
       Object.entries(template.fieldMappings).forEach(
