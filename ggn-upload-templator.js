@@ -8,6 +8,8 @@
 // @icon         https://gazellegames.net/favicon.ico
 // @match        https://*.gazellegames.net/upload.php*
 // @grant        none
+// @downloadURL https://update.greasyfork.org/scripts/550898/GGn%20Upload%20Templator.user.js
+// @updateURL https://update.greasyfork.org/scripts/550898/GGn%20Upload%20Templator.meta.js
 // ==/UserScript==
 
 (function () {
@@ -623,9 +625,22 @@
       if (!mask || !torrentName) return {};
 
       // Convert template mask to regex with named groups
-      const regexPattern = mask
-        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&") // Escape special chars
-        .replace(/\\{([^}]+)\\}/g, "(?<$1>.+?)"); // Convert {field} to named groups (non-greedy)
+      // Support ${var_name} syntax with escaping for literal $, {, }
+      let regexPattern = mask
+        // First, temporarily replace escaped characters with placeholders
+        .replace(/\\\$/g, "___ESCAPED_DOLLAR___")
+        .replace(/\\\{/g, "___ESCAPED_LBRACE___")
+        .replace(/\\\}/g, "___ESCAPED_RBRACE___")
+        .replace(/\\\\/g, "___ESCAPED_BACKSLASH___")
+        // Escape all regex special characters
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+        // Convert ${field} to named groups (non-greedy, matches any character)
+        .replace(/\\\$\\\{([^}]+)\\\}/g, "(?<$1>.*?)")
+        // Restore escaped characters as literal matches
+        .replace(/___ESCAPED_DOLLAR___/g, "\\$")
+        .replace(/___ESCAPED_LBRACE___/g, "\\{")
+        .replace(/___ESCAPED_RBRACE___/g, "\\}")
+        .replace(/___ESCAPED_BACKSLASH___/g, "\\\\");
 
       try {
         const regex = new RegExp(regexPattern, "i");
@@ -641,7 +656,7 @@
     interpolate(template, data) {
       if (!template || !data) return template;
       return template.replace(
-        /\{([^}]+)\}/g,
+        /\$\{([^}]+)\}/g,
         (match, key) => data[key] || match,
       );
     }
