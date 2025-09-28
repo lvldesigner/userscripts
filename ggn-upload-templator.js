@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GGn Upload Templator
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  Auto-fill upload forms using torrent file data with configurable templates
 // @author       leveldesigner
 // @license      Unlicense
