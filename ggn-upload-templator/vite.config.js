@@ -1,7 +1,13 @@
 import { defineConfig } from "vite";
 import Userscript from "vite-userscript-plugin";
 
-import { license, version, description, author } from "./package.json";
+import {
+  license,
+  version,
+  description,
+  author,
+  repository,
+} from "./package.json";
 
 export default defineConfig({
   plugins: [
@@ -14,6 +20,7 @@ export default defineConfig({
         description,
         author: author.name,
         license,
+        source: repository.url,
         icon: "https://gazellegames.net/favicon.ico",
         match: "https://*.gazellegames.net/upload.php*",
         downloadURL:

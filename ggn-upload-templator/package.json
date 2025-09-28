@@ -7,6 +7,9 @@
   "private": true,
   "version": "0.4",
   "type": "module",
+  "repository": {
+    "url": "https://github.com/lvldesigner/userscripts/tree/main/ggn-upload-templator"
+  },
   "license": "Unlicense",
   "scripts": {
     "dev": "vite build --watch --mode development",
