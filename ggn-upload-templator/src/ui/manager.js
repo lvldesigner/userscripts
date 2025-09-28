@@ -278,21 +278,12 @@ export async function showTemplateCreator(
             preview.className = "gut-preview";
             preview.style.display = "none";
           }
-        } else {
-          // Static mode - show selected option
-          const selectedOption = Array.from(input.options).find(
-            (option) => option.selected,
-          );
-          if (selectedOption) {
-            preview.textContent = `→ "${selectedOption.text}"`;
-            preview.className = "gut-preview active";
-            preview.style.display = "block";
-          } else {
-            preview.textContent = "";
-            preview.className = "gut-preview";
-            preview.style.display = "none";
-          }
-        }
+         } else {
+           // Static mode - no preview
+           preview.textContent = "";
+           preview.className = "gut-preview";
+           preview.style.display = "none";
+         }
       } else {
         const inputValue = input.value || "";
         const interpolated = interpolate(inputValue, extracted);
