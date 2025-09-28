@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GGn Upload Templator
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Auto-fill upload forms using torrent file data with configurable templates
 // @author       leveldesigner
 // @license      Unlicense
@@ -763,14 +763,15 @@
       const formData = {};
       const formSelector = this.config.TARGET_FORM_SELECTOR || "form";
       const targetForm = document.querySelector(formSelector);
-      
+
       // Build the field selector with custom selectors
       const defaultSelector = "input[name], select[name], textarea[name]";
       const customSelectors = this.config.CUSTOM_FIELD_SELECTORS || [];
-      const fieldSelector = customSelectors.length > 0 
-        ? `${defaultSelector}, ${customSelectors.join(', ')}`
-        : defaultSelector;
-      
+      const fieldSelector =
+        customSelectors.length > 0
+          ? `${defaultSelector}, ${customSelectors.join(", ")}`
+          : defaultSelector;
+
       const inputs = targetForm
         ? targetForm.querySelectorAll(fieldSelector)
         : document.querySelectorAll(fieldSelector);
@@ -778,27 +779,35 @@
       inputs.forEach((input) => {
         // Check if this is a custom field element
         const isCustomField = this.isElementMatchedByCustomSelector(input);
-        
+
         // For custom fields, we need a different validation approach
-        const hasValidIdentifier = isCustomField 
-          ? (input.name || input.id || input.getAttribute('data-field') || input.getAttribute('data-name'))
+        const hasValidIdentifier = isCustomField
+          ? input.name ||
+            input.id ||
+            input.getAttribute("data-field") ||
+            input.getAttribute("data-name")
           : input.name;
-        
+
         // Skip invalid elements
         if (!hasValidIdentifier) return;
-        
+
         // For standard form elements, apply the original filtering
-        if (!isCustomField && (
-          input.type === "file" ||
-          input.type === "button" ||
-          input.type === "submit"
-        )) {
+        if (
+          !isCustomField &&
+          (input.type === "file" ||
+            input.type === "button" ||
+            input.type === "submit")
+        ) {
           return;
         }
-        
+
         // Get the field name/identifier
-        const fieldName = input.name || input.id || input.getAttribute('data-field') || input.getAttribute('data-name');
-        
+        const fieldName =
+          input.name ||
+          input.id ||
+          input.getAttribute("data-field") ||
+          input.getAttribute("data-name");
+
         if (fieldName) {
           // For radio buttons, only process if we haven't seen this group yet
           if (input.type === "radio" && formData[fieldName]) {
@@ -806,14 +815,17 @@
           }
 
           const fieldInfo = {
-            value: isCustomField 
-              ? (input.value || input.textContent || input.getAttribute('data-value') || "")
-              : (input.type === "checkbox" || input.type === "radio"
+            value: isCustomField
+              ? input.value ||
+                input.textContent ||
+                input.getAttribute("data-value") ||
+                ""
+              : input.type === "checkbox" || input.type === "radio"
                 ? input.checked
-                : input.value || ""),
+                : input.value || "",
             label: this.getFieldLabel(input),
             type: input.tagName.toLowerCase(),
-            inputType: input.type || 'custom',
+            inputType: input.type || "custom",
           };
 
           // For radio buttons, we need to handle them specially - group by name
@@ -855,9 +867,9 @@
     isElementMatchedByCustomSelector(element) {
       const customSelectors = this.config.CUSTOM_FIELD_SELECTORS || [];
       if (customSelectors.length === 0) return false;
-      
+
       // Check if element matches any custom selector
-      return customSelectors.some(selector => {
+      return customSelectors.some((selector) => {
         try {
           return element.matches(selector);
         } catch (e) {
@@ -870,28 +882,28 @@
     // Clean label text by removing link tags and trailing colons
     cleanLabelText(text) {
       if (!text) return text;
-      
+
       // Create a temporary element to parse HTML content
-      const tempElement = document.createElement('div');
+      const tempElement = document.createElement("div");
       tempElement.innerHTML = text;
-      
+
       // Remove all link tags completely (including their text content)
-      const linkElements = tempElement.querySelectorAll('a');
-      linkElements.forEach(link => {
+      const linkElements = tempElement.querySelectorAll("a");
+      linkElements.forEach((link) => {
         link.remove();
       });
-      
+
       // Get the cleaned text content
-      let cleanedText = tempElement.textContent || tempElement.innerText || '';
-      
+      let cleanedText = tempElement.textContent || tempElement.innerText || "";
+
       // Trim whitespace
       cleanedText = cleanedText.trim();
-      
+
       // Remove trailing colon
-      if (cleanedText.endsWith(':')) {
+      if (cleanedText.endsWith(":")) {
         cleanedText = cleanedText.slice(0, -1).trim();
       }
-      
+
       return cleanedText;
     }
 
@@ -899,7 +911,7 @@
     getFieldLabel(input) {
       // Check if this element was matched by a custom selector
       const isCustomField = this.isElementMatchedByCustomSelector(input);
-      
+
       if (isCustomField) {
         // For custom fields, use the new label detection logic
         const parent = input.parentElement;
@@ -907,20 +919,24 @@
           // Look for label element in parent
           const labelElement = parent.querySelector("label");
           if (labelElement) {
-            const rawText = labelElement.innerHTML || labelElement.textContent || '';
+            const rawText =
+              labelElement.innerHTML || labelElement.textContent || "";
             const cleanedText = this.cleanLabelText(rawText);
             return cleanedText || input.id || input.name || "Custom Field";
           }
-          
+
           // Look for any element with class containing "label"
           const labelClassElement = parent.querySelector('*[class*="label"]');
           if (labelClassElement) {
-            const rawText = labelClassElement.innerHTML || labelClassElement.textContent || '';
+            const rawText =
+              labelClassElement.innerHTML ||
+              labelClassElement.textContent ||
+              "";
             const cleanedText = this.cleanLabelText(rawText);
             return cleanedText || input.id || input.name || "Custom Field";
           }
         }
-        
+
         // Fallback to field's ID value for custom fields
         return input.id || input.name || "Custom Field";
       }
@@ -934,7 +950,8 @@
             `label[for="${input.id}"]`,
           );
           if (associatedLabel) {
-            const rawText = associatedLabel.innerHTML || associatedLabel.textContent || '';
+            const rawText =
+              associatedLabel.innerHTML || associatedLabel.textContent || "";
             const cleanedText = this.cleanLabelText(rawText);
             return cleanedText || input.value;
           }
@@ -945,7 +962,7 @@
       if (parentRow) {
         const labelCell = parentRow.querySelector("td.label");
         if (labelCell) {
-          const rawText = labelCell.innerHTML || labelCell.textContent || '';
+          const rawText = labelCell.innerHTML || labelCell.textContent || "";
           const cleanedText = this.cleanLabelText(rawText);
           return cleanedText ? `${cleanedText} (${input.name})` : input.name;
         }
@@ -1712,8 +1729,12 @@
       });
 
       // Custom selectors preview functionality
-      const customSelectorsTextarea = modal.querySelector("#setting-custom-selectors");
-      const previewGroup = modal.querySelector("#custom-selectors-preview-group");
+      const customSelectorsTextarea = modal.querySelector(
+        "#setting-custom-selectors",
+      );
+      const previewGroup = modal.querySelector(
+        "#custom-selectors-preview-group",
+      );
       const matchedContainer = modal.querySelector("#custom-selectors-matched");
 
       const updateCustomSelectorsPreview = () => {
@@ -1731,27 +1752,32 @@
         previewGroup.style.display = "block";
 
         let matchedElements = [];
-        const formSelector = modal.querySelector("#setting-form-selector").value.trim() || this.config.TARGET_FORM_SELECTOR;
+        const formSelector =
+          modal.querySelector("#setting-form-selector").value.trim() ||
+          this.config.TARGET_FORM_SELECTOR;
         const targetForm = document.querySelector(formSelector);
 
         selectors.forEach((selector) => {
           try {
-            const elements = targetForm 
+            const elements = targetForm
               ? targetForm.querySelectorAll(selector)
               : document.querySelectorAll(selector);
-            
+
             Array.from(elements).forEach((element) => {
               // Get element info
               const tagName = element.tagName.toLowerCase();
               const id = element.id;
-              const name = element.name || element.getAttribute('name');
-              const classes = element.className || '';
+              const name = element.name || element.getAttribute("name");
+              const classes = element.className || "";
               const label = this.getFieldLabel(element);
-              
+
               // Create a unique identifier for deduplication
-              const elementId = element.id || element.name || `${tagName}-${Array.from(element.parentNode.children).indexOf(element)}`;
-              
-              if (!matchedElements.find(e => e.elementId === elementId)) {
+              const elementId =
+                element.id ||
+                element.name ||
+                `${tagName}-${Array.from(element.parentNode.children).indexOf(element)}`;
+
+              if (!matchedElements.find((e) => e.elementId === elementId)) {
                 matchedElements.push({
                   elementId,
                   element,
@@ -1760,7 +1786,7 @@
                   name,
                   classes,
                   label,
-                  selector
+                  selector,
                 });
               }
             });
@@ -1770,21 +1796,32 @@
         });
 
         // Update the label with the count
-        const matchedElementsLabel = modal.querySelector("#matched-elements-label");
+        const matchedElementsLabel = modal.querySelector(
+          "#matched-elements-label",
+        );
         if (matchedElements.length === 0) {
           matchedElementsLabel.textContent = "Matched Elements:";
-          matchedContainer.innerHTML = '<div class="gut-no-variables">No elements matched by custom selectors.</div>';
+          matchedContainer.innerHTML =
+            '<div class="gut-no-variables">No elements matched by custom selectors.</div>';
         } else {
           matchedElementsLabel.textContent = `Matched Elements (${matchedElements.length}):`;
           matchedContainer.innerHTML = matchedElements
             .map((item) => {
-              const displayName = item.label || item.name || item.id || `${item.tagName}`;
+              const displayName =
+                item.label || item.name || item.id || `${item.tagName}`;
               const displayInfo = [
                 item.tagName.toUpperCase(),
-                item.id ? `#${item.id}` : '',
-                item.name ? `name="${item.name}"` : '',
-                item.classes ? `.${item.classes.split(' ').filter(c => c).join('.')}` : ''
-              ].filter(info => info).join(' ');
+                item.id ? `#${item.id}` : "",
+                item.name ? `name="${item.name}"` : "",
+                item.classes
+                  ? `.${item.classes
+                      .split(" ")
+                      .filter((c) => c)
+                      .join(".")}`
+                  : "",
+              ]
+                .filter((info) => info)
+                .join(" ");
 
               return `
                 <div class="gut-variable-item">
@@ -1801,26 +1838,33 @@
       updateCustomSelectorsPreview();
 
       // Update preview when custom selectors change
-      customSelectorsTextarea.addEventListener("input", updateCustomSelectorsPreview);
+      customSelectorsTextarea.addEventListener(
+        "input",
+        updateCustomSelectorsPreview,
+      );
 
       // Update preview when form selector changes (affects scope)
-      modal.querySelector("#setting-form-selector").addEventListener("input", updateCustomSelectorsPreview);
+      modal
+        .querySelector("#setting-form-selector")
+        .addEventListener("input", updateCustomSelectorsPreview);
 
       // GGn Infobox link handler
-      modal.querySelector("#ggn-infobox-link")?.addEventListener("click", (e) => {
-        e.preventDefault();
-        const currentValue = customSelectorsTextarea.value.trim();
-        const ggnInfoboxSelector = ".infobox-input-holder input";
-        
-        // Add the selector if it's not already present
-        if (!currentValue.includes(ggnInfoboxSelector)) {
-          const newValue = currentValue 
-            ? `${currentValue}\n${ggnInfoboxSelector}`
-            : ggnInfoboxSelector;
-          customSelectorsTextarea.value = newValue;
-          updateCustomSelectorsPreview();
-        }
-      });
+      modal
+        .querySelector("#ggn-infobox-link")
+        ?.addEventListener("click", (e) => {
+          e.preventDefault();
+          const currentValue = customSelectorsTextarea.value.trim();
+          const ggnInfoboxSelector = ".infobox-input-holder input";
+
+          // Add the selector if it's not already present
+          if (!currentValue.includes(ggnInfoboxSelector)) {
+            const newValue = currentValue
+              ? `${currentValue}\n${ggnInfoboxSelector}`
+              : ggnInfoboxSelector;
+            customSelectorsTextarea.value = newValue;
+            updateCustomSelectorsPreview();
+          }
+        });
 
       // Settings handlers
       modal.querySelector("#save-settings")?.addEventListener("click", () => {
@@ -2101,14 +2145,15 @@
       // Build the field selector with custom selectors
       const defaultSelector = "input[name], select[name], textarea[name]";
       const customSelectors = this.config.CUSTOM_FIELD_SELECTORS || [];
-      const fieldSelector = customSelectors.length > 0 
-        ? `${defaultSelector}, ${customSelectors.join(', ')}`
-        : defaultSelector;
-      
+      const fieldSelector =
+        customSelectors.length > 0
+          ? `${defaultSelector}, ${customSelectors.join(", ")}`
+          : defaultSelector;
+
       const targetForm = this.config.TARGET_FORM_SELECTOR
         ? document.querySelector(this.config.TARGET_FORM_SELECTOR)
         : null;
-      
+
       const inputs = targetForm
         ? targetForm.querySelectorAll(fieldSelector)
         : document.querySelectorAll(fieldSelector);
@@ -2116,30 +2161,38 @@
       // Find element that matches the fieldName using the same logic as getCurrentFormData
       for (const input of inputs) {
         const isCustomField = this.isElementMatchedByCustomSelector(input);
-        
-        const hasValidIdentifier = isCustomField 
-          ? (input.name || input.id || input.getAttribute('data-field') || input.getAttribute('data-name'))
+
+        const hasValidIdentifier = isCustomField
+          ? input.name ||
+            input.id ||
+            input.getAttribute("data-field") ||
+            input.getAttribute("data-name")
           : input.name;
-        
+
         if (!hasValidIdentifier) continue;
-        
+
         // Skip file, button, submit inputs for standard fields
-        if (!isCustomField && (
-          input.type === "file" ||
-          input.type === "button" ||
-          input.type === "submit"
-        )) {
+        if (
+          !isCustomField &&
+          (input.type === "file" ||
+            input.type === "button" ||
+            input.type === "submit")
+        ) {
           continue;
         }
-        
+
         // Get the field name/identifier using the same logic as getCurrentFormData
-        const elementFieldName = input.name || input.id || input.getAttribute('data-field') || input.getAttribute('data-name');
-        
+        const elementFieldName =
+          input.name ||
+          input.id ||
+          input.getAttribute("data-field") ||
+          input.getAttribute("data-name");
+
         if (elementFieldName === fieldName) {
           return input;
         }
       }
-      
+
       return null;
     }
 
@@ -2193,7 +2246,8 @@
             }
 
             // Check if this is a custom field
-            const isCustomField = this.isElementMatchedByCustomSelector(firstElement);
+            const isCustomField =
+              this.isElementMatchedByCustomSelector(firstElement);
 
             if (firstElement.type === "checkbox") {
               // For checkboxes, valueTemplate is a boolean or string that needs interpolation
@@ -2224,23 +2278,28 @@
                 String(valueTemplate),
                 extracted,
               );
-              
+
               // For custom fields, we need to handle different ways of setting values
               if (isCustomField) {
                 let valueChanged = false;
-                
+
                 // Try different approaches for custom fields
-                if (firstElement.value !== undefined && firstElement.value !== newValue) {
+                if (
+                  firstElement.value !== undefined &&
+                  firstElement.value !== newValue
+                ) {
                   firstElement.value = newValue;
                   valueChanged = true;
                 } else if (firstElement.textContent !== newValue) {
                   firstElement.textContent = newValue;
                   valueChanged = true;
-                } else if (firstElement.getAttribute('data-value') !== newValue) {
-                  firstElement.setAttribute('data-value', newValue);
+                } else if (
+                  firstElement.getAttribute("data-value") !== newValue
+                ) {
+                  firstElement.setAttribute("data-value", newValue);
                   valueChanged = true;
                 }
-                
+
                 if (valueChanged) {
                   firstElement.dispatchEvent(
                     new Event("input", { bubbles: true }),
