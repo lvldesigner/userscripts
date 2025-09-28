@@ -1,10 +1,11 @@
-import { getCurrentFormData } from "../utils/formUtils.js";
-import { TorrentUtils } from "../utils/torrentUtils.js";
-import {
-  parseTemplate,
-  interpolate,
-  findMatchingOption,
-} from "../utils/templateUtils.js";
+ import { getCurrentFormData } from "../utils/form.js";
+ import { TorrentUtils } from "../utils/torrent.js";
+ import {
+   parseTemplate,
+   interpolate,
+   findMatchingOption,
+ } from "../utils/template.js";
+ import { TEMPLATE_CREATOR_HTML, MAIN_UI_HTML } from "./template.js";
 
 // Create and inject UI elements
 export function injectUI(instance) {
@@ -24,30 +25,7 @@ export function injectUI(instance) {
   // Create UI container
   const uiContainer = document.createElement("div");
   uiContainer.id = "ggn-upload-templator-ui";
-  uiContainer.innerHTML = `
-    <div class="ggn-upload-templator-controls" style="align-items: flex-end;">
-      <div style="display: flex; flex-direction: column; gap: 5px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <label for="template-selector" style="font-size: 12px; color: #b0b0b0; margin: 0;">Select template</label>
-          <a href="#" id="edit-selected-template-btn" class="gut-link" style="${instance.selectedTemplate && instance.selectedTemplate !== "none" && instance.templates[instance.selectedTemplate] ? "" : "display: none;"}">Edit</a>
-        </div>
-        <div style="display: flex; gap: 10px; align-items: center;">
-          <select id="template-selector" class="gut-select">
-            <option value="">Select Template</option>
-            <option value="none" ${instance.selectedTemplate === "none" ? "selected" : ""}>None</option>
-            ${Object.keys(instance.templates)
-              .map(
-                (name) =>
-                  `<option value="${name}" ${name === instance.selectedTemplate ? "selected" : ""}>${name}</option>`,
-              )
-              .join("")}
-          </select>
-        </div>
-      </div>
-      <button type="button" id="create-template-btn" class="gut-btn gut-btn-primary">+ Create Template</button>
-      <button id="manage-templates-btn" type="button" class="gut-btn gut-btn-secondary" title="Manage Templates & Settings">Settings</button>
-    </div>
-  `;
+   uiContainer.innerHTML = MAIN_UI_HTML(instance);
 
   try {
     fileInput.parentNode.insertBefore(uiContainer, fileInput);
@@ -132,155 +110,7 @@ export async function showTemplateCreator(
 
   const modal = document.createElement("div");
   modal.className = "gut-modal";
-  modal.innerHTML = `
-    <div class="gut-modal-content">
-      <h2>
-        ${editTemplateName ? '<button class="gut-modal-back-btn" id="back-to-manager" title="Back to Template Manager">&lt;</button>' : ""}
-        ${editTemplateName ? "Edit Template" : "Create Template"}
-      </h2>
-
-      <div class="gut-form-group">
-        <label for="template-name">Template Name:</label>
-        <input type="text" id="template-name" placeholder="e.g., Magazine Template" value="${editTemplateName ? escapeHtml(editTemplateName) : ""}">
-      </div>
-
-      <div class="gut-form-group">
-        <label for="sample-torrent">Sample Torrent Name (for preview):</label>
-        <input type="text" id="sample-torrent" value="${escapeHtml(selectedTorrentName)}" placeholder="e.g., PCWorld - Issue 05 - 01-2024.zip">
-      </div>
-
-      <div class="gut-form-group" style="margin-bottom: 8px;">
-        <label for="torrent-mask">Torrent Name Mask:</label>
-        <input type="text" id="torrent-mask" placeholder="e.g., \${magazine} - Issue \${issue} - \${month}-\${year}.\${ext}" value="${editTemplate ? escapeHtml(editTemplate.mask) : ""}">
-      </div>
-
-      <div class="gut-form-group">
-        <label style="display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: #888888; font-weight: normal;" title="When enabled, patterns capture as much text as possible. When disabled, uses smart matching that's usually more precise.">
-          <input type="checkbox" id="greedy-matching" ${editTemplate ? (editTemplate.greedyMatching !== false ? "checked" : "") : "checked"} style="margin: 0; accent-color: #0d7377; width: auto;">
-          <span>Greedy matching</span>
-        </label>
-      </div>
-
-      <div class="gut-form-group">
-        <label>Extracted Variables:</label>
-        <div id="extracted-variables" class="gut-extracted-vars">
-          <div class="gut-no-variables">No variables defined yet. Add variables like \${name} to your mask.</div>
-        </div>
-      </div>
-
-      <div class="gut-form-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
-          <label style="margin: 0;">Form Fields:</label>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <input type="text" id="field-filter" placeholder="Filter fields..." style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #2a2a2a; color: #e0e0e0; font-size: 12px; min-width: 150px;">
-            <button type="button" class="gut-btn gut-btn-secondary" id="toggle-unselected" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">Show Unselected</button>
-          </div>
-        </div>
-        <div class="gut-field-list">
-          ${Object.entries(formData)
-            .map(([name, fieldData]) => {
-              const isIgnoredByDefault =
-                instance.config.IGNORED_FIELDS_BY_DEFAULT.includes(
-                  name.toLowerCase(),
-                );
-
-              // When editing, check if this field is in the template
-              const isInTemplate =
-                editTemplate && editTemplate.fieldMappings.hasOwnProperty(name);
-              const templateValue = isInTemplate
-                ? editTemplate.fieldMappings[name]
-                : null;
-
-              // Check if there's custom selection state for this field
-              let shouldBeChecked = isInTemplate || !isIgnoredByDefault;
-              if (editTemplate && editTemplate.customUnselectedFields) {
-                const customField = editTemplate.customUnselectedFields.find(
-                  (f) => f.field === name,
-                );
-                if (customField) {
-                  shouldBeChecked = customField.selected;
-                }
-              }
-
-              return `
-                <div class="gut-field-row ${isIgnoredByDefault && !isInTemplate && !shouldBeChecked ? "gut-hidden" : ""}">
-                  <input type="checkbox" ${shouldBeChecked ? "checked" : ""} data-field="${name}">
-                  <label title="${name}">${fieldData.label}:</label>
-                  ${
-                    fieldData.type === "select"
-                      ? (() => {
-                          // Check if this field has variable matching configuration
-                          const hasVariableMatching =
-                            editTemplate &&
-                            editTemplate.variableMatching &&
-                            editTemplate.variableMatching[name];
-                          const variableConfig = hasVariableMatching
-                            ? editTemplate.variableMatching[name]
-                            : null;
-                          const isVariableMode = hasVariableMatching;
-
-                          return `<div class="gut-select-container" style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
-                          <div style="display: flex; align-items: center; gap: 8px;">
-                            <select data-template="${name}" class="template-input gut-select select-static-mode" style="flex: 1; ${isVariableMode ? "display: none;" : ""}">
-                              ${fieldData.options
-                                .map((option) => {
-                                  let selected = option.selected;
-                                  if (
-                                    templateValue &&
-                                    templateValue === option.value
-                                  ) {
-                                    selected = true;
-                                  }
-                                  return `<option value="${escapeHtml(option.value)}" ${selected ? "selected" : ""}>${escapeHtml(option.text)}</option>`;
-                                })
-                                .join("")}
-                            </select>
-                            <a href="#" class="gut-link gut-variable-toggle" data-field="${name}" data-state="${isVariableMode ? "on" : "off"}">Match from variable: ${isVariableMode ? "ON" : "OFF"}</a>
-                          </div>
-                          <div class="gut-variable-controls" data-field="${name}" style="display: ${isVariableMode ? "flex" : "none"}; gap: 8px;">
-                            <input type="text" class="gut-variable-input" data-field="${name}" placeholder="\${variable_name}" value="${variableConfig ? escapeHtml(variableConfig.variableName) : ""}" style="flex: 1; padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #1a1a1a; color: #e0e0e0; font-size: 12px;">
-                            <select class="gut-match-type" data-field="${name}" style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #1a1a1a; color: #e0e0e0; font-size: 12px;">
-                              <option value="exact" ${variableConfig && variableConfig.matchType === "exact" ? "selected" : ""}>Exact</option>
-                              <option value="contains" ${variableConfig && variableConfig.matchType === "contains" ? "selected" : ""}>Contains</option>
-                              <option value="starts" ${variableConfig && variableConfig.matchType === "starts" ? "selected" : ""}>Starts with</option>
-                              <option value="ends" ${variableConfig && variableConfig.matchType === "ends" ? "selected" : ""}>Ends with</option>
-                            </select>
-                          </div>
-                        </div>`;
-                        })()
-                      : fieldData.inputType === "checkbox"
-                        ? `<input type="checkbox" ${templateValue !== null ? (templateValue ? "checked" : "") : fieldData.value ? "checked" : ""} data-template="${name}" class="template-input">`
-                        : fieldData.inputType === "radio"
-                          ? `<select data-template="${name}" class="template-input gut-select">
-                          ${fieldData.radioOptions
-                            .map((option) => {
-                              let selected = option.checked;
-                              if (
-                                templateValue &&
-                                templateValue === option.value
-                              ) {
-                                selected = true;
-                              }
-                              return `<option value="${escapeHtml(option.value)}" ${selected ? "selected" : ""}>${escapeHtml(option.label)}</option>`;
-                            })
-                            .join("")}
-                        </select>`
-                          : `<input type="text" value="${templateValue !== null ? escapeHtml(String(templateValue)) : escapeHtml(String(fieldData.value))}" data-template="${name}" class="template-input">`
-                  }
-                  <span class="gut-preview" data-preview="${name}"></span>
-                </div>
-              `;
-            })
-            .join("")}
-        </div>
-      </div>
-
-      <div class="gut-modal-actions">
-        <button class="gut-btn" id="cancel-template">Cancel</button>
-        <button class="gut-btn gut-btn-primary" id="save-template">${editTemplateName ? "Update Template" : "Save Template"}</button>
-      </div>
-    </div>
-  `;
+   modal.innerHTML = TEMPLATE_CREATOR_HTML(formData, instance, editTemplateName, editTemplate, selectedTorrentName);
 
   document.body.appendChild(modal);
 

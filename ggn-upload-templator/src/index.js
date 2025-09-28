@@ -1,9 +1,19 @@
- import style from "./style.css?raw";
- import { DEFAULT_CONFIG, logDebug } from "./config.js";
- import { injectUI, showTemplateCreator } from "./ui/uiManager.js";
- import { parseTemplate, interpolate } from "./utils/templateUtils.js";
- import { getCurrentFormData, findElementByFieldName, getFieldLabel } from "./utils/formUtils.js";
- import { TorrentUtils } from "./utils/torrentUtils.js";
+import { DEFAULT_CONFIG } from "./config.js";
+import { logDebug } from "./utils/log.js";
+import { injectUI, showTemplateCreator } from "./ui/manager.js";
+import { parseTemplate, interpolate } from "./utils/template.js";
+import {
+  getCurrentFormData,
+  findElementByFieldName,
+  getFieldLabel,
+} from "./utils/form.js";
+import { TorrentUtils } from "./utils/torrent.js";
+import {
+  MODAL_HTML,
+  TEMPLATE_SELECTOR_HTML,
+  TEMPLATE_LIST_HTML,
+} from "./ui/template.js";
+import style from "./style.css?raw";
 
 GM_addStyle(style);
 
@@ -227,16 +237,7 @@ class GGnUploadTemplator {
     const selector = document.getElementById("template-selector");
     if (!selector) return;
 
-    selector.innerHTML = `
-              <option value="">Select Template</option>
-              <option value="none" ${this.selectedTemplate === "none" ? "selected" : ""}>None</option>
-              ${Object.keys(this.templates)
-                .map(
-                  (name) =>
-                    `<option value="${name}" ${name === this.selectedTemplate ? "selected" : ""}>${name}</option>`,
-                )
-                .join("")}
-          `;
+    selector.innerHTML = TEMPLATE_SELECTOR_HTML(this);
 
     // Update edit button visibility
     this.updateEditButtonVisibility();
@@ -470,85 +471,7 @@ class GGnUploadTemplator {
   showTemplateAndSettingsManager() {
     const modal = document.createElement("div");
     modal.className = "gut-modal";
-    modal.innerHTML = `
-              <div class="gut-modal-content">
-                  <div class="gut-modal-tabs">
-                      <button class="gut-tab-btn active" data-tab="templates">Templates</button>
-                      <button class="gut-tab-btn" data-tab="settings">Settings</button>
-                  </div>
-
-                  <div class="gut-tab-content active" id="templates-tab">
-                      ${
-                        Object.keys(this.templates).length === 0
-                          ? '<div style="padding: 20px; text-align: center; color: #888;">No templates found. Create a template first.</div>'
-                          : `<div class="gut-template-list">
-                          ${Object.keys(this.templates)
-                            .map(
-                              (name) => `
-                              <div class="gut-template-item">
-                                  <span class="gut-template-name">${this.escapeHtml(name)}</span>
-                                  <div class="gut-template-actions">
-                                      <button class="gut-btn gut-btn-secondary gut-btn-small" data-action="edit" data-template="${this.escapeHtml(name)}">Edit</button>
-                                      <button class="gut-btn gut-btn-secondary gut-btn-small" data-action="clone" data-template="${this.escapeHtml(name)}">Clone</button>
-                                      <button class="gut-btn gut-btn-danger gut-btn-small" data-action="delete" data-template="${this.escapeHtml(name)}">Delete</button>
-                                  </div>
-                              </div>
-                            `,
-                            )
-                            .join("")}
-                        </div>`
-                      }
-                  </div>
-
-                  <div class="gut-tab-content" id="settings-tab">
-                      <div class="gut-form-group">
-                          <label for="setting-form-selector">Target Form Selector:</label>
-                          <input type="text" id="setting-form-selector" value="${this.escapeHtml(this.config.TARGET_FORM_SELECTOR)}" placeholder="#upload_table">
-                      </div>
-
-                      <div class="gut-form-group">
-                          <label class="gut-checkbox-label">
-                              <input type="checkbox" id="setting-submit-keybinding" ${this.config.SUBMIT_KEYBINDING ? "checked" : ""}>
-                              <span class="gut-checkbox-text">⚡ Enable Ctrl+Enter form submission</span>
-                          </label>
-                      </div>
-
-                      <div class="gut-form-group">
-                          <label for="setting-custom-selectors">Custom Field Selectors (one per line):</label>
-                          <textarea id="setting-custom-selectors" rows="4" placeholder="div[data-field]&#10;.custom-input[name]&#10;button[data-value]">${(this.config.CUSTOM_FIELD_SELECTORS || []).join("\n")}</textarea>
-                          <div style="font-size: 12px; color: #888; margin-top: 5px;">
-                              Additional CSS selectors to find form fields. e.g: <a href="#" id="ggn-infobox-link" class="gut-link">GGn Infobox</a>
-                          </div>
-                      </div>
-
-                      <div class="gut-form-group" id="custom-selectors-preview-group" style="display: none;">
-                          <label id="matched-elements-label">Matched Elements:</label>
-                          <div id="custom-selectors-matched" class="gut-extracted-vars">
-                              <div class="gut-no-variables">No elements matched by custom selectors.</div>
-                          </div>
-                      </div>
-
-                      <div class="gut-form-group">
-                          <label for="setting-ignored-fields">Ignored Fields (one per line):</label>
-                          <textarea id="setting-ignored-fields" rows="6" placeholder="linkgroup&#10;groupid&#10;apikey">${this.config.IGNORED_FIELDS_BY_DEFAULT.join("\n")}</textarea>
-                      </div>
-
-                      <div class="gut-form-group">
-                          <div style="display: flex; justify-content: space-between; align-items: center;">
-                              <div style="display: flex; gap: 10px;">
-                                  <button class="gut-btn gut-btn-primary" id="save-settings">Save Settings</button>
-                                  <button class="gut-btn gut-btn-secondary" id="reset-settings">Reset to Defaults</button>
-                              </div>
-                              <button class="gut-btn gut-btn-danger" id="delete-all-config">Delete All Local Config</button>
-                          </div>
-                      </div>
-                  </div>
-
-                  <div class="gut-modal-actions">
-                      <button class="gut-btn" id="close-manager">Close</button>
-                  </div>
-              </div>
-          `;
+    modal.innerHTML = MODAL_HTML(this);
 
     document.body.appendChild(modal);
 
@@ -916,29 +839,7 @@ class GGnUploadTemplator {
     const templateList = modal.querySelector(".gut-template-list");
     if (!templateList) return;
 
-    if (Object.keys(this.templates).length === 0) {
-      templateList.innerHTML = `
-        <div style="padding: 20px; text-align: center; color: #888;">
-          No templates found. Close this dialog and create a template first.
-        </div>
-      `;
-      return;
-    }
-
-    templateList.innerHTML = Object.keys(this.templates)
-      .map(
-        (name) => `
-        <div class="gut-template-item">
-            <span class="gut-template-name">${this.escapeHtml(name)}</span>
-            <div class="gut-template-actions">
-                <button class="gut-btn gut-btn-secondary gut-btn-small" data-action="edit" data-template="${this.escapeHtml(name)}">Edit</button>
-                <button class="gut-btn gut-btn-secondary gut-btn-small" data-action="clone" data-template="${this.escapeHtml(name)}">Clone</button>
-                <button class="gut-btn gut-btn-danger gut-btn-small" data-action="delete" data-template="${this.escapeHtml(name)}">Delete</button>
-            </div>
-        </div>
-      `,
-      )
-      .join("");
+    templateList.innerHTML = TEMPLATE_LIST_HTML(this);
   }
 
   // Show status message

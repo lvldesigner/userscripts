@@ -49,10 +49,7 @@ export function parseTemplate(mask, torrentName, greedyMatching = true) {
 // Interpolate template string with extracted data
 export function interpolate(template, data) {
   if (!template || !data) return template;
-  return template.replace(
-    /\$\{([^}]+)\}/g,
-    (match, key) => data[key] || match,
-  );
+  return template.replace(/\$\{([^}]+)\}/g, (match, key) => data[key] || match);
 }
 
 // Find matching option based on variable value and match type
