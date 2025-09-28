@@ -508,8 +508,14 @@ class GGnUploadTemplator {
         .map((selector) => selector.trim())
         .filter((selector) => selector);
 
+      // Temporarily update config for preview
+      const originalSelectors = this.config.CUSTOM_FIELD_SELECTORS;
+      this.config.CUSTOM_FIELD_SELECTORS = selectors;
+
       if (selectors.length === 0) {
         previewGroup.style.display = "none";
+        // Restore original config
+        this.config.CUSTOM_FIELD_SELECTORS = originalSelectors;
         return;
       }
 
@@ -533,7 +539,7 @@ class GGnUploadTemplator {
             const id = element.id;
             const name = element.name || element.getAttribute("name");
             const classes = element.className || "";
-            const label = this.getFieldLabel(element);
+            const label = getFieldLabel(element, this.config);
 
             // Create a unique identifier for deduplication
             const elementId =
@@ -594,8 +600,11 @@ class GGnUploadTemplator {
               </div>
             `;
           })
-          .join("");
+           .join("");
       }
+
+      // Restore original config
+      this.config.CUSTOM_FIELD_SELECTORS = originalSelectors;
     };
 
     // Initial preview update
