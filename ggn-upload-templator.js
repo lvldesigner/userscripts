@@ -1201,9 +1201,11 @@
             ) {
               preview.textContent = `→ ${interpolated}`;
               preview.className = "gut-preview active";
+              preview.style.display = "block";
             } else {
               preview.textContent = "";
               preview.className = "gut-preview";
+              preview.style.display = "none";
             }
           }
         });
