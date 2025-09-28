@@ -182,72 +182,89 @@ export const TEMPLATE_CREATOR_HTML = (
             }
 
             return `
-              <div class="gut-field-row ${isIgnoredByDefault && !isInTemplate && !shouldBeChecked ? "gut-hidden" : ""}">
-                <input type="checkbox" ${shouldBeChecked ? "checked" : ""} data-field="${name}">
-                <label title="${name}">${fieldData.label}:</label>
-                ${
-                  fieldData.type === "select"
-                    ? (() => {
-                        const hasVariableMatching =
-                          editTemplate &&
-                          editTemplate.variableMatching &&
-                          editTemplate.variableMatching[name];
-                        const variableConfig = hasVariableMatching
-                          ? editTemplate.variableMatching[name]
-                          : null;
-                        const isVariableMode = hasVariableMatching;
+               <div class="gut-field-row ${isIgnoredByDefault && !isInTemplate && !shouldBeChecked ? "gut-hidden" : ""}">
+                 ${
+                   fieldData.type === "select"
+                     ? (() => {
+                         const hasVariableMatching =
+                           editTemplate &&
+                           editTemplate.variableMatching &&
+                           editTemplate.variableMatching[name];
+                         const variableConfig = hasVariableMatching
+                           ? editTemplate.variableMatching[name]
+                           : null;
+                         const isVariableMode = hasVariableMatching;
 
-                        return `<div class="gut-select-container" style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
-                           <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                             <a href="#" class="gut-link gut-variable-toggle" data-field="${name}" data-state="${isVariableMode ? "on" : "off"}" style="margin-bottom: 3px;">Match from variable: ${isVariableMode ? "ON" : "OFF"}</a>
-                             <select data-template="${name}" class="template-input gut-select select-static-mode" style="width: 100%; ${isVariableMode ? "display: none;" : ""}">
-                               ${fieldData.options
-                                 .map((option) => {
-                                   let selected = option.selected;
-                                   if (
-                                     templateValue &&
-                                     templateValue === option.value
-                                   ) {
-                                     selected = true;
-                                   }
-                                   return `<option value="${instance.escapeHtml(option.value)}" ${selected ? "selected" : ""}>${instance.escapeHtml(option.text)}</option>`;
-                                 })
-                                 .join("")}
-                             </select>
-                           </div>
-                          <div class="gut-variable-controls" data-field="${name}" style="display: ${isVariableMode ? "flex" : "none"}; gap: 8px;">
-                            <input type="text" class="gut-variable-input" data-field="${name}" placeholder="\${variable_name}" value="${variableConfig ? instance.escapeHtml(variableConfig.variableName) : ""}" style="flex: 1; padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #1a1a1a; color: #e0e0e0; font-size: 12px;">
-                            <select class="gut-match-type" data-field="${name}" style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #1a1a1a; color: #e0e0e0; font-size: 12px;">
-                              <option value="exact" ${variableConfig && variableConfig.matchType === "exact" ? "selected" : ""}>Exact match</option>
+                         return `<div style="display: flex; align-items: flex-start; width: 100%;">
+                           <a href="#" class="gut-link gut-variable-toggle" data-field="${name}" data-state="${isVariableMode ? "on" : "off"}">Match from variable: ${isVariableMode ? "ON" : "OFF"}</a>
+                         </div>`;
+                       })()
+                     : ""
+                 }
+                 <input type="checkbox" ${shouldBeChecked ? "checked" : ""} data-field="${name}">
+                 <label title="${name}">${fieldData.label}:</label>
+                 ${
+                   fieldData.type === "select"
+                     ? (() => {
+                         const hasVariableMatching =
+                           editTemplate &&
+                           editTemplate.variableMatching &&
+                           editTemplate.variableMatching[name];
+                         const variableConfig = hasVariableMatching
+                           ? editTemplate.variableMatching[name]
+                           : null;
+                         const isVariableMode = hasVariableMatching;
+
+                         return `<div class="gut-select-container" style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+                             <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                               <select data-template="${name}" class="template-input gut-select select-static-mode" style="width: 100%; ${isVariableMode ? "display: none;" : ""}">
+                                 ${fieldData.options
+                                   .map((option) => {
+                                     let selected = option.selected;
+                                     if (
+                                       templateValue &&
+                                       templateValue === option.value
+                                     ) {
+                                       selected = true;
+                                     }
+                                     return `<option value="${instance.escapeHtml(option.value)}" ${selected ? "selected" : ""}>${instance.escapeHtml(option.text)}</option>`;
+                                   })
+                                   .join("")}
+                               </select>
+                             </div>
+                            <div class="gut-variable-controls" data-field="${name}" style="display: ${isVariableMode ? "flex" : "none"}; gap: 8px;">
+                              <select class="gut-match-type" data-field="${name}" style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #1a1a1a; color: #e0e0e0; font-size: 12px;">
+                              <option value="exact" ${variableConfig && variableConfig.matchType === "exact" ? "selected" : ""}>Is exactly</option>
                               <option value="contains" ${variableConfig && variableConfig.matchType === "contains" ? "selected" : ""}>Contains</option>
                               <option value="starts" ${variableConfig && variableConfig.matchType === "starts" ? "selected" : ""}>Starts with</option>
                               <option value="ends" ${variableConfig && variableConfig.matchType === "ends" ? "selected" : ""}>Ends with</option>
                             </select>
-                          </div>
-                        </div>`;
-                      })()
-                    : fieldData.inputType === "checkbox"
-                      ? `<input type="checkbox" ${templateValue !== null ? (templateValue ? "checked" : "") : fieldData.value ? "checked" : ""} data-template="${name}" class="template-input">`
-                      : fieldData.inputType === "radio"
-                        ? `<select data-template="${name}" class="template-input gut-select">
-                            ${fieldData.radioOptions
-                              .map((option) => {
-                                let selected = option.checked;
-                                if (
-                                  templateValue &&
-                                  templateValue === option.value
-                                ) {
-                                  selected = true;
-                                }
-                                return `<option value="${instance.escapeHtml(option.value)}" ${selected ? "selected" : ""}>${instance.escapeHtml(option.label)}</option>`;
-                              })
-                              .join("")}
-                          </select>`
-                        : `<input type="text" value="${templateValue !== null ? instance.escapeHtml(String(templateValue)) : instance.escapeHtml(String(fieldData.value))}" data-template="${name}" class="template-input">`
-                }
-                <span class="gut-preview" data-preview="${name}"></span>
-              </div>
-            `;
+                            <input type="text" class="gut-variable-input" data-field="${name}" placeholder="\${variable_name}" value="${variableConfig ? instance.escapeHtml(variableConfig.variableName) : ""}" style="flex: 1; padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #1a1a1a; color: #e0e0e0; font-size: 12px;">
+                            </div>
+                          </div>`;
+                       })()
+                     : fieldData.inputType === "checkbox"
+                       ? `<input type="checkbox" ${templateValue !== null ? (templateValue ? "checked" : "") : fieldData.value ? "checked" : ""} data-template="${name}" class="template-input">`
+                       : fieldData.inputType === "radio"
+                         ? `<select data-template="${name}" class="template-input gut-select">
+                             ${fieldData.radioOptions
+                               .map((option) => {
+                                 let selected = option.checked;
+                                 if (
+                                   templateValue &&
+                                   templateValue === option.value
+                                 ) {
+                                   selected = true;
+                                 }
+                                 return `<option value="${instance.escapeHtml(option.value)}" ${selected ? "selected" : ""}>${instance.escapeHtml(option.label)}</option>`;
+                               })
+                               .join("")}
+                           </select>`
+                         : `<input type="text" value="${templateValue !== null ? instance.escapeHtml(String(templateValue)) : instance.escapeHtml(String(fieldData.value))}" data-template="${name}" class="template-input">`
+                 }
+                 <span class="gut-preview" data-preview="${name}"></span>
+               </div>
+             `;
           })
           .join("")}
       </div>

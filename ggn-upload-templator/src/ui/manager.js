@@ -1,11 +1,11 @@
- import { getCurrentFormData } from "../utils/form.js";
- import { TorrentUtils } from "../utils/torrent.js";
- import {
-   parseTemplate,
-   interpolate,
-   findMatchingOption,
- } from "../utils/template.js";
- import { TEMPLATE_CREATOR_HTML, MAIN_UI_HTML } from "./template.js";
+import { getCurrentFormData } from "../utils/form.js";
+import { TorrentUtils } from "../utils/torrent.js";
+import {
+  parseTemplate,
+  interpolate,
+  findMatchingOption,
+} from "../utils/template.js";
+import { TEMPLATE_CREATOR_HTML, MAIN_UI_HTML } from "./template.js";
 
 // Create and inject UI elements
 export function injectUI(instance) {
@@ -25,7 +25,7 @@ export function injectUI(instance) {
   // Create UI container
   const uiContainer = document.createElement("div");
   uiContainer.id = "ggn-upload-templator-ui";
-   uiContainer.innerHTML = MAIN_UI_HTML(instance);
+  uiContainer.innerHTML = MAIN_UI_HTML(instance);
 
   try {
     fileInput.parentNode.insertBefore(uiContainer, fileInput);
@@ -110,7 +110,13 @@ export async function showTemplateCreator(
 
   const modal = document.createElement("div");
   modal.className = "gut-modal";
-   modal.innerHTML = TEMPLATE_CREATOR_HTML(formData, instance, editTemplateName, editTemplate, selectedTorrentName);
+  modal.innerHTML = TEMPLATE_CREATOR_HTML(
+    formData,
+    instance,
+    editTemplateName,
+    editTemplate,
+    selectedTorrentName,
+  );
 
   document.body.appendChild(modal);
 
@@ -278,12 +284,12 @@ export async function showTemplateCreator(
             preview.className = "gut-preview";
             preview.style.display = "none";
           }
-         } else {
-           // Static mode - no preview
-           preview.textContent = "";
-           preview.className = "gut-preview";
-           preview.style.display = "none";
-         }
+        } else {
+          // Static mode - no preview
+          preview.textContent = "";
+          preview.className = "gut-preview";
+          preview.style.display = "none";
+        }
       } else {
         const inputValue = input.value || "";
         const interpolated = interpolate(inputValue, extracted);
