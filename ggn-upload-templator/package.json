@@ -1,0 +1,20 @@
+{
+  "name": "ggn-upload-templator",
+  "author": {
+    "name": "leveldesigner"
+  },
+  "description": "Auto-fill upload forms using torrent file data with configurable templates",
+  "private": true,
+  "version": "0.3",
+  "type": "module",
+  "license": "Unlicense",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "build": "vite build",
+    "format": "prettier --write src"
+  },
+  "devDependencies": {
+    "vite": "7.1.7",
+    "vite-userscript-plugin": "1.11.0"
+  }
+}
