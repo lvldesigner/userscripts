@@ -19,6 +19,7 @@
   const DEFAULT_CONFIG = {
     TARGET_FORM_SELECTOR: "#upload_table",
     SUBMIT_KEYBINDING: true,
+    CUSTOM_FIELD_SELECTORS: [],
     IGNORED_FIELDS_BY_DEFAULT: [
       "linkgroup",
       "groupid",
@@ -569,8 +570,17 @@
         font-style: italic;
     }
 
-    /* Edit template link hover effect */
-    #edit-selected-template-btn:hover {
+    /* Generic hyperlink style for secondary links */
+    .gut-link {
+        font-size: 12px !important;
+        color: #b0b0b0 !important;
+        text-decoration: underline !important;
+        text-underline-offset: 2px !important;
+        cursor: pointer !important;
+        transition: color 0.2s ease !important;
+    }
+
+    .gut-link:hover {
         color: #4dd0e1 !important;
     }
   `;
@@ -753,40 +763,63 @@
       const formData = {};
       const formSelector = this.config.TARGET_FORM_SELECTOR || "form";
       const targetForm = document.querySelector(formSelector);
+      
+      // Build the field selector with custom selectors
+      const defaultSelector = "input[name], select[name], textarea[name]";
+      const customSelectors = this.config.CUSTOM_FIELD_SELECTORS || [];
+      const fieldSelector = customSelectors.length > 0 
+        ? `${defaultSelector}, ${customSelectors.join(', ')}`
+        : defaultSelector;
+      
       const inputs = targetForm
-        ? targetForm.querySelectorAll(
-            "input[name], select[name], textarea[name]",
-          )
-        : document.querySelectorAll(
-            "input[name], select[name], textarea[name]",
-          );
+        ? targetForm.querySelectorAll(fieldSelector)
+        : document.querySelectorAll(fieldSelector);
 
       inputs.forEach((input) => {
-        if (
-          input.name &&
-          input.type !== "file" &&
-          input.type !== "button" &&
-          input.type !== "submit"
-        ) {
+        // Check if this is a custom field element
+        const isCustomField = this.isElementMatchedByCustomSelector(input);
+        
+        // For custom fields, we need a different validation approach
+        const hasValidIdentifier = isCustomField 
+          ? (input.name || input.id || input.getAttribute('data-field') || input.getAttribute('data-name'))
+          : input.name;
+        
+        // Skip invalid elements
+        if (!hasValidIdentifier) return;
+        
+        // For standard form elements, apply the original filtering
+        if (!isCustomField && (
+          input.type === "file" ||
+          input.type === "button" ||
+          input.type === "submit"
+        )) {
+          return;
+        }
+        
+        // Get the field name/identifier
+        const fieldName = input.name || input.id || input.getAttribute('data-field') || input.getAttribute('data-name');
+        
+        if (fieldName) {
           // For radio buttons, only process if we haven't seen this group yet
-          if (input.type === "radio" && formData[input.name]) {
+          if (input.type === "radio" && formData[fieldName]) {
             return; // Skip, already processed this radio group
           }
 
           const fieldInfo = {
-            value:
-              input.type === "checkbox" || input.type === "radio"
+            value: isCustomField 
+              ? (input.value || input.textContent || input.getAttribute('data-value') || "")
+              : (input.type === "checkbox" || input.type === "radio"
                 ? input.checked
-                : input.value || "",
+                : input.value || ""),
             label: this.getFieldLabel(input),
             type: input.tagName.toLowerCase(),
-            inputType: input.type,
+            inputType: input.type || 'custom',
           };
 
           // For radio buttons, we need to handle them specially - group by name
           if (input.type === "radio") {
             const radioGroup = document.querySelectorAll(
-              `input[name="${input.name}"][type="radio"]`,
+              `input[name="${fieldName}"][type="radio"]`,
             );
             fieldInfo.radioOptions = Array.from(radioGroup).map((radio) => ({
               value: radio.value,
@@ -811,15 +844,88 @@
             fieldInfo.selectedValue = input.value;
           }
 
-          formData[input.name] = fieldInfo;
+          formData[fieldName] = fieldInfo;
         }
       });
 
       return formData;
     }
 
+    // Check if element was matched by a custom selector
+    isElementMatchedByCustomSelector(element) {
+      const customSelectors = this.config.CUSTOM_FIELD_SELECTORS || [];
+      if (customSelectors.length === 0) return false;
+      
+      // Check if element matches any custom selector
+      return customSelectors.some(selector => {
+        try {
+          return element.matches(selector);
+        } catch (e) {
+          console.warn(`Invalid custom selector: ${selector}`, e);
+          return false;
+        }
+      });
+    }
+
+    // Clean label text by removing link tags and trailing colons
+    cleanLabelText(text) {
+      if (!text) return text;
+      
+      // Create a temporary element to parse HTML content
+      const tempElement = document.createElement('div');
+      tempElement.innerHTML = text;
+      
+      // Remove all link tags completely (including their text content)
+      const linkElements = tempElement.querySelectorAll('a');
+      linkElements.forEach(link => {
+        link.remove();
+      });
+      
+      // Get the cleaned text content
+      let cleanedText = tempElement.textContent || tempElement.innerText || '';
+      
+      // Trim whitespace
+      cleanedText = cleanedText.trim();
+      
+      // Remove trailing colon
+      if (cleanedText.endsWith(':')) {
+        cleanedText = cleanedText.slice(0, -1).trim();
+      }
+      
+      return cleanedText;
+    }
+
     // Get field label from parent table structure
     getFieldLabel(input) {
+      // Check if this element was matched by a custom selector
+      const isCustomField = this.isElementMatchedByCustomSelector(input);
+      
+      if (isCustomField) {
+        // For custom fields, use the new label detection logic
+        const parent = input.parentElement;
+        if (parent) {
+          // Look for label element in parent
+          const labelElement = parent.querySelector("label");
+          if (labelElement) {
+            const rawText = labelElement.innerHTML || labelElement.textContent || '';
+            const cleanedText = this.cleanLabelText(rawText);
+            return cleanedText || input.id || input.name || "Custom Field";
+          }
+          
+          // Look for any element with class containing "label"
+          const labelClassElement = parent.querySelector('*[class*="label"]');
+          if (labelClassElement) {
+            const rawText = labelClassElement.innerHTML || labelClassElement.textContent || '';
+            const cleanedText = this.cleanLabelText(rawText);
+            return cleanedText || input.id || input.name || "Custom Field";
+          }
+        }
+        
+        // Fallback to field's ID value for custom fields
+        return input.id || input.name || "Custom Field";
+      }
+
+      // Original logic for standard form elements
       // For radio buttons, look for associated label elements first
       if (input.type === "radio" && input.id) {
         const parentTd = input.closest("td");
@@ -828,7 +934,9 @@
             `label[for="${input.id}"]`,
           );
           if (associatedLabel) {
-            return associatedLabel.textContent.trim() || input.value;
+            const rawText = associatedLabel.innerHTML || associatedLabel.textContent || '';
+            const cleanedText = this.cleanLabelText(rawText);
+            return cleanedText || input.value;
           }
         }
       }
@@ -837,8 +945,9 @@
       if (parentRow) {
         const labelCell = parentRow.querySelector("td.label");
         if (labelCell) {
-          const labelText = labelCell.textContent.trim();
-          return labelText ? `${labelText} (${input.name})` : input.name;
+          const rawText = labelCell.innerHTML || labelCell.textContent || '';
+          const cleanedText = this.cleanLabelText(rawText);
+          return cleanedText ? `${cleanedText} (${input.name})` : input.name;
         }
       }
       return input.name;
@@ -861,7 +970,7 @@
                     <div style="display: flex; flex-direction: column; gap: 5px;">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <label for="template-selector" style="font-size: 12px; color: #b0b0b0; margin: 0;">Select template</label>
-                            <a href="#" id="edit-selected-template-btn" style="font-size: 12px; color: #b0b0b0; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; transition: color 0.2s ease; ${this.selectedTemplate && this.selectedTemplate !== "none" && this.templates[this.selectedTemplate] ? "" : "display: none;"}">Edit</a>
+                            <a href="#" id="edit-selected-template-btn" class="gut-link" style="${this.selectedTemplate && this.selectedTemplate !== "none" && this.templates[this.selectedTemplate] ? "" : "display: none;"}">Edit</a>
                         </div>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <select id="template-selector" class="gut-select">
@@ -1545,8 +1654,23 @@
                         </div>
 
                         <div class="gut-form-group">
+                            <label for="setting-custom-selectors">Custom Field Selectors (one per line):</label>
+                            <textarea id="setting-custom-selectors" rows="4" placeholder="div[data-field]&#10;.custom-input[name]&#10;button[data-value]">${(this.config.CUSTOM_FIELD_SELECTORS || []).join("\n")}</textarea>
+                            <div style="font-size: 12px; color: #888; margin-top: 5px;">
+                                Additional CSS selectors to find form fields. e.g: <a href="#" id="ggn-infobox-link" class="gut-link">GGn Infobox</a>
+                            </div>
+                        </div>
+
+                        <div class="gut-form-group" id="custom-selectors-preview-group" style="display: none;">
+                            <label id="matched-elements-label">Matched Elements:</label>
+                            <div id="custom-selectors-matched" class="gut-extracted-vars">
+                                <div class="gut-no-variables">No elements matched by custom selectors.</div>
+                            </div>
+                        </div>
+
+                        <div class="gut-form-group">
                             <label for="setting-ignored-fields">Ignored Fields (one per line):</label>
-                            <textarea id="setting-ignored-fields" rows="8" placeholder="linkgroup&#10;groupid&#10;apikey">${this.config.IGNORED_FIELDS_BY_DEFAULT.join("\n")}</textarea>
+                            <textarea id="setting-ignored-fields" rows="6" placeholder="linkgroup&#10;groupid&#10;apikey">${this.config.IGNORED_FIELDS_BY_DEFAULT.join("\n")}</textarea>
                         </div>
 
                         <div class="gut-form-group">
@@ -1585,6 +1709,117 @@
             .forEach((c) => c.classList.remove("active"));
           modal.querySelector(`#${tabName}-tab`).classList.add("active");
         });
+      });
+
+      // Custom selectors preview functionality
+      const customSelectorsTextarea = modal.querySelector("#setting-custom-selectors");
+      const previewGroup = modal.querySelector("#custom-selectors-preview-group");
+      const matchedContainer = modal.querySelector("#custom-selectors-matched");
+
+      const updateCustomSelectorsPreview = () => {
+        const selectorsText = customSelectorsTextarea.value.trim();
+        const selectors = selectorsText
+          .split("\n")
+          .map((selector) => selector.trim())
+          .filter((selector) => selector);
+
+        if (selectors.length === 0) {
+          previewGroup.style.display = "none";
+          return;
+        }
+
+        previewGroup.style.display = "block";
+
+        let matchedElements = [];
+        const formSelector = modal.querySelector("#setting-form-selector").value.trim() || this.config.TARGET_FORM_SELECTOR;
+        const targetForm = document.querySelector(formSelector);
+
+        selectors.forEach((selector) => {
+          try {
+            const elements = targetForm 
+              ? targetForm.querySelectorAll(selector)
+              : document.querySelectorAll(selector);
+            
+            Array.from(elements).forEach((element) => {
+              // Get element info
+              const tagName = element.tagName.toLowerCase();
+              const id = element.id;
+              const name = element.name || element.getAttribute('name');
+              const classes = element.className || '';
+              const label = this.getFieldLabel(element);
+              
+              // Create a unique identifier for deduplication
+              const elementId = element.id || element.name || `${tagName}-${Array.from(element.parentNode.children).indexOf(element)}`;
+              
+              if (!matchedElements.find(e => e.elementId === elementId)) {
+                matchedElements.push({
+                  elementId,
+                  element,
+                  tagName,
+                  id,
+                  name,
+                  classes,
+                  label,
+                  selector
+                });
+              }
+            });
+          } catch (e) {
+            console.warn(`Invalid custom selector: ${selector}`, e);
+          }
+        });
+
+        // Update the label with the count
+        const matchedElementsLabel = modal.querySelector("#matched-elements-label");
+        if (matchedElements.length === 0) {
+          matchedElementsLabel.textContent = "Matched Elements:";
+          matchedContainer.innerHTML = '<div class="gut-no-variables">No elements matched by custom selectors.</div>';
+        } else {
+          matchedElementsLabel.textContent = `Matched Elements (${matchedElements.length}):`;
+          matchedContainer.innerHTML = matchedElements
+            .map((item) => {
+              const displayName = item.label || item.name || item.id || `${item.tagName}`;
+              const displayInfo = [
+                item.tagName.toUpperCase(),
+                item.id ? `#${item.id}` : '',
+                item.name ? `name="${item.name}"` : '',
+                item.classes ? `.${item.classes.split(' ').filter(c => c).join('.')}` : ''
+              ].filter(info => info).join(' ');
+
+              return `
+                <div class="gut-variable-item">
+                  <span class="gut-variable-name">${this.escapeHtml(displayName)}</span>
+                  <span class="gut-variable-value">${this.escapeHtml(displayInfo)}</span>
+                </div>
+              `;
+            })
+            .join("");
+        }
+      };
+
+      // Initial preview update
+      updateCustomSelectorsPreview();
+
+      // Update preview when custom selectors change
+      customSelectorsTextarea.addEventListener("input", updateCustomSelectorsPreview);
+
+      // Update preview when form selector changes (affects scope)
+      modal.querySelector("#setting-form-selector").addEventListener("input", updateCustomSelectorsPreview);
+
+      // GGn Infobox link handler
+      modal.querySelector("#ggn-infobox-link")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        const currentValue = customSelectorsTextarea.value.trim();
+        const ggnInfoboxSelector = ".infobox-input-holder input";
+        
+        // Add the selector if it's not already present
+        if (!currentValue.includes(ggnInfoboxSelector)) {
+          const newValue = currentValue 
+            ? `${currentValue}\n${ggnInfoboxSelector}`
+            : ggnInfoboxSelector;
+          customSelectorsTextarea.value = newValue;
+          updateCustomSelectorsPreview();
+        }
       });
 
       // Settings handlers
@@ -1666,6 +1901,13 @@
       const submitKeybinding = modal.querySelector(
         "#setting-submit-keybinding",
       ).checked;
+      const customSelectorsText = modal
+        .querySelector("#setting-custom-selectors")
+        .value.trim();
+      const customSelectors = customSelectorsText
+        .split("\n")
+        .map((selector) => selector.trim())
+        .filter((selector) => selector);
       const ignoredFieldsText = modal
         .querySelector("#setting-ignored-fields")
         .value.trim();
@@ -1678,6 +1920,10 @@
         TARGET_FORM_SELECTOR:
           formSelector || DEFAULT_CONFIG.TARGET_FORM_SELECTOR,
         SUBMIT_KEYBINDING: submitKeybinding,
+        CUSTOM_FIELD_SELECTORS:
+          customSelectors.length > 0
+            ? customSelectors
+            : DEFAULT_CONFIG.CUSTOM_FIELD_SELECTORS,
         IGNORED_FIELDS_BY_DEFAULT:
           ignoredFields.length > 0
             ? ignoredFields
@@ -1703,6 +1949,8 @@
         this.config.TARGET_FORM_SELECTOR;
       modal.querySelector("#setting-submit-keybinding").checked =
         this.config.SUBMIT_KEYBINDING;
+      modal.querySelector("#setting-custom-selectors").value =
+        this.config.CUSTOM_FIELD_SELECTORS.join("\n");
       modal.querySelector("#setting-ignored-fields").value =
         this.config.IGNORED_FIELDS_BY_DEFAULT.join("\n");
 
@@ -1844,6 +2092,57 @@
       });
     }
 
+    // Find form element by field name (supports both standard and custom fields)
+    findElementByFieldName(fieldName) {
+      const formPrefix = this.config.TARGET_FORM_SELECTOR
+        ? `${this.config.TARGET_FORM_SELECTOR} `
+        : "";
+
+      // Build the field selector with custom selectors
+      const defaultSelector = "input[name], select[name], textarea[name]";
+      const customSelectors = this.config.CUSTOM_FIELD_SELECTORS || [];
+      const fieldSelector = customSelectors.length > 0 
+        ? `${defaultSelector}, ${customSelectors.join(', ')}`
+        : defaultSelector;
+      
+      const targetForm = this.config.TARGET_FORM_SELECTOR
+        ? document.querySelector(this.config.TARGET_FORM_SELECTOR)
+        : null;
+      
+      const inputs = targetForm
+        ? targetForm.querySelectorAll(fieldSelector)
+        : document.querySelectorAll(fieldSelector);
+
+      // Find element that matches the fieldName using the same logic as getCurrentFormData
+      for (const input of inputs) {
+        const isCustomField = this.isElementMatchedByCustomSelector(input);
+        
+        const hasValidIdentifier = isCustomField 
+          ? (input.name || input.id || input.getAttribute('data-field') || input.getAttribute('data-name'))
+          : input.name;
+        
+        if (!hasValidIdentifier) continue;
+        
+        // Skip file, button, submit inputs for standard fields
+        if (!isCustomField && (
+          input.type === "file" ||
+          input.type === "button" ||
+          input.type === "submit"
+        )) {
+          continue;
+        }
+        
+        // Get the field name/identifier using the same logic as getCurrentFormData
+        const elementFieldName = input.name || input.id || input.getAttribute('data-field') || input.getAttribute('data-name');
+        
+        if (elementFieldName === fieldName) {
+          return input;
+        }
+      }
+      
+      return null;
+    }
+
     // Apply template to form
     applyTemplate(templateName, torrentName) {
       const template = this.templates[templateName];
@@ -1858,17 +2157,14 @@
 
       Object.entries(template.fieldMappings).forEach(
         ([fieldName, valueTemplate]) => {
-          const formPrefix = this.config.TARGET_FORM_SELECTOR
-            ? `${this.config.TARGET_FORM_SELECTOR} `
-            : "";
-
-          // First check if this is a radio button field
-          const firstElement = document.querySelector(
-            `${formPrefix}[name="${fieldName}"]`,
-          );
+          // Find the element using the improved field finder
+          const firstElement = this.findElementByFieldName(fieldName);
 
           if (firstElement && firstElement.type === "radio") {
             // For radio buttons, find all radio buttons with the same name
+            const formPrefix = this.config.TARGET_FORM_SELECTOR
+              ? `${this.config.TARGET_FORM_SELECTOR} `
+              : "";
             const radioButtons = document.querySelectorAll(
               `${formPrefix}input[name="${fieldName}"][type="radio"]`,
             );
@@ -1895,6 +2191,9 @@
             if (firstElement.hasAttribute("disabled")) {
               firstElement.removeAttribute("disabled");
             }
+
+            // Check if this is a custom field
+            const isCustomField = this.isElementMatchedByCustomSelector(firstElement);
 
             if (firstElement.type === "checkbox") {
               // For checkboxes, valueTemplate is a boolean or string that needs interpolation
@@ -1925,15 +2224,44 @@
                 String(valueTemplate),
                 extracted,
               );
-              if (newValue !== firstElement.value) {
-                firstElement.value = newValue;
-                firstElement.dispatchEvent(
-                  new Event("input", { bubbles: true }),
-                );
-                firstElement.dispatchEvent(
-                  new Event("change", { bubbles: true }),
-                );
-                appliedCount++;
+              
+              // For custom fields, we need to handle different ways of setting values
+              if (isCustomField) {
+                let valueChanged = false;
+                
+                // Try different approaches for custom fields
+                if (firstElement.value !== undefined && firstElement.value !== newValue) {
+                  firstElement.value = newValue;
+                  valueChanged = true;
+                } else if (firstElement.textContent !== newValue) {
+                  firstElement.textContent = newValue;
+                  valueChanged = true;
+                } else if (firstElement.getAttribute('data-value') !== newValue) {
+                  firstElement.setAttribute('data-value', newValue);
+                  valueChanged = true;
+                }
+                
+                if (valueChanged) {
+                  firstElement.dispatchEvent(
+                    new Event("input", { bubbles: true }),
+                  );
+                  firstElement.dispatchEvent(
+                    new Event("change", { bubbles: true }),
+                  );
+                  appliedCount++;
+                }
+              } else {
+                // Standard form field handling
+                if (newValue !== firstElement.value) {
+                  firstElement.value = newValue;
+                  firstElement.dispatchEvent(
+                    new Event("input", { bubbles: true }),
+                  );
+                  firstElement.dispatchEvent(
+                    new Event("change", { bubbles: true }),
+                  );
+                  appliedCount++;
+                }
               }
             }
           }
