@@ -12,6 +12,17 @@
 // @updateURL https://update.greasyfork.org/scripts/550898/GGn%20Upload%20Templator.meta.js
 // ==/UserScript==
 
+// Debug log utility with ocean blue style
+const logDebug = (...messages) => {
+  const css = "color: #4dd0e1; font-weight: 900;";
+  console.debug("%c[GGn Upload Templator]", css, ...messages);
+};
+
+// Prevent double initialization (top frame only and global flag)
+if (window.top !== window.self) return;
+if (window.__GGN_UPLOAD_TEMPLATOR_LOADED__) return;
+window.__GGN_UPLOAD_TEMPLATOR_LOADED__ = true;
+
 (function () {
   "use strict";
 
@@ -673,32 +684,80 @@
 
   class GGnUploadTemplator {
     constructor() {
-      this.templates = JSON.parse(
-        localStorage.getItem("ggn-upload-templator-templates") || "{}",
-      );
-      this.selectedTemplate =
-        localStorage.getItem("ggn-upload-templator-selected") || null;
-      this.hideUnselectedFields = JSON.parse(
-        localStorage.getItem("ggn-upload-templator-hide-unselected") || "true",
-      );
+      // Load templates, selected template, hideUnselectedFields, and config
+      try {
+        this.templates = JSON.parse(
+          localStorage.getItem("ggn-upload-templator-templates") || "{}",
+        );
+      } catch (error) {
+        console.error("Failed to load templates:", error);
+        this.templates = {};
+      }
+
+      try {
+        this.selectedTemplate =
+          localStorage.getItem("ggn-upload-templator-selected") || null;
+      } catch (error) {
+        console.error("Failed to load selected template:", error);
+        this.selectedTemplate = null;
+      }
+
+      try {
+        this.hideUnselectedFields = JSON.parse(
+          localStorage.getItem("ggn-upload-templator-hide-unselected") ||
+            "true",
+        );
+      } catch (error) {
+        console.error("Failed to load hide unselected setting:", error);
+        this.hideUnselectedFields = true;
+      }
 
       // Load user settings or use defaults
-      this.config = {
-        ...DEFAULT_CONFIG,
-        ...JSON.parse(
-          localStorage.getItem("ggn-upload-templator-settings") || "{}",
-        ),
-      };
+      try {
+        this.config = {
+          ...DEFAULT_CONFIG,
+          ...JSON.parse(
+            localStorage.getItem("ggn-upload-templator-settings") || "{}",
+          ),
+        };
+      } catch (error) {
+        console.error("Failed to load config:", error);
+        this.config = { ...DEFAULT_CONFIG };
+      }
 
+      logDebug("Initialized core state", {
+        templates: Object.keys(this.templates),
+        selectedTemplate: this.selectedTemplate,
+        hideUnselectedFields: this.hideUnselectedFields,
+        config: this.config,
+      });
       this.init();
     }
 
     init() {
-      this.injectUI();
-      this.watchFileInputs();
-      if (this.config.SUBMIT_KEYBINDING) {
-        this.setupSubmitKeybinding();
+      logDebug("Initializing...");
+
+      try {
+        this.injectUI();
+      } catch (error) {
+        console.error("UI injection failed:", error);
       }
+
+      try {
+        this.watchFileInputs();
+      } catch (error) {
+        console.error("File input watching setup failed:", error);
+      }
+
+      if (this.config.SUBMIT_KEYBINDING) {
+        try {
+          this.setupSubmitKeybinding();
+        } catch (error) {
+          console.error("Submit keybinding setup failed:", error);
+        }
+      }
+
+      logDebug("Initialized");
     }
 
     // Parse torrent name using template mask
@@ -758,6 +817,52 @@
       );
     }
 
+    // Find matching option based on variable value and match type
+    findMatchingOption(options, variableValue, matchType) {
+      if (!options || !variableValue) return null;
+
+      const normalizedValue = variableValue.toLowerCase();
+
+      for (const option of options) {
+        const optionText = option.textContent
+          ? option.textContent.toLowerCase()
+          : option.text.toLowerCase();
+        const optionValue = option.value.toLowerCase();
+
+        let matches = false;
+        switch (matchType) {
+          case "exact":
+            matches =
+              optionText === normalizedValue || optionValue === normalizedValue;
+            break;
+          case "contains":
+            matches =
+              optionText.includes(normalizedValue) ||
+              optionValue.includes(normalizedValue);
+            break;
+          case "starts":
+            matches =
+              optionText.startsWith(normalizedValue) ||
+              optionValue.startsWith(normalizedValue);
+            break;
+          case "ends":
+            matches =
+              optionText.endsWith(normalizedValue) ||
+              optionValue.endsWith(normalizedValue);
+            break;
+        }
+
+        if (matches) {
+          return {
+            value: option.value,
+            text: option.textContent || option.text,
+          };
+        }
+      }
+
+      return null;
+    }
+
     // Get current form data
     getCurrentFormData() {
       const formData = {};
@@ -775,6 +880,9 @@
       const inputs = targetForm
         ? targetForm.querySelectorAll(fieldSelector)
         : document.querySelectorAll(fieldSelector);
+
+      // Only log summary after collection
+      // (If needed, add a warning if no form or no inputs found)
 
       inputs.forEach((input) => {
         // Check if this is a custom field element
@@ -860,6 +968,10 @@
         }
       });
 
+      logDebug("Form data collected", {
+        fieldCount: Object.keys(formData).length,
+        fieldNames: Object.keys(formData),
+      });
       return formData;
     }
 
@@ -972,12 +1084,25 @@
 
     // Create and inject UI elements
     injectUI() {
-      this.injectStyles();
+      // UI injection
+      try {
+        this.injectStyles();
+      } catch (error) {
+        console.error("Style injection failed:", error);
+      }
 
       // Always find the first file input on the page for UI injection
       const fileInput = document.querySelector('input[type="file"]');
+      if (!fileInput) {
+        console.warn("No file input found on page, UI injection aborted");
+        return;
+      }
 
-      if (!fileInput) return;
+      // Check if UI already exists
+      const existingUI = document.getElementById("ggn-upload-templator-ui");
+      if (existingUI) {
+        existingUI.remove();
+      }
 
       // Create UI container
       const uiContainer = document.createElement("div");
@@ -1007,27 +1132,49 @@
                 </div>
             `;
 
-      fileInput.parentNode.insertBefore(uiContainer, fileInput);
+      try {
+        fileInput.parentNode.insertBefore(uiContainer, fileInput);
+      } catch (error) {
+        console.error("Failed to insert UI container:", error);
+        return;
+      }
 
       // Bind events
-      document
-        .getElementById("create-template-btn")
-        .addEventListener(
-          "click",
-          async () => await this.showTemplateCreator(),
-        );
-      document
-        .getElementById("template-selector")
-        .addEventListener("change", (e) => this.selectTemplate(e.target.value));
-      document
-        .getElementById("manage-templates-btn")
-        .addEventListener("click", () => this.showTemplateAndSettingsManager());
-      document
-        .getElementById("edit-selected-template-btn")
-        .addEventListener("click", (e) => {
-          e.preventDefault();
-          this.editTemplate(this.selectedTemplate);
-        });
+      try {
+        const createBtn = document.getElementById("create-template-btn");
+        const templateSelector = document.getElementById("template-selector");
+        const manageBtn = document.getElementById("manage-templates-btn");
+        const editBtn = document.getElementById("edit-selected-template-btn");
+
+        if (createBtn) {
+          createBtn.addEventListener(
+            "click",
+            async () => await this.showTemplateCreator(),
+          );
+        }
+
+        if (templateSelector) {
+          templateSelector.addEventListener("change", (e) =>
+            this.selectTemplate(e.target.value),
+          );
+        }
+
+        if (manageBtn) {
+          manageBtn.addEventListener("click", () =>
+            this.showTemplateAndSettingsManager(),
+          );
+        }
+
+        if (editBtn) {
+          editBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            this.editTemplate(this.selectedTemplate);
+          });
+        }
+      } catch (error) {
+        console.error("Failed to bind UI events:", error);
+      }
+      logDebug("UI injected");
     }
 
     // Inject CSS styles
@@ -1160,26 +1307,59 @@
                                  <div class="gut-field-row ${isIgnoredByDefault && !isInTemplate && !shouldBeChecked ? "gut-hidden" : ""}">
                                      <input type="checkbox" ${shouldBeChecked ? "checked" : ""} data-field="${name}">
                                      <label title="${name}">${fieldData.label}:</label>
-                                      ${
-                                        fieldData.type === "select"
-                                          ? `<select data-template="${name}" class="template-input gut-select">
-                                           ${fieldData.options
-                                             .map((option) => {
-                                               let selected = option.selected;
-                                               if (
-                                                 templateValue &&
-                                                 templateValue === option.value
-                                               ) {
-                                                 selected = true;
-                                               }
-                                               return `<option value="${this.escapeHtml(option.value)}" ${selected ? "selected" : ""}>${this.escapeHtml(option.text)}</option>`;
-                                             })
-                                             .join("")}
-                                         </select>`
-                                          : fieldData.inputType === "checkbox"
-                                            ? `<input type="checkbox" ${templateValue !== null ? (templateValue ? "checked" : "") : fieldData.value ? "checked" : ""} data-template="${name}" class="template-input">`
-                                            : fieldData.inputType === "radio"
-                                              ? `<select data-template="${name}" class="template-input gut-select">
+                                        ${
+                                          fieldData.type === "select"
+                                            ? (() => {
+                                                // Check if this field has variable matching configuration
+                                                const hasVariableMatching =
+                                                  editTemplate &&
+                                                  editTemplate.variableMatching &&
+                                                  editTemplate.variableMatching[
+                                                    name
+                                                  ];
+                                                const variableConfig =
+                                                  hasVariableMatching
+                                                    ? editTemplate
+                                                        .variableMatching[name]
+                                                    : null;
+                                                const isVariableMode =
+                                                  hasVariableMatching;
+
+                                                return `<div class="gut-select-container" style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+                                               <div style="display: flex; align-items: center; gap: 8px;">
+                                                 <select data-template="${name}" class="template-input gut-select select-static-mode" style="flex: 1; ${isVariableMode ? "display: none;" : ""}">
+                                                   ${fieldData.options
+                                                     .map((option) => {
+                                                       let selected =
+                                                         option.selected;
+                                                       if (
+                                                         templateValue &&
+                                                         templateValue ===
+                                                           option.value
+                                                       ) {
+                                                         selected = true;
+                                                       }
+                                                       return `<option value="${this.escapeHtml(option.value)}" ${selected ? "selected" : ""}>${this.escapeHtml(option.text)}</option>`;
+                                                     })
+                                                     .join("")}
+                                                 </select>
+                                                 <a href="#" class="gut-link gut-variable-toggle" data-field="${name}" data-state="${isVariableMode ? "on" : "off"}">Match from variable: ${isVariableMode ? "ON" : "OFF"}</a>
+                                               </div>
+                                               <div class="gut-variable-controls" data-field="${name}" style="display: ${isVariableMode ? "flex" : "none"}; gap: 8px;">
+                                                 <input type="text" class="gut-variable-input" data-field="${name}" placeholder="\${variable_name}" value="${variableConfig ? this.escapeHtml(variableConfig.variableName) : ""}" style="flex: 1; padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #1a1a1a; color: #e0e0e0; font-size: 12px;">
+                                                 <select class="gut-match-type" data-field="${name}" style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #1a1a1a; color: #e0e0e0; font-size: 12px;">
+                                                   <option value="exact" ${variableConfig && variableConfig.matchType === "exact" ? "selected" : ""}>Exact</option>
+                                                   <option value="contains" ${variableConfig && variableConfig.matchType === "contains" ? "selected" : ""}>Contains</option>
+                                                   <option value="starts" ${variableConfig && variableConfig.matchType === "starts" ? "selected" : ""}>Starts with</option>
+                                                   <option value="ends" ${variableConfig && variableConfig.matchType === "ends" ? "selected" : ""}>Ends with</option>
+                                                 </select>
+                                               </div>
+                                             </div>`;
+                                              })()
+                                            : fieldData.inputType === "checkbox"
+                                              ? `<input type="checkbox" ${templateValue !== null ? (templateValue ? "checked" : "") : fieldData.value ? "checked" : ""} data-template="${name}" class="template-input">`
+                                              : fieldData.inputType === "radio"
+                                                ? `<select data-template="${name}" class="template-input gut-select">
                                            ${fieldData.radioOptions
                                              .map((option) => {
                                                let selected = option.checked;
@@ -1193,8 +1373,8 @@
                                              })
                                              .join("")}
                                          </select>`
-                                              : `<input type="text" value="${templateValue !== null ? this.escapeHtml(String(templateValue)) : this.escapeHtml(String(fieldData.value))}" data-template="${name}" class="template-input">`
-                                      }
+                                                : `<input type="text" value="${templateValue !== null ? this.escapeHtml(String(templateValue)) : this.escapeHtml(String(fieldData.value))}" data-template="${name}" class="template-input">`
+                                        }
                                      <span class="gut-preview" data-preview="${name}"></span>
                                  </div>
                             `;
@@ -1329,6 +1509,74 @@
           if (input.type === "checkbox") {
             preview.textContent = input.checked ? "✓ checked" : "✗ unchecked";
             preview.className = "gut-preview";
+          } else if (input.tagName.toLowerCase() === "select") {
+            // Check if this select field is in variable mode
+            const variableToggle = modal.querySelector(
+              `.gut-variable-toggle[data-field="${fieldName}"]`,
+            );
+            const isVariableMode =
+              variableToggle && variableToggle.dataset.state === "on";
+
+            if (isVariableMode) {
+              // Handle variable matching for select fields
+              const variableInput = modal.querySelector(
+                `.gut-variable-input[data-field="${fieldName}"]`,
+              );
+              const matchTypeSelect = modal.querySelector(
+                `.gut-match-type[data-field="${fieldName}"]`,
+              );
+              const variableName = variableInput
+                ? variableInput.value.trim()
+                : "";
+              const matchType = matchTypeSelect
+                ? matchTypeSelect.value
+                : "exact";
+
+              if (
+                variableName &&
+                extracted[variableName.replace(/^\$\{|\}$/g, "")]
+              ) {
+                const variableValue =
+                  extracted[variableName.replace(/^\$\{|\}$/g, "")];
+                const matchedOption = this.findMatchingOption(
+                  input.options,
+                  variableValue,
+                  matchType,
+                );
+
+                if (matchedOption) {
+                  preview.textContent = `→ "${matchedOption.text}" (matched "${variableValue}" using ${matchType})`;
+                  preview.className = "gut-preview active";
+                  preview.style.display = "block";
+                } else {
+                  preview.textContent = `→ No match found for "${variableValue}" using ${matchType}`;
+                  preview.className = "gut-preview";
+                  preview.style.display = "block";
+                }
+              } else if (variableName) {
+                preview.textContent = `→ Variable ${variableName} not found in extracted data`;
+                preview.className = "gut-preview";
+                preview.style.display = "block";
+              } else {
+                preview.textContent = "";
+                preview.className = "gut-preview";
+                preview.style.display = "none";
+              }
+            } else {
+              // Static mode - show selected option
+              const selectedOption = Array.from(input.options).find(
+                (option) => option.selected,
+              );
+              if (selectedOption) {
+                preview.textContent = `→ "${selectedOption.text}"`;
+                preview.className = "gut-preview active";
+                preview.style.display = "block";
+              } else {
+                preview.textContent = "";
+                preview.className = "gut-preview";
+                preview.style.display = "none";
+              }
+            }
           } else {
             const inputValue = input.value || "";
             const interpolated = this.interpolate(inputValue, extracted);
@@ -1393,6 +1641,48 @@
       };
       document.addEventListener("keydown", handleEscKey);
 
+      // Variable toggle event handlers
+      modal.addEventListener("click", (e) => {
+        if (e.target.classList.contains("gut-variable-toggle")) {
+          e.preventDefault();
+          const fieldName = e.target.dataset.field;
+          const currentState = e.target.dataset.state;
+          const newState = currentState === "off" ? "on" : "off";
+
+          // Update toggle state and text
+          e.target.dataset.state = newState;
+          e.target.textContent = `Match from variable: ${newState.toUpperCase()}`;
+
+          // Toggle visibility of controls
+          const staticSelect = modal.querySelector(
+            `select.select-static-mode[data-template="${fieldName}"]`,
+          );
+          const variableControls = modal.querySelector(
+            `.gut-variable-controls[data-field="${fieldName}"]`,
+          );
+
+          if (newState === "on") {
+            staticSelect.style.display = "none";
+            variableControls.style.display = "flex";
+          } else {
+            staticSelect.style.display = "block";
+            variableControls.style.display = "none";
+          }
+
+          // Trigger preview update
+          updatePreviews();
+        }
+      });
+
+      // Add event listeners for variable inputs to trigger preview updates
+      const variableInputs = modal.querySelectorAll(
+        ".gut-variable-input, .gut-match-type",
+      );
+      variableInputs.forEach((input) => {
+        input.addEventListener("input", updatePreviews);
+        input.addEventListener("change", updatePreviews);
+      });
+
       // Back to template manager button
       const backBtn = modal.querySelector("#back-to-manager");
       if (backBtn) {
@@ -1426,6 +1716,7 @@
       }
 
       const fieldMappings = {};
+      const variableMatchingConfig = {};
       const checkedFields = modal.querySelectorAll(
         '.gut-field-row input[type="checkbox"]:checked',
       );
@@ -1438,6 +1729,36 @@
         if (templateInput) {
           if (templateInput.type === "checkbox") {
             fieldMappings[fieldName] = templateInput.checked;
+          } else if (templateInput.tagName.toLowerCase() === "select") {
+            // Check if this select field is in variable mode
+            const variableToggle = modal.querySelector(
+              `.gut-variable-toggle[data-field="${fieldName}"]`,
+            );
+            const isVariableMode =
+              variableToggle && variableToggle.dataset.state === "on";
+
+            if (isVariableMode) {
+              // Store variable matching configuration
+              const variableInput = modal.querySelector(
+                `.gut-variable-input[data-field="${fieldName}"]`,
+              );
+              const matchTypeSelect = modal.querySelector(
+                `.gut-match-type[data-field="${fieldName}"]`,
+              );
+
+              variableMatchingConfig[fieldName] = {
+                variableName: variableInput ? variableInput.value.trim() : "",
+                matchType: matchTypeSelect ? matchTypeSelect.value : "exact",
+              };
+
+              // Store the variable input value instead of selected option
+              fieldMappings[fieldName] = variableInput
+                ? variableInput.value.trim()
+                : "";
+            } else {
+              // Static mode - store the selected value
+              fieldMappings[fieldName] = templateInput.value;
+            }
           } else {
             fieldMappings[fieldName] = templateInput.value;
           }
@@ -1489,6 +1810,10 @@
         customUnselectedFields:
           customUnselectedFields.length > 0
             ? customUnselectedFields
+            : undefined,
+        variableMatching:
+          Object.keys(variableMatchingConfig).length > 0
+            ? variableMatchingConfig
             : undefined,
       };
 
@@ -2273,6 +2598,40 @@
                 );
                 appliedCount++;
               }
+            } else if (
+              firstElement.tagName.toLowerCase() === "select" &&
+              template.variableMatching &&
+              template.variableMatching[fieldName]
+            ) {
+              // Handle variable matching for select fields
+              const variableConfig = template.variableMatching[fieldName];
+              const variableName = variableConfig.variableName.replace(
+                /^\$\{|\}$/g,
+                "",
+              );
+              const matchType = variableConfig.matchType;
+              const variableValue = extracted[variableName];
+
+              if (variableValue) {
+                const matchedOption = this.findMatchingOption(
+                  firstElement.options,
+                  variableValue,
+                  matchType,
+                );
+                if (
+                  matchedOption &&
+                  matchedOption.value !== firstElement.value
+                ) {
+                  firstElement.value = matchedOption.value;
+                  firstElement.dispatchEvent(
+                    new Event("input", { bubbles: true }),
+                  );
+                  firstElement.dispatchEvent(
+                    new Event("change", { bubbles: true }),
+                  );
+                  appliedCount++;
+                }
+              }
             } else {
               const newValue = this.interpolate(
                 String(valueTemplate),
@@ -2364,12 +2723,23 @@
   }
 
   // Initialize when DOM is ready
+  logDebug("Script loaded (readyState:", document.readyState, ")");
+
   if (document.readyState === "loading") {
-    document.addEventListener(
-      "DOMContentLoaded",
-      () => new GGnUploadTemplator(),
-    );
+    document.addEventListener("DOMContentLoaded", () => {
+      logDebug("Initializing after DOMContentLoaded");
+      try {
+        new GGnUploadTemplator();
+      } catch (error) {
+        console.error("Failed to initialize:", error);
+      }
+    });
   } else {
-    new GGnUploadTemplator();
+    logDebug("Initializing immediately (DOM already ready)");
+    try {
+      new GGnUploadTemplator();
+    } catch (error) {
+      console.error("Failed to initialize:", error);
+    }
   }
 })();
