@@ -512,7 +512,7 @@
         background: #0f0f0f;
         padding: 12px;
         min-height: 80px;
-        max-height: 200px;
+        max-height: 300px;
         overflow-y: auto;
     }
 
@@ -567,6 +567,11 @@
     .gut-variable-value.empty {
         color: #888888;
         font-style: italic;
+    }
+
+    /* Edit template link hover effect */
+    #edit-selected-template-btn:hover {
+        color: #4dd0e1 !important;
     }
   `;
 
@@ -724,8 +729,6 @@
         .replace(/___ESCAPED_RBRACE___/g, "\\}")
         .replace(/___ESCAPED_BACKSLASH___/g, "\\\\");
 
-      console.log("DEBUG", regexPattern);
-
       try {
         const regex = new RegExp(regexPattern, "i");
         const match = torrentName.match(regex);
@@ -856,7 +859,10 @@
       uiContainer.innerHTML = `
                 <div class="ggn-upload-templator-controls" style="align-items: flex-end;">
                     <div style="display: flex; flex-direction: column; gap: 5px;">
-                        <label for="template-selector" style="font-size: 12px; color: #b0b0b0; margin: 0;">Select template</label>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <label for="template-selector" style="font-size: 12px; color: #b0b0b0; margin: 0;">Select template</label>
+                            <a href="#" id="edit-selected-template-btn" style="font-size: 12px; color: #b0b0b0; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; transition: color 0.2s ease; ${this.selectedTemplate && this.selectedTemplate !== "none" && this.templates[this.selectedTemplate] ? "" : "display: none;"}">Edit</a>
+                        </div>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <select id="template-selector" class="gut-select">
                                 <option value="">Select Template</option>
@@ -890,6 +896,12 @@
       document
         .getElementById("manage-templates-btn")
         .addEventListener("click", () => this.showTemplateAndSettingsManager());
+      document
+        .getElementById("edit-selected-template-btn")
+        .addEventListener("click", (e) => {
+          e.preventDefault();
+          this.editTemplate(this.selectedTemplate);
+        });
     }
 
     // Inject CSS styles
@@ -1381,6 +1393,22 @@
                   )
                   .join("")}
             `;
+
+      // Update edit button visibility
+      this.updateEditButtonVisibility();
+    }
+
+    // Update edit button visibility based on selected template
+    updateEditButtonVisibility() {
+      const editBtn = document.getElementById("edit-selected-template-btn");
+      if (!editBtn) return;
+
+      const shouldShow =
+        this.selectedTemplate &&
+        this.selectedTemplate !== "none" &&
+        this.templates[this.selectedTemplate];
+
+      editBtn.style.display = shouldShow ? "" : "none";
     }
 
     // Select template
@@ -1392,6 +1420,9 @@
       } else {
         localStorage.removeItem("ggn-upload-templator-selected");
       }
+
+      // Update edit button visibility
+      this.updateEditButtonVisibility();
 
       if (templateName === "none") {
         this.showStatus("No template selected - auto-fill disabled");
@@ -1818,7 +1849,11 @@
       const template = this.templates[templateName];
       if (!template) return;
 
-      const extracted = this.parseTemplate(template.mask, torrentName, template.greedyMatching !== false);
+      const extracted = this.parseTemplate(
+        template.mask,
+        torrentName,
+        template.greedyMatching !== false,
+      );
       let appliedCount = 0;
 
       Object.entries(template.fieldMappings).forEach(
