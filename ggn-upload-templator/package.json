@@ -5,7 +5,7 @@
   },
   "description": "Auto-fill upload forms using torrent file data with configurable templates",
   "private": true,
-  "version": "0.3",
+  "version": "0.4",
   "type": "module",
   "license": "Unlicense",
   "scripts": {
