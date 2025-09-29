@@ -2,6 +2,9 @@
 export const DEFAULT_CONFIG = {
   TARGET_FORM_SELECTOR: "#upload_table",
   SUBMIT_KEYBINDING: true,
+  CUSTOM_SUBMIT_KEYBINDING: "Ctrl+Enter",
+  APPLY_KEYBINDING: true,
+  CUSTOM_APPLY_KEYBINDING: "Ctrl+Shift+A",
   CUSTOM_FIELD_SELECTORS: [],
   IGNORED_FIELDS_BY_DEFAULT: [
     "linkgroup",

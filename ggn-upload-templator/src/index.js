@@ -9,6 +9,11 @@ import {
 } from "./utils/form.js";
 import { TorrentUtils } from "./utils/torrent.js";
 import {
+  parseKeybinding,
+  matchesKeybinding,
+  buildKeybindingFromEvent,
+} from "./utils/keyboard.js";
+import {
   MODAL_HTML,
   TEMPLATE_SELECTOR_HTML,
   TEMPLATE_LIST_HTML,
@@ -88,6 +93,14 @@ class GGnUploadTemplator {
         this.setupSubmitKeybinding();
       } catch (error) {
         console.error("Submit keybinding setup failed:", error);
+      }
+    }
+
+    if (this.config.APPLY_KEYBINDING) {
+      try {
+        this.setupApplyKeybinding();
+      } catch (error) {
+        console.error("Apply keybinding setup failed:", error);
       }
     }
 
@@ -461,11 +474,14 @@ class GGnUploadTemplator {
     this.showStatus("No torrent file selected", "error");
   }
 
-  // Setup global Ctrl+Enter keybinding for form submission
+  // Setup global keybinding for form submission
   setupSubmitKeybinding() {
+    const keybinding = this.config.CUSTOM_SUBMIT_KEYBINDING || "Ctrl+Enter";
+    const keys = parseKeybinding(keybinding);
+
     document.addEventListener("keydown", (e) => {
-      // Check for Ctrl+Enter (or Cmd+Enter on Mac)
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      // Check if the pressed keys match the custom keybinding
+      if (matchesKeybinding(e, keys)) {
         e.preventDefault();
 
         const targetForm = document.querySelector(
@@ -483,14 +499,28 @@ class GGnUploadTemplator {
             targetForm.querySelector(".submit-btn, #submit-btn");
 
           if (submitButton) {
-            this.showStatus("Form submitted via Ctrl+Enter");
+            this.showStatus(`Form submitted via ${keybinding}`);
             submitButton.click();
           } else {
             // Fallback: submit the form directly
-            this.showStatus("Form submitted via Ctrl+Enter");
+            this.showStatus(`Form submitted via ${keybinding}`);
             targetForm.submit();
           }
         }
+      }
+    });
+  }
+
+  // Setup global keybinding for applying template
+  setupApplyKeybinding() {
+    const keybinding = this.config.CUSTOM_APPLY_KEYBINDING || "Ctrl+Shift+A";
+    const keys = parseKeybinding(keybinding);
+
+    document.addEventListener("keydown", (e) => {
+      // Check if the pressed keys match the custom keybinding
+      if (matchesKeybinding(e, keys)) {
+        e.preventDefault();
+        this.applyTemplateToCurrentTorrent();
       }
     });
   }
@@ -690,6 +720,61 @@ class GGnUploadTemplator {
       }
     });
 
+    // Generic function to set up record keybinding handler
+    const setupRecordKeybindingHandler = (
+      inputSelector,
+      keybindingSpanIndex,
+      recordBtnSelector,
+    ) => {
+      modal.querySelector(recordBtnSelector)?.addEventListener("click", () => {
+        const input = modal.querySelector(inputSelector);
+        const keybindingSpans = modal.querySelectorAll(".gut-keybinding-text");
+        const keybindingSpan = keybindingSpans[keybindingSpanIndex];
+        const recordBtn = modal.querySelector(recordBtnSelector);
+
+        // Change button text to indicate recording mode
+        recordBtn.textContent = "Press keys...";
+        recordBtn.disabled = true;
+
+        const handleKeydown = (e) => {
+          e.preventDefault();
+          const isModifierKey = ["Control", "Alt", "Shift", "Meta"].includes(
+            e.key,
+          );
+
+          if (!isModifierKey) {
+            // Non-modifier key pressed, finalize the combination
+            const keybinding = buildKeybindingFromEvent(e);
+            input.value = keybinding;
+            if (keybindingSpan) {
+              keybindingSpan.textContent = keybinding;
+            }
+
+            // Reset button
+            recordBtn.textContent = "Record";
+            recordBtn.disabled = false;
+
+            document.removeEventListener("keydown", handleKeydown);
+          }
+          // If only modifiers, keep listening for the main key
+        };
+
+        document.addEventListener("keydown", handleKeydown);
+      });
+    };
+
+    // Set up record handlers for submit and apply keybindings
+    setupRecordKeybindingHandler(
+      "#custom-submit-keybinding-input",
+      0,
+      "#record-submit-keybinding-btn",
+    );
+    setupRecordKeybindingHandler(
+      "#custom-apply-keybinding-input",
+      1,
+      "#record-apply-keybinding-btn",
+    );
+
     // Template actions
     modal.addEventListener("click", (e) => {
       if (e.target === modal) {
@@ -742,6 +827,15 @@ class GGnUploadTemplator {
     const submitKeybinding = modal.querySelector(
       "#setting-submit-keybinding",
     ).checked;
+    const customSubmitKeybinding = modal
+      .querySelector("#custom-submit-keybinding-input")
+      .value.trim();
+    const applyKeybinding = modal.querySelector(
+      "#setting-apply-keybinding",
+    ).checked;
+    const customApplyKeybinding = modal
+      .querySelector("#custom-apply-keybinding-input")
+      .value.trim();
     const customSelectorsText = modal
       .querySelector("#setting-custom-selectors")
       .value.trim();
@@ -760,6 +854,11 @@ class GGnUploadTemplator {
     this.config = {
       TARGET_FORM_SELECTOR: formSelector || DEFAULT_CONFIG.TARGET_FORM_SELECTOR,
       SUBMIT_KEYBINDING: submitKeybinding,
+      CUSTOM_SUBMIT_KEYBINDING:
+        customSubmitKeybinding || DEFAULT_CONFIG.CUSTOM_SUBMIT_KEYBINDING,
+      APPLY_KEYBINDING: applyKeybinding,
+      CUSTOM_APPLY_KEYBINDING:
+        customApplyKeybinding || DEFAULT_CONFIG.CUSTOM_APPLY_KEYBINDING,
       CUSTOM_FIELD_SELECTORS:
         customSelectors.length > 0
           ? customSelectors
@@ -789,10 +888,24 @@ class GGnUploadTemplator {
       this.config.TARGET_FORM_SELECTOR;
     modal.querySelector("#setting-submit-keybinding").checked =
       this.config.SUBMIT_KEYBINDING;
+    modal.querySelector("#custom-submit-keybinding-input").value =
+      this.config.CUSTOM_SUBMIT_KEYBINDING;
+    modal.querySelector("#setting-apply-keybinding").checked =
+      this.config.APPLY_KEYBINDING;
+    modal.querySelector("#custom-apply-keybinding-input").value =
+      this.config.CUSTOM_APPLY_KEYBINDING;
     modal.querySelector("#setting-custom-selectors").value =
       this.config.CUSTOM_FIELD_SELECTORS.join("\n");
     modal.querySelector("#setting-ignored-fields").value =
       this.config.IGNORED_FIELDS_BY_DEFAULT.join("\n");
+
+    // Update the keybinding texts
+    const submitKeybindingSpan = modal.querySelector(".gut-keybinding-text");
+    submitKeybindingSpan.textContent = this.config.CUSTOM_SUBMIT_KEYBINDING;
+    const applyKeybindingSpans = modal.querySelectorAll(".gut-keybinding-text");
+    if (applyKeybindingSpans.length > 1) {
+      applyKeybindingSpans[1].textContent = this.config.CUSTOM_APPLY_KEYBINDING;
+    }
 
     this.showStatus(
       "Settings reset to defaults! Reload the page for changes to take effect.",

@@ -35,12 +35,27 @@ export const MODAL_HTML = (instance) => `
         <input type="text" id="setting-form-selector" value="${instance.escapeHtml(instance.config.TARGET_FORM_SELECTOR)}" placeholder="#upload_table">
       </div>
 
-      <div class="gut-form-group">
-        <label class="gut-checkbox-label">
-          <input type="checkbox" id="setting-submit-keybinding" ${instance.config.SUBMIT_KEYBINDING ? "checked" : ""}>
-          <span class="gut-checkbox-text">⚡ Enable Ctrl+Enter form submission</span>
-        </label>
-      </div>
+       <div class="gut-form-group">
+         <div class="gut-keybinding-controls">
+           <label class="gut-checkbox-label">
+             <input type="checkbox" id="setting-submit-keybinding" ${instance.config.SUBMIT_KEYBINDING ? "checked" : ""}>
+             <span class="gut-checkbox-text">⚡ Enable form submission keybinding: <span class="gut-keybinding-text">${instance.config.CUSTOM_SUBMIT_KEYBINDING || "Ctrl+Enter"}</span></span>
+           </label>
+           <button type="button" id="record-submit-keybinding-btn" class="gut-btn gut-btn-secondary gut-btn-small">Record</button>
+         </div>
+         <input type="hidden" id="custom-submit-keybinding-input" value="${instance.config.CUSTOM_SUBMIT_KEYBINDING || "Ctrl+Enter"}">
+       </div>
+
+       <div class="gut-form-group">
+         <div class="gut-keybinding-controls">
+           <label class="gut-checkbox-label">
+             <input type="checkbox" id="setting-apply-keybinding" ${instance.config.APPLY_KEYBINDING ? "checked" : ""}>
+             <span class="gut-checkbox-text">⚡ Enable apply template keybinding: <span class="gut-keybinding-text">${instance.config.CUSTOM_APPLY_KEYBINDING || "Ctrl+Shift+A"}</span></span>
+           </label>
+           <button type="button" id="record-apply-keybinding-btn" class="gut-btn gut-btn-secondary gut-btn-small">Record</button>
+         </div>
+         <input type="hidden" id="custom-apply-keybinding-input" value="${instance.config.CUSTOM_APPLY_KEYBINDING || "Ctrl+Shift+A"}">
+       </div>
 
       <div class="gut-form-group">
         <label for="setting-custom-selectors">Custom Field Selectors (one per line):</label>

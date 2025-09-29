@@ -409,8 +409,8 @@
   display: block;
 }
 
-/* Checkbox label styling */
-.gut-checkbox-label {
+/* Keybinding controls styling */
+.gut-keybinding-controls {
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
@@ -418,13 +418,21 @@
   background: #2a2a2a !important;
   border: 1px solid #404040 !important;
   border-radius: 4px !important;
-  cursor: pointer !important;
   transition: border-color 0.2s ease !important;
   margin: 0 !important;
 }
 
-.gut-checkbox-label:hover {
+.gut-keybinding-controls:hover {
   border-color: #0d7377 !important;
+}
+
+/* Checkbox label styling */
+.gut-checkbox-label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  cursor: pointer !important;
+  margin: 0 !important;
 }
 
 .gut-checkbox-label input[type="checkbox"] {
@@ -439,6 +447,11 @@
   font-weight: 500 !important;
   color: #b0b0b0 !important;
   user-select: none !important;
+}
+
+.gut-keybinding-text {
+  color: #4dd0e1 !important;
+  font-family: monospace !important;
 }
 
 .gut-variable-toggle {
