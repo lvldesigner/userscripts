@@ -262,20 +262,22 @@ export const TEMPLATE_CREATOR_HTML = (
                        ? `<input type="checkbox" ${templateValue !== null ? (templateValue ? "checked" : "") : fieldData.value ? "checked" : ""} data-template="${name}" class="template-input">`
                        : fieldData.inputType === "radio"
                          ? `<select data-template="${name}" class="template-input gut-select">
-                             ${fieldData.radioOptions
-                               .map((option) => {
-                                 let selected = option.checked;
-                                 if (
-                                   templateValue &&
-                                   templateValue === option.value
-                                 ) {
-                                   selected = true;
-                                 }
-                                 return `<option value="${instance.escapeHtml(option.value)}" ${selected ? "selected" : ""}>${instance.escapeHtml(option.label)}</option>`;
-                               })
-                               .join("")}
-                           </select>`
-                         : `<input type="text" value="${templateValue !== null ? instance.escapeHtml(String(templateValue)) : instance.escapeHtml(String(fieldData.value))}" data-template="${name}" class="template-input">`
+                              ${fieldData.radioOptions
+                                .map((option) => {
+                                  let selected = option.checked;
+                                  if (
+                                    templateValue &&
+                                    templateValue === option.value
+                                  ) {
+                                    selected = true;
+                                  }
+                                  return `<option value="${instance.escapeHtml(option.value)}" ${selected ? "selected" : ""}>${instance.escapeHtml(option.label)}</option>`;
+                                })
+                                .join("")}
+                            </select>`
+                         : fieldData.type === "textarea"
+                           ? `<textarea data-template="${name}" class="template-input" rows="4" style="resize: vertical; width: 100%;">${templateValue !== null ? instance.escapeHtml(String(templateValue)) : instance.escapeHtml(String(fieldData.value))}</textarea>`
+                           : `<input type="text" value="${templateValue !== null ? instance.escapeHtml(String(templateValue)) : instance.escapeHtml(String(fieldData.value))}" data-template="${name}" class="template-input">`
                  }
                  <span class="gut-preview" data-preview="${name}"></span>
                </div>
