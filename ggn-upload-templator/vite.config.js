@@ -16,17 +16,15 @@ export default defineConfig({
       entry: "src/index.js",
       header: {
         name: "GGn Upload Templator",
+        namespace: "https://greasyfork.org/",
         version,
         description,
         author: author.name,
         license,
         source: repository.url,
+        supportURL: repository.url,
         icon: "https://gazellegames.net/favicon.ico",
         match: "https://*.gazellegames.net/upload.php*",
-        downloadURL:
-          "https://update.greasyfork.org/scripts/550898/GGn%20Upload%20Templator.user.js",
-        updateURL:
-          "https://update.greasyfork.org/scripts/550898/GGn%20Upload%20Templator.user.js",
       },
       server: {
         port: 3000,
