@@ -4,8 +4,9 @@ import {
   parseTemplate,
   interpolate,
   findMatchingOption,
+  validateMaskVariables,
 } from "../utils/template.js";
-import { TEMPLATE_CREATOR_HTML, MAIN_UI_HTML } from "./template.js";
+import { TEMPLATE_CREATOR_HTML, MAIN_UI_HTML, VARIABLES_MODAL_HTML } from "./template.js";
 
 // Create and inject UI elements
 export function injectUI(instance) {
@@ -73,6 +74,13 @@ export function injectUI(instance) {
         instance.applyTemplateToCurrentTorrent(),
       );
     }
+
+    const variablesRow = document.getElementById("variables-row");
+    if (variablesRow) {
+      variablesRow.addEventListener("click", () => {
+        instance.showVariablesModal();
+      });
+    }
   } catch (error) {
     console.error("Failed to bind UI events:", error);
   }
@@ -93,6 +101,7 @@ export async function showTemplateCreator(
 
   // Check if there's already a torrent file selected and parse it
   let selectedTorrentName = "";
+  let commentVariables = {};
   const fileInputs = instance.config.TARGET_FORM_SELECTOR
     ? document.querySelectorAll(
         `${instance.config.TARGET_FORM_SELECTOR} input[type="file"]`,
@@ -108,6 +117,7 @@ export async function showTemplateCreator(
       try {
         const torrentData = await TorrentUtils.parseTorrentFile(input.files[0]);
         selectedTorrentName = torrentData.name || "";
+        commentVariables = TorrentUtils.parseCommentVariables(torrentData.comment);
         break;
       } catch (error) {
         console.warn("Could not parse selected torrent file:", error);
@@ -215,15 +225,36 @@ export async function showTemplateCreator(
     const mask = maskInput.value;
     const sample = sampleInput.value;
     const greedyMatching = modal.querySelector("#greedy-matching").checked;
-    const extracted = parseTemplate(mask, sample, greedyMatching);
+    const saveButton = modal.querySelector("#save-template");
+    
+    const validation = validateMaskVariables(mask);
+    const validationWarning = modal.querySelector("#mask-validation-warning");
+    
+    if (!validation.valid) {
+      validationWarning.style.display = "block";
+      validationWarning.textContent = `Invalid variable names: ${validation.invalidVars.map(v => `\${${v}}`).join(', ')}. Variable names starting with "_" are reserved for comment variables.`;
+      saveButton.disabled = true;
+      saveButton.style.opacity = "0.5";
+      saveButton.style.cursor = "not-allowed";
+    } else {
+      validationWarning.style.display = "none";
+      saveButton.disabled = false;
+      saveButton.style.opacity = "1";
+      saveButton.style.cursor = "pointer";
+    }
+    
+    const maskExtracted = parseTemplate(mask, sample, greedyMatching);
+
+    // Merge comment variables first, then mask variables
+    const allVariables = { ...commentVariables, ...maskExtracted };
 
     // Update extracted variables section
     const extractedVarsContainer = modal.querySelector("#extracted-variables");
-    if (Object.keys(extracted).length === 0) {
+    if (Object.keys(allVariables).length === 0) {
       extractedVarsContainer.innerHTML =
         '<div class="gut-no-variables">No variables defined yet. Add variables like ${name} to your mask.</div>';
     } else {
-      extractedVarsContainer.innerHTML = Object.entries(extracted)
+      extractedVarsContainer.innerHTML = Object.entries(allVariables)
         .map(
           ([varName, varValue]) => `
             <div class="gut-variable-item">
@@ -263,10 +294,10 @@ export async function showTemplateCreator(
 
           if (
             variableName &&
-            extracted[variableName.replace(/^\$\{|\}$/g, "")]
+            allVariables[variableName.replace(/^\$\{|\}$/g, "")]
           ) {
             const variableValue =
-              extracted[variableName.replace(/^\$\{|\}$/g, "")];
+              allVariables[variableName.replace(/^\$\{|\}$/g, "")];
             const matchedOption = findMatchingOption(
               input.options,
               variableValue,
@@ -299,9 +330,9 @@ export async function showTemplateCreator(
         }
       } else {
         const inputValue = input.value || "";
-        const interpolated = interpolate(inputValue, extracted);
+        const interpolated = interpolate(inputValue, allVariables);
 
-        if (inputValue.includes("${") && Object.keys(extracted).length > 0) {
+        if (inputValue.includes("${") && Object.keys(allVariables).length > 0) {
           preview.textContent = `→ ${interpolated}`;
           preview.className = "gut-preview active";
           preview.style.display = "block";
@@ -410,7 +441,32 @@ export async function showTemplateCreator(
   }
 }
 
-// Helper function for escaping HTML
+export function showVariablesModal(instance, variables) {
+  const modal = document.createElement("div");
+  modal.className = "gut-modal";
+  modal.innerHTML = VARIABLES_MODAL_HTML(variables);
+
+  document.body.appendChild(modal);
+
+  modal.querySelector("#close-variables-modal").addEventListener("click", () => {
+    document.body.removeChild(modal);
+  });
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      document.body.removeChild(modal);
+    }
+  });
+
+  const handleEscKey = (e) => {
+    if (e.key === "Escape" && document.body.contains(modal)) {
+      document.body.removeChild(modal);
+      document.removeEventListener("keydown", handleEscKey);
+    }
+  };
+  document.addEventListener("keydown", handleEscKey);
+}
+
 function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;

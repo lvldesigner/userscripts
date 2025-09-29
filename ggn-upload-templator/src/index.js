@@ -1,6 +1,6 @@
 import { DEFAULT_CONFIG } from "./config.js";
 import { logDebug } from "./utils/log.js";
-import { injectUI, showTemplateCreator } from "./ui/manager.js";
+import { injectUI, showTemplateCreator, showVariablesModal } from "./ui/manager.js";
 import { parseTemplate, interpolate } from "./utils/template.js";
 import {
   getCurrentFormData,
@@ -110,6 +110,92 @@ class GGnUploadTemplator {
   // Show template creation modal
   async showTemplateCreator(editTemplateName = null, editTemplate = null) {
     await showTemplateCreator(this, editTemplateName, editTemplate);
+  }
+
+  // Get current variables (mask + comment)
+  async getCurrentVariables() {
+    const commentVariables = {};
+    const maskVariables = {};
+
+    // Get mask variables if template is selected
+    if (this.selectedTemplate && this.selectedTemplate !== "none") {
+      const template = this.templates[this.selectedTemplate];
+      if (template) {
+        const fileInputs = this.config.TARGET_FORM_SELECTOR
+          ? document.querySelectorAll(
+              `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
+            )
+          : document.querySelectorAll('input[type="file"]');
+
+        for (const input of fileInputs) {
+          if (
+            input.files &&
+            input.files[0] &&
+            input.files[0].name.toLowerCase().endsWith(".torrent")
+          ) {
+            try {
+              const torrentData = await TorrentUtils.parseTorrentFile(
+                input.files[0],
+              );
+              
+              // Extract comment variables first
+              Object.assign(commentVariables, TorrentUtils.parseCommentVariables(torrentData.comment));
+
+              // Extract mask variables
+              Object.assign(maskVariables, parseTemplate(
+                template.mask,
+                torrentData.name,
+                template.greedyMatching !== false,
+              ));
+              
+              break;
+            } catch (error) {
+              console.warn("Could not parse torrent file:", error);
+            }
+          }
+        }
+      }
+    }
+
+    return { 
+      all: { ...commentVariables, ...maskVariables },
+      comment: commentVariables,
+      mask: maskVariables
+    };
+  }
+
+  // Show variables modal
+  async showVariablesModal() {
+    const variables = await this.getCurrentVariables();
+    showVariablesModal(this, variables.all);
+  }
+
+  // Update variable count display
+  async updateVariableCount() {
+    const variables = await this.getCurrentVariables();
+    const commentCount = Object.keys(variables.comment).length;
+    const maskCount = Object.keys(variables.mask).length;
+    const totalCount = commentCount + maskCount;
+    
+    const variablesRow = document.getElementById("variables-row");
+    
+    if (variablesRow) {
+      if (totalCount === 0) {
+        variablesRow.style.display = "none";
+      } else {
+        variablesRow.style.display = "";
+        
+        const parts = [];
+        if (commentCount > 0) {
+          parts.push(`Comment [${commentCount}]`);
+        }
+        if (maskCount > 0) {
+          parts.push(`Mask [${maskCount}]`);
+        }
+        
+        variablesRow.innerHTML = `Available variables: ${parts.join(", ")}`;
+      }
+    }
   }
 
   // Save template from modal
@@ -238,6 +324,7 @@ class GGnUploadTemplator {
       JSON.stringify(this.templates),
     );
     this.updateTemplateSelector();
+    this.updateVariableCount();
 
     const action = editingTemplateName ? "updated" : "saved";
     this.showStatus(`Template "${name}" ${action} successfully!`);
@@ -282,6 +369,9 @@ class GGnUploadTemplator {
     // Update edit button visibility
     this.updateEditButtonVisibility();
 
+    // Update variable count
+    this.updateVariableCount();
+
     if (templateName === "none") {
       this.showStatus("No template selected - auto-fill disabled");
     } else if (templateName) {
@@ -293,7 +383,7 @@ class GGnUploadTemplator {
   }
 
   // Apply template to form
-  applyTemplate(templateName, torrentName) {
+  applyTemplate(templateName, torrentName, commentVariables = {}) {
     const template = this.templates[templateName];
     if (!template) return;
 
@@ -306,21 +396,18 @@ class GGnUploadTemplator {
 
     Object.entries(template.fieldMappings).forEach(
       ([fieldName, valueTemplate]) => {
-        // Find the element using the improved field finder
         const firstElement = findElementByFieldName(fieldName, this.config);
 
         if (firstElement && firstElement.type === "radio") {
-          // For radio buttons, find all radio buttons with the same name
           const formPrefix = this.config.TARGET_FORM_SELECTOR
             ? `${this.config.TARGET_FORM_SELECTOR} `
             : "";
           const radioButtons = document.querySelectorAll(
             `${formPrefix}input[name="${fieldName}"][type="radio"]`,
           );
-          const newValue = interpolate(String(valueTemplate), extracted);
+          const newValue = interpolate(String(valueTemplate), extracted, commentVariables);
 
           radioButtons.forEach((radio) => {
-            // Remove disabled attribute if present
             if (radio.hasAttribute("disabled")) {
               radio.removeAttribute("disabled");
             }
@@ -336,13 +423,11 @@ class GGnUploadTemplator {
             }
           });
         } else if (firstElement) {
-          // Remove disabled attribute if present
           if (firstElement.hasAttribute("disabled")) {
             firstElement.removeAttribute("disabled");
           }
 
           if (firstElement.type === "checkbox") {
-            // For checkboxes, valueTemplate is a boolean or string that needs interpolation
             let newChecked;
             if (typeof valueTemplate === "boolean") {
               newChecked = valueTemplate;
@@ -350,8 +435,8 @@ class GGnUploadTemplator {
               const interpolated = interpolate(
                 String(valueTemplate),
                 extracted,
+                commentVariables,
               );
-              // Convert string to boolean - "true", "1", "yes", "on" are truthy
               newChecked = /^(true|1|yes|on)$/i.test(interpolated);
             }
 
@@ -364,8 +449,7 @@ class GGnUploadTemplator {
               appliedCount++;
             }
           } else {
-            // For other input types, interpolate the value
-            const interpolated = interpolate(String(valueTemplate), extracted);
+            const interpolated = interpolate(String(valueTemplate), extracted, commentVariables);
             if (firstElement.value !== interpolated) {
               firstElement.value = interpolated;
               firstElement.dispatchEvent(new Event("input", { bubbles: true }));
@@ -406,8 +490,9 @@ class GGnUploadTemplator {
           const torrentData = await TorrentUtils.parseTorrentFile(
             input.files[0],
           );
-          this.applyTemplate(templateName, torrentData.name);
-          return; // Apply to first found torrent file only
+          const commentVariables = TorrentUtils.parseCommentVariables(torrentData.comment);
+          this.applyTemplate(templateName, torrentData.name, commentVariables);
+          return;
         } catch (error) {
           console.warn("Could not parse existing torrent file:", error);
         }
@@ -434,6 +519,9 @@ class GGnUploadTemplator {
           this.showStatus(
             "Torrent file selected. Click 'Apply Template' to fill form.",
           );
+          
+          // Update variable count when torrent file changes
+          this.updateVariableCount();
         }
       });
     });
@@ -462,8 +550,9 @@ class GGnUploadTemplator {
           const torrentData = await TorrentUtils.parseTorrentFile(
             input.files[0],
           );
-          this.applyTemplate(this.selectedTemplate, torrentData.name);
-          return; // Apply to first found torrent file only
+          const commentVariables = TorrentUtils.parseCommentVariables(torrentData.comment);
+          this.applyTemplate(this.selectedTemplate, torrentData.name, commentVariables);
+          return;
         } catch (error) {
           console.error("Error processing torrent file:", error);
           this.showStatus("Error processing torrent file", "error");

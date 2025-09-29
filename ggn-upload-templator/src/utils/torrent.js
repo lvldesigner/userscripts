@@ -9,6 +9,7 @@ export class TorrentUtils {
       const [torrent] = TorrentUtils.decodeBencode(data);
       return {
         name: torrent.info?.name || file.name,
+        comment: torrent.comment || "",
         files: torrent.info?.files?.map((f) => ({
           path: f.path.join("/"),
           length: f.length,
@@ -21,8 +22,32 @@ export class TorrentUtils {
       };
     } catch (e) {
       console.warn("Could not parse torrent file:", e);
-      return { name: file.name, files: [] };
+      return { name: file.name, comment: "", files: [] };
     }
+  }
+
+  static parseCommentVariables(comment) {
+    if (!comment || typeof comment !== "string") return {};
+
+    const variables = {};
+    const pairs = comment.split(";");
+
+    for (const pair of pairs) {
+      const trimmedPair = pair.trim();
+      if (!trimmedPair) continue;
+
+      const eqIndex = trimmedPair.indexOf("=");
+      if (eqIndex === -1) continue;
+
+      const key = trimmedPair.substring(0, eqIndex).trim();
+      const value = trimmedPair.substring(eqIndex + 1).trim();
+
+      if (key) {
+        variables[`_${key}`] = value;
+      }
+    }
+
+    return variables;
   }
 
   // Simple bencode decoder

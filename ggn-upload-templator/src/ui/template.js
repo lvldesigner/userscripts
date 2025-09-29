@@ -94,6 +94,35 @@ export const MODAL_HTML = (instance) => `
   </div>
 `;
 
+export const VARIABLES_MODAL_HTML = (variables) => `
+  <div class="gut-modal-content">
+    <h2>Available Variables</h2>
+    
+    <div class="gut-form-group">
+      <div class="gut-extracted-vars">
+        ${
+          Object.keys(variables).length === 0
+            ? '<div class="gut-no-variables">No variables available. Select a template with a torrent name mask to see extracted variables.</div>'
+            : Object.entries(variables)
+                .map(
+                  ([name, value]) => `
+                  <div class="gut-variable-item">
+                    <span class="gut-variable-name">\${${name}}</span>
+                    <span class="gut-variable-value">${value || '<em style="color: #666;">empty</em>'}</span>
+                  </div>
+                `,
+                )
+                .join("")
+        }
+      </div>
+    </div>
+
+    <div class="gut-modal-actions">
+      <button class="gut-btn" id="close-variables-modal">Close</button>
+    </div>
+  </div>
+`;
+
 export const TEMPLATE_SELECTOR_HTML = (instance) => `
   <option value="">Select Template</option>
   ${Object.keys(instance.templates)
@@ -150,6 +179,7 @@ export const TEMPLATE_CREATOR_HTML = (
     <div class="gut-form-group" style="margin-bottom: 8px;">
       <label for="torrent-mask">Torrent Name Mask:</label>
       <input type="text" id="torrent-mask" placeholder="e.g., \${magazine} - Issue \${issue} - \${month}-\${year}.\${ext}" value="${editTemplate ? instance.escapeHtml(editTemplate.mask) : ""}">
+      <div id="mask-validation-warning" style="display: none; margin-top: 8px; padding: 8px 12px; background: #d32f2f; color: #ffffff; border-radius: 4px; font-size: 12px;"></div>
     </div>
 
     <div class="gut-form-group">
@@ -295,7 +325,7 @@ export const TEMPLATE_CREATOR_HTML = (
 `;
 
 export const MAIN_UI_HTML = (instance) => `
-  <div class="ggn-upload-templator-controls" style="align-items: flex-end;">
+  <div id="ggn-upload-templator-controls" class="ggn-upload-templator-controls" style="align-items: flex-end;">
     <div style="display: flex; flex-direction: column; gap: 5px;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
         <label for="template-selector" style="font-size: 12px; color: #b0b0b0; margin: 0;">Select template</label>
@@ -317,4 +347,5 @@ export const MAIN_UI_HTML = (instance) => `
     <button type="button" id="create-template-btn" class="gut-btn gut-btn-primary">+ Create Template</button>
     <button id="manage-templates-btn" type="button" class="gut-btn gut-btn-secondary" title="Manage Templates & Settings">Settings</button>
   </div>
+  <div id="variables-row" style="display: none; padding: 10px 0; font-size: 12px; cursor: pointer; user-select: none;"></div>
 `;

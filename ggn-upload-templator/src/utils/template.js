@@ -46,10 +46,31 @@ export function parseTemplate(mask, torrentName, greedyMatching = true) {
   }
 }
 
+export function validateMaskVariables(mask) {
+  if (!mask) return { valid: true, invalidVars: [] };
+  
+  const invalidVars = [];
+  const varPattern = /\$\{([^}]+)\}/g;
+  let match;
+  
+  while ((match = varPattern.exec(mask)) !== null) {
+    const varName = match[1];
+    if (varName.startsWith('_')) {
+      invalidVars.push(varName);
+    }
+  }
+  
+  return {
+    valid: invalidVars.length === 0,
+    invalidVars
+  };
+}
+
 // Interpolate template string with extracted data
-export function interpolate(template, data) {
-  if (!template || !data) return template;
-  return template.replace(/\$\{([^}]+)\}/g, (match, key) => data[key] || match);
+export function interpolate(template, data, commentVariables = {}) {
+  if (!template) return template;
+  const allData = { ...data, ...commentVariables };
+  return template.replace(/\$\{([^}]+)\}/g, (match, key) => allData[key] || match);
 }
 
 // Find matching option based on variable value and match type
