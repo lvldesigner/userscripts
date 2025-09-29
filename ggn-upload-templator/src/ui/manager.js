@@ -34,41 +34,46 @@ export function injectUI(instance) {
     return;
   }
 
-  // Bind events
-  try {
-    const createBtn = document.getElementById("create-template-btn");
-    const templateSelector = document.getElementById("template-selector");
-    const manageBtn = document.getElementById("manage-templates-btn");
-    const editBtn = document.getElementById("edit-selected-template-btn");
+   // Bind events
+   try {
+     const createBtn = document.getElementById("create-template-btn");
+     const templateSelector = document.getElementById("template-selector");
+     const manageBtn = document.getElementById("manage-templates-btn");
+     const editBtn = document.getElementById("edit-selected-template-btn");
+     const applyBtn = document.getElementById("apply-template-btn");
 
-    if (createBtn) {
-      createBtn.addEventListener(
-        "click",
-        async () => await instance.showTemplateCreator(),
-      );
-    }
+     if (createBtn) {
+       createBtn.addEventListener(
+         "click",
+         async () => await instance.showTemplateCreator(),
+       );
+     }
 
-    if (templateSelector) {
-      templateSelector.addEventListener("change", (e) =>
-        instance.selectTemplate(e.target.value),
-      );
-    }
+     if (templateSelector) {
+       templateSelector.addEventListener("change", (e) =>
+         instance.selectTemplate(e.target.value),
+       );
+     }
 
-    if (manageBtn) {
-      manageBtn.addEventListener("click", () =>
-        instance.showTemplateAndSettingsManager(),
-      );
-    }
+     if (manageBtn) {
+       manageBtn.addEventListener("click", () =>
+         instance.showTemplateAndSettingsManager(),
+       );
+     }
 
-    if (editBtn) {
-      editBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        instance.editTemplate(instance.selectedTemplate);
-      });
-    }
-  } catch (error) {
-    console.error("Failed to bind UI events:", error);
-  }
+     if (editBtn) {
+       editBtn.addEventListener("click", (e) => {
+         e.preventDefault();
+         instance.editTemplate(instance.selectedTemplate);
+       });
+     }
+
+     if (applyBtn) {
+       applyBtn.addEventListener("click", () => instance.applyTemplateToCurrentTorrent());
+     }
+   } catch (error) {
+     console.error("Failed to bind UI events:", error);
+   }
 }
 
 // Show template creation modal

@@ -402,7 +402,7 @@ class GGnUploadTemplator {
     }
   }
 
-  // Watch file inputs for changes
+  // Watch file inputs for changes (no auto-application)
   watchFileInputs() {
     const fileInputs = this.config.TARGET_FORM_SELECTOR
       ? document.querySelectorAll(
@@ -411,26 +411,54 @@ class GGnUploadTemplator {
       : document.querySelectorAll('input[type="file"]');
 
     fileInputs.forEach((input) => {
-      input.addEventListener("change", async (e) => {
+      input.addEventListener("change", (e) => {
+        // File input change detected, but no auto-application
+        // User can manually apply template via button
         if (
-          !this.selectedTemplate ||
-          this.selectedTemplate === "none" ||
-          !e.target.files[0]
+          e.target.files[0] &&
+          e.target.files[0].name.toLowerCase().endsWith(".torrent")
+        ) {
+          this.showStatus(
+            "Torrent file selected. Click 'Apply Template' to fill form.",
+          );
+        }
+      });
+    });
+  }
+
+  // Apply template to the currently selected torrent file
+  async applyTemplateToCurrentTorrent() {
+    if (!this.selectedTemplate || this.selectedTemplate === "none") {
+      this.showStatus("No template selected", "error");
+      return;
+    }
+
+    const fileInputs = this.config.TARGET_FORM_SELECTOR
+      ? document.querySelectorAll(
+          `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
         )
-          return;
+      : document.querySelectorAll('input[type="file"]');
 
-        const file = e.target.files[0];
-        if (!file.name.toLowerCase().endsWith(".torrent")) return;
-
+    for (const input of fileInputs) {
+      if (
+        input.files &&
+        input.files[0] &&
+        input.files[0].name.toLowerCase().endsWith(".torrent")
+      ) {
         try {
-          const torrentData = await TorrentUtils.parseTorrentFile(file);
+          const torrentData = await TorrentUtils.parseTorrentFile(
+            input.files[0],
+          );
           this.applyTemplate(this.selectedTemplate, torrentData.name);
+          return; // Apply to first found torrent file only
         } catch (error) {
           console.error("Error processing torrent file:", error);
           this.showStatus("Error processing torrent file", "error");
         }
-      });
-    });
+      }
+    }
+
+    this.showStatus("No torrent file selected", "error");
   }
 
   // Setup global Ctrl+Enter keybinding for form submission
@@ -600,7 +628,7 @@ class GGnUploadTemplator {
               </div>
             `;
           })
-           .join("");
+          .join("");
       }
 
       // Restore original config

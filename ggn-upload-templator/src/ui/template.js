@@ -284,18 +284,19 @@ export const MAIN_UI_HTML = (instance) => `
         <label for="template-selector" style="font-size: 12px; color: #b0b0b0; margin: 0;">Select template</label>
         <a href="#" id="edit-selected-template-btn" class="gut-link" style="${instance.selectedTemplate && instance.selectedTemplate !== "none" && instance.templates[instance.selectedTemplate] ? "" : "display: none;"}">Edit</a>
       </div>
-      <div style="display: flex; gap: 10px; align-items: center;">
-        <select id="template-selector" class="gut-select">
-          <option value="">Select Template</option>
-          ${Object.keys(instance.templates)
-            .map(
-              (name) =>
-                `<option value="${name}" ${name === instance.selectedTemplate ? "selected" : ""}>${name}</option>`,
-            )
-            .join("")}
-        </select>
-      </div>
+       <div style="display: flex; gap: 10px; align-items: center;">
+         <select id="template-selector" class="gut-select">
+           <option value="">Select Template</option>
+           ${Object.keys(instance.templates)
+             .map(
+               (name) =>
+                 `<option value="${name}" ${name === instance.selectedTemplate ? "selected" : ""}>${name}</option>`,
+             )
+             .join("")}
+         </select>
+       </div>
     </div>
+    <button type="button" id="apply-template-btn" class="gut-btn gut-btn-primary">Apply Template</button>
     <button type="button" id="create-template-btn" class="gut-btn gut-btn-primary">+ Create Template</button>
     <button id="manage-templates-btn" type="button" class="gut-btn gut-btn-secondary" title="Manage Templates & Settings">Settings</button>
   </div>
