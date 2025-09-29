@@ -720,6 +720,9 @@ class GGnUploadTemplator {
       }
     });
 
+    // Track recording state to prevent modal closing during recording
+    let isRecording = false;
+
     // Generic function to set up record keybinding handler
     const setupRecordKeybindingHandler = (
       inputSelector,
@@ -735,12 +738,22 @@ class GGnUploadTemplator {
         // Change button text to indicate recording mode
         recordBtn.textContent = "Press keys...";
         recordBtn.disabled = true;
+        isRecording = true;
 
         const handleKeydown = (e) => {
           e.preventDefault();
           const isModifierKey = ["Control", "Alt", "Shift", "Meta"].includes(
             e.key,
           );
+
+          if (e.key === "Escape") {
+            // Cancel recording on Esc
+            recordBtn.textContent = "Record";
+            recordBtn.disabled = false;
+            isRecording = false;
+            document.removeEventListener("keydown", handleKeydown);
+            return;
+          }
 
           if (!isModifierKey) {
             // Non-modifier key pressed, finalize the combination
@@ -753,6 +766,7 @@ class GGnUploadTemplator {
             // Reset button
             recordBtn.textContent = "Record";
             recordBtn.disabled = false;
+            isRecording = false;
 
             document.removeEventListener("keydown", handleKeydown);
           }
@@ -811,7 +825,7 @@ class GGnUploadTemplator {
 
     // Close on Esc key for template manager
     const handleEscKey = (e) => {
-      if (e.key === "Escape" && document.body.contains(modal)) {
+      if (e.key === "Escape" && document.body.contains(modal) && !isRecording) {
         document.body.removeChild(modal);
         document.removeEventListener("keydown", handleEscKey);
       }
