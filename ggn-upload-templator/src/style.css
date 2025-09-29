@@ -268,12 +268,17 @@
     margin-top: 4px;
     padding-left: 20px;
     white-space: pre-wrap;
+    display: none;
 }
 
 .gut-preview.active {
     color: #4dd0e1;
     font-weight: bold;
     font-style: normal;
+}
+
+.gut-preview.visible {
+    display: block;
 }
 
 .gut-modal-actions {
@@ -580,4 +585,47 @@
 
 #variables-row:hover {
     color: #4dd0e1;
+}
+
+#mask-validation-warning {
+    display: none;
+    background: #b63535;
+    color: #ffffff;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-size: 13px;
+    border: 1px solid #b71c1c;
+}
+
+#mask-validation-warning.visible {
+    display: block;
+}
+
+.gut-variable-controls {
+    display: none;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+}
+
+.gut-variable-controls.visible {
+    display: flex;
+}
+
+.gut-variable-input {
+    flex: 1;
+    min-width: 120px;
+}
+
+.gut-match-type {
+    min-width: 100px;
+}
+
+.select-static-mode {
+    display: block;
+}
+
+.select-static-mode.hidden {
+    display: none;
 }

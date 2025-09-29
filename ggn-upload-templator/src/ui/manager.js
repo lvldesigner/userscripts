@@ -231,16 +231,12 @@ export async function showTemplateCreator(
     const validationWarning = modal.querySelector("#mask-validation-warning");
     
     if (!validation.valid) {
-      validationWarning.style.display = "block";
+      validationWarning.classList.add("visible");
       validationWarning.textContent = `Invalid variable names: ${validation.invalidVars.map(v => `\${${v}}`).join(', ')}. Variable names starting with "_" are reserved for comment variables.`;
       saveButton.disabled = true;
-      saveButton.style.opacity = "0.5";
-      saveButton.style.cursor = "not-allowed";
     } else {
-      validationWarning.style.display = "none";
+      validationWarning.classList.remove("visible");
       saveButton.disabled = false;
-      saveButton.style.opacity = "1";
-      saveButton.style.cursor = "pointer";
     }
     
     const maskExtracted = parseTemplate(mask, sample, greedyMatching);
@@ -306,27 +302,21 @@ export async function showTemplateCreator(
 
             if (matchedOption) {
               preview.textContent = `→ "${matchedOption.text}" (matched "${variableValue}" using ${matchType})`;
-              preview.className = "gut-preview active";
-              preview.style.display = "block";
+              preview.className = "gut-preview active visible";
             } else {
               preview.textContent = `→ No match found for "${variableValue}" using ${matchType}`;
-              preview.className = "gut-preview";
-              preview.style.display = "block";
+              preview.className = "gut-preview visible";
             }
           } else if (variableName) {
             preview.textContent = `→ Variable ${variableName} not found in extracted data`;
-            preview.className = "gut-preview";
-            preview.style.display = "block";
+            preview.className = "gut-preview visible";
           } else {
             preview.textContent = "";
             preview.className = "gut-preview";
-            preview.style.display = "none";
           }
         } else {
-          // Static mode - no preview
           preview.textContent = "";
           preview.className = "gut-preview";
-          preview.style.display = "none";
         }
       } else {
         const inputValue = input.value || "";
@@ -334,12 +324,10 @@ export async function showTemplateCreator(
 
         if (inputValue.includes("${") && Object.keys(allVariables).length > 0) {
           preview.textContent = `→ ${interpolated}`;
-          preview.className = "gut-preview active";
-          preview.style.display = "block";
+          preview.className = "gut-preview active visible";
         } else {
           preview.textContent = "";
           preview.className = "gut-preview";
-          preview.style.display = "none";
         }
       }
     });
@@ -410,11 +398,11 @@ export async function showTemplateCreator(
       );
 
       if (newState === "on") {
-        staticSelect.style.display = "none";
-        variableControls.style.display = "flex";
+        staticSelect.classList.add("hidden");
+        variableControls.classList.add("visible");
       } else {
-        staticSelect.style.display = "block";
-        variableControls.style.display = "none";
+        staticSelect.classList.remove("hidden");
+        variableControls.classList.remove("visible");
       }
 
       // Trigger preview update

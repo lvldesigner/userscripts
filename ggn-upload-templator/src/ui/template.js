@@ -179,7 +179,7 @@ export const TEMPLATE_CREATOR_HTML = (
     <div class="gut-form-group" style="margin-bottom: 8px;">
       <label for="torrent-mask">Torrent Name Mask:</label>
       <input type="text" id="torrent-mask" placeholder="e.g., \${magazine} - Issue \${issue} - \${month}-\${year}.\${ext}" value="${editTemplate ? instance.escapeHtml(editTemplate.mask) : ""}">
-      <div id="mask-validation-warning" style="display: none; margin-top: 8px; padding: 8px 12px; background: #d32f2f; color: #ffffff; border-radius: 4px; font-size: 12px;"></div>
+      <div id="mask-validation-warning"></div>
     </div>
 
     <div class="gut-form-group">
