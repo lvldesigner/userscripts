@@ -175,7 +175,10 @@ export function validateMaskWithDetails(mask) {
 export function interpolate(template, data, commentVariables = {}) {
   if (!template) return template;
   const allData = { ...data, ...commentVariables };
-  return template.replace(/\$\{([^}]+)\}/g, (match, key) => allData[key] || match);
+  return template.replace(/\$\{([^}]+)\}/g, (match, key) => {
+    const value = allData[key];
+    return value !== undefined && value !== null && value !== '' ? value : '';
+  });
 }
 
 // Find matching option based on variable value and match type

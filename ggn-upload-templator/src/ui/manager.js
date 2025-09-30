@@ -246,8 +246,15 @@ export async function showTemplateCreator(
     // Update extracted variables section
     const extractedVarsContainer = modal.querySelector("#extracted-variables");
     if (Object.keys(allVariables).length === 0) {
-      extractedVarsContainer.innerHTML =
-        '<div class="gut-no-variables">No variables defined yet. Add variables like ${name} to your mask.</div>';
+      const hasMaskVariables = validation.variables.valid.length > 0 || validation.variables.reserved.length > 0;
+      
+      if (hasMaskVariables) {
+        extractedVarsContainer.innerHTML =
+          '<div class="gut-no-variables">Select a torrent file or provide a sample torrent name to extract variables.</div>';
+      } else {
+        extractedVarsContainer.innerHTML =
+          '<div class="gut-no-variables">No variables defined yet. Add variables like ${name} to your mask.</div>';
+      }
     } else {
       extractedVarsContainer.innerHTML = Object.entries(allVariables)
         .map(
