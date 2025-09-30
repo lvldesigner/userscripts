@@ -10,7 +10,7 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ### v0.7
 
-![Mask validation and highlighting](https://files.catbox.moe/snd92p.png)
+![](https://files.catbox.moe/snd92p.png)
 
 - Add mask validation and highlighting with helpful messages
 - Fix: No longer inserts `${varname}` in fields if `${varname}` is empty/not found
