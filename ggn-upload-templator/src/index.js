@@ -20,6 +20,11 @@ import {
 } from "./ui/template.js";
 import style from "./style.css?raw";
 
+const firaCodeFont = `
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300..700&display=swap');
+`;
+
+GM_addStyle(firaCodeFont);
 GM_addStyle(style);
 
 class GGnUploadTemplator {

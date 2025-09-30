@@ -97,7 +97,7 @@ export const MODAL_HTML = (instance) => `
 export const VARIABLES_MODAL_HTML = (variables) => `
   <div class="gut-modal-content">
     <h2>Available Variables</h2>
-    
+
     <div class="gut-form-group">
       <div class="gut-extracted-vars">
         ${
@@ -177,16 +177,18 @@ export const TEMPLATE_CREATOR_HTML = (
     </div>
 
     <div class="gut-form-group" style="margin-bottom: 8px;">
-      <label for="torrent-mask">Torrent Name Mask:</label>
-      <input type="text" id="torrent-mask" placeholder="e.g., \${magazine} - Issue \${issue} - \${month}-\${year}.\${ext}" value="${editTemplate ? instance.escapeHtml(editTemplate.mask) : ""}">
-      <div id="mask-validation-warning"></div>
-    </div>
-
-    <div class="gut-form-group">
-      <label style="display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: #888888; font-weight: normal;" title="When enabled, patterns capture as much text as possible. When disabled, uses smart matching that's usually more precise.">
-        <input type="checkbox" id="greedy-matching" ${editTemplate ? (editTemplate.greedyMatching !== false ? "checked" : "") : "checked"} style="margin: 0; accent-color: #0d7377; width: auto;">
-        <span>Greedy matching</span>
-      </label>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+        <label for="torrent-mask" style="margin-bottom: 0;">Torrent Name Mask:</label>
+        <label style="display: inline-flex; align-items: center; gap: 8px; margin: 0; font-size: 13px; color: #888888; font-weight: normal; cursor: pointer;" title="When enabled, patterns capture as much text as possible. When disabled, uses smart matching that's usually more precise.">
+          <input type="checkbox" id="greedy-matching" ${editTemplate ? (editTemplate.greedyMatching !== false ? "checked" : "") : "checked"} style="margin: 0; accent-color: #0d7377; width: auto; cursor: pointer;">
+          <span>Greedy matching</span>
+        </label>
+      </div>
+      <div class="gut-mask-input-container">
+        <div class="gut-mask-highlight-overlay" id="mask-highlight-overlay"></div>
+        <input type="text" id="torrent-mask" autocomplete="off" class="gut-mask-input" placeholder="e.g., \${magazine} - Issue \${issue} - \${month}-\${year}.\${ext}" value="${editTemplate ? instance.escapeHtml(editTemplate.mask) : ""}">
+      </div>
+      <div class="gut-mask-status-container" id="mask-status-container"></div>
     </div>
 
     <div class="gut-form-group">

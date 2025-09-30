@@ -629,3 +629,125 @@
 .select-static-mode.hidden {
     display: none;
 }
+
+.gut-mask-input-container {
+    position: relative;
+    width: 100%;
+}
+
+.gut-mask-highlight-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 8px 12px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: 'Fira Code', monospace;
+    color: transparent;
+    background: #2a2a2a;
+    pointer-events: none;
+    overflow: hidden;
+    white-space: pre;
+    word-wrap: normal;
+    box-sizing: border-box;
+    line-height: normal;
+    letter-spacing: normal;
+    word-spacing: normal;
+    font-variant-ligatures: none;
+}
+
+.gut-mask-input {
+    position: relative;
+    z-index: 1;
+    background: transparent !important;
+    caret-color: #e0e0e0;
+    font-family: 'Fira Code', monospace;
+    font-variant-ligatures: none;
+    letter-spacing: normal;
+    word-spacing: normal;
+}
+
+.gut-highlight-variable {
+    color: transparent;
+    background: rgba(77, 208, 225, 0.35);
+    padding: 2px 0;
+    border-radius: 2px;
+}
+
+.gut-highlight-warning {
+    color: transparent;
+    background: rgba(255, 152, 0, 0.3);
+    padding: 2px 0;
+    border-radius: 2px;
+}
+
+.gut-highlight-error {
+    color: transparent;
+    background: rgba(244, 67, 54, 0.3);
+    padding: 2px 0;
+    border-radius: 2px;
+}
+
+.gut-mask-status-container {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: #0f0f0f;
+    border: 1px solid #404040;
+    animation: slideDown 0.2s ease-out;
+}
+
+.gut-mask-status-container.visible {
+    display: block;
+}
+
+.gut-status-message {
+    font-size: 13px;
+    padding: 4px 0;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.gut-status-message svg {
+    flex-shrink: 0;
+    vertical-align: middle;
+}
+
+.gut-status-message:not(:last-child) {
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #2a2a2a;
+}
+
+.gut-status-error {
+    color: #f44336;
+}
+
+.gut-status-warning {
+    color: #ff9800;
+}
+
+.gut-status-info {
+    color: #888888;
+}
+
+.gut-status-success {
+    color: #4caf50;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

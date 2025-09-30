@@ -66,6 +66,111 @@ export function validateMaskVariables(mask) {
   };
 }
 
+export function validateMaskWithDetails(mask) {
+  if (!mask) {
+    return {
+      valid: true,
+      errors: [],
+      warnings: [],
+      info: [],
+      variables: { valid: [], invalid: [], reserved: [] }
+    };
+  }
+
+  const errors = [];
+  const warnings = [];
+  const info = [];
+  const validVars = [];
+  const invalidVars = [];
+  const reservedVars = [];
+  const seenVars = new Set();
+  const duplicates = new Set();
+
+  const unclosedPattern = /\$\{[^}]*$/;
+  if (unclosedPattern.test(mask)) {
+    errors.push({ type: 'error', message: 'Unclosed variable: missing closing brace "}"', position: mask.lastIndexOf('${') });
+  }
+
+  const emptyVarPattern = /\$\{\s*\}/g;
+  let emptyMatch;
+  while ((emptyMatch = emptyVarPattern.exec(mask)) !== null) {
+    errors.push({ type: 'error', message: 'Empty variable: ${}', position: emptyMatch.index });
+  }
+
+  const nestedPattern = /\$\{[^}]*\$\{/g;
+  let nestedMatch;
+  while ((nestedMatch = nestedPattern.exec(mask)) !== null) {
+    errors.push({ type: 'error', message: 'Nested braces are not allowed', position: nestedMatch.index });
+  }
+
+  const varPattern = /\$\{([^}]+)\}/g;
+  let match;
+  const varPositions = new Map();
+  
+  while ((match = varPattern.exec(mask)) !== null) {
+    const varName = match[1].trim();
+    const position = match.index;
+
+    if (varName !== match[1]) {
+      warnings.push({ type: 'warning', message: `Variable "\${${match[1]}}" has leading or trailing whitespace`, position });
+    }
+
+    if (!/^[a-zA-Z0-9_]+$/.test(varName)) {
+      invalidVars.push(varName);
+      errors.push({ type: 'error', message: `Invalid variable name "\${${varName}}": only letters, numbers, and underscores allowed`, position });
+      continue;
+    }
+
+    if (varName.startsWith('_')) {
+      reservedVars.push(varName);
+      warnings.push({ type: 'warning', message: `Variable "\${${varName}}" uses reserved prefix "_" (reserved for comment variables)`, position });
+      continue;
+    }
+
+    if (/^\d/.test(varName)) {
+      warnings.push({ type: 'warning', message: `Variable "\${${varName}}" starts with a number (potentially confusing)`, position });
+    }
+
+    if (varName.length > 50) {
+      warnings.push({ type: 'warning', message: `Variable "\${${varName}}" is very long (${varName.length} characters)`, position });
+    }
+
+    if (seenVars.has(varName)) {
+      duplicates.add(varName);
+      if (!varPositions.has(varName)) {
+        varPositions.set(varName, position);
+      }
+    } else {
+      seenVars.add(varName);
+      varPositions.set(varName, position);
+    }
+
+    validVars.push(varName);
+  }
+
+  if (duplicates.size > 0) {
+    const firstDuplicatePos = Math.min(...Array.from(duplicates).map(v => varPositions.get(v)));
+    warnings.push({ type: 'warning', message: `Duplicate variables: ${Array.from(duplicates).map(v => `\${${v}}`).join(', ')}`, position: firstDuplicatePos });
+  }
+
+  const totalVars = validVars.length + reservedVars.length;
+  if (totalVars > 0) {
+    info.push({ type: 'info', message: `${totalVars} variable${totalVars === 1 ? '' : 's'} defined` });
+  }
+
+  if (totalVars === 0 && mask.length > 0) {
+    info.push({ type: 'info', message: 'No variables defined. Add variables like ${name} to extract data.' });
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+    info,
+    variables: { valid: validVars, invalid: invalidVars, reserved: reservedVars }
+  };
+}
+
 // Interpolate template string with extracted data
 export function interpolate(template, data, commentVariables = {}) {
   if (!template) return template;

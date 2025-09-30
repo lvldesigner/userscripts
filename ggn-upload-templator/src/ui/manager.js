@@ -5,7 +5,9 @@ import {
   interpolate,
   findMatchingOption,
   validateMaskVariables,
+  validateMaskWithDetails,
 } from "../utils/template.js";
+import { updateMaskHighlighting, renderStatusMessages } from "../utils/highlighting.js";
 import { TEMPLATE_CREATOR_HTML, MAIN_UI_HTML, VARIABLES_MODAL_HTML } from "./template.js";
 
 // Create and inject UI elements
@@ -227,17 +229,14 @@ export async function showTemplateCreator(
     const greedyMatching = modal.querySelector("#greedy-matching").checked;
     const saveButton = modal.querySelector("#save-template");
     
-    const validation = validateMaskVariables(mask);
-    const validationWarning = modal.querySelector("#mask-validation-warning");
+    const validation = validateMaskWithDetails(mask);
+    const statusContainer = modal.querySelector("#mask-status-container");
+    const overlayDiv = modal.querySelector("#mask-highlight-overlay");
     
-    if (!validation.valid) {
-      validationWarning.classList.add("visible");
-      validationWarning.textContent = `Invalid variable names: ${validation.invalidVars.map(v => `\${${v}}`).join(', ')}. Variable names starting with "_" are reserved for comment variables.`;
-      saveButton.disabled = true;
-    } else {
-      validationWarning.classList.remove("visible");
-      saveButton.disabled = false;
-    }
+    updateMaskHighlighting(maskInput, overlayDiv);
+    renderStatusMessages(statusContainer, validation);
+    
+    saveButton.disabled = !validation.valid;
     
     const maskExtracted = parseTemplate(mask, sample, greedyMatching);
 
@@ -335,10 +334,17 @@ export async function showTemplateCreator(
 
   [maskInput, sampleInput, ...templateInputs].forEach((input) => {
     input.addEventListener("input", updatePreviews);
-    input.addEventListener("change", updatePreviews); // For select elements
+    input.addEventListener("change", updatePreviews);
   });
 
-  // Initialize previews on modal open
+  maskInput.addEventListener("scroll", () => {
+    const overlayDiv = modal.querySelector("#mask-highlight-overlay");
+    if (overlayDiv) {
+      overlayDiv.scrollTop = maskInput.scrollTop;
+      overlayDiv.scrollLeft = maskInput.scrollLeft;
+    }
+  });
+
   updatePreviews();
 
   // Update visibility when checkboxes change
