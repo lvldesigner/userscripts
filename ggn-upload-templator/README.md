@@ -8,6 +8,13 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.7
+
+![Mask validation and highlighting](https://files.catbox.moe/snd92p.png)
+
+- Add mask validation and highlighting with helpful messages
+- Fix: No longer inserts `${varname}` in fields if `${varname}` is empty/not found
+
 ### v0.6
 - Added support for variables defined in the comment field of a torrent file. These are extracted as `${_foo}`, `${_bar}`, starting with an underscore. Mask variables cannot be defined with an underscore in the beginnig of their name.
 The format for variables in the comment field is this:
