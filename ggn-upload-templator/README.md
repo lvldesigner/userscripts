@@ -8,6 +8,15 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.6
+- Added support for variables defined in the comment field of a torrent file. These are extracted as `${_foo}`, `${_bar}`, starting with an underscore. Mask variables cannot be defined with an underscore in the beginnig of their name.
+The format for variables in the comment field is this:
+
+```
+foo=wowie;bar=fancy;
+```
+- Show variable count under the template selector. Clicking it shows a modal with all variables and their values.
+
 ### v0.5.1
 - Fix: Use textarea for textarea fields instead of text input, respect newlines.
 
