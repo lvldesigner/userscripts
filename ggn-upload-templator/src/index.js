@@ -1,7 +1,13 @@
 import { DEFAULT_CONFIG } from "./config.js";
 import { logDebug } from "./utils/log.js";
-import { injectUI, showTemplateCreator, showVariablesModal } from "./ui/manager.js";
-import { parseTemplateWithOptionals, interpolate } from "./utils/template.js";
+import {
+  injectUI,
+  showTemplateCreator,
+  showVariablesModal,
+  renderSandboxResults,
+  setupMaskValidation,
+} from "./ui/manager.js";
+import { parseTemplateWithOptionals, interpolate, testMaskAgainstSamples } from "./utils/template.js";
 import {
   getCurrentFormData,
   findElementByFieldName,
@@ -13,6 +19,7 @@ import {
   matchesKeybinding,
   buildKeybindingFromEvent,
 } from "./utils/keyboard.js";
+import { updateMaskHighlighting } from "./utils/highlighting.js";
 import {
   MODAL_HTML,
   TEMPLATE_SELECTOR_HTML,
@@ -67,6 +74,23 @@ class GGnUploadTemplator {
     } catch (error) {
       console.error("Failed to load config:", error);
       this.config = { ...DEFAULT_CONFIG };
+    }
+
+    try {
+      this.sandboxSets = JSON.parse(
+        localStorage.getItem("ggn-upload-templator-sandbox-sets") || "{}",
+      );
+    } catch (error) {
+      console.error("Failed to load sandbox sets:", error);
+      this.sandboxSets = {};
+    }
+
+    try {
+      this.currentSandboxSet =
+        localStorage.getItem("ggn-upload-templator-sandbox-current") || "";
+    } catch (error) {
+      console.error("Failed to load current sandbox set:", error);
+      this.currentSandboxSet = "";
     }
 
     logDebug("Initialized core state", {
@@ -141,13 +165,20 @@ class GGnUploadTemplator {
               const torrentData = await TorrentUtils.parseTorrentFile(
                 input.files[0],
               );
-              
-              Object.assign(commentVariables, TorrentUtils.parseCommentVariables(torrentData.comment));
 
-              const parseResult = parseTemplateWithOptionals(template.mask, torrentData.name);
-              const { _matchedOptionals, _optionalCount, ...extracted } = parseResult;
+              Object.assign(
+                commentVariables,
+                TorrentUtils.parseCommentVariables(torrentData.comment),
+              );
+
+              const parseResult = parseTemplateWithOptionals(
+                template.mask,
+                torrentData.name,
+              );
+              const { _matchedOptionals, _optionalCount, ...extracted } =
+                parseResult;
               Object.assign(maskVariables, extracted);
-              
+
               break;
             } catch (error) {
               console.warn("Could not parse torrent file:", error);
@@ -157,10 +188,10 @@ class GGnUploadTemplator {
       }
     }
 
-    return { 
+    return {
       all: { ...commentVariables, ...maskVariables },
       comment: commentVariables,
-      mask: maskVariables
+      mask: maskVariables,
     };
   }
 
@@ -176,15 +207,15 @@ class GGnUploadTemplator {
     const commentCount = Object.keys(variables.comment).length;
     const maskCount = Object.keys(variables.mask).length;
     const totalCount = commentCount + maskCount;
-    
+
     const variablesRow = document.getElementById("variables-row");
-    
+
     if (variablesRow) {
       if (totalCount === 0) {
         variablesRow.style.display = "none";
       } else {
         variablesRow.style.display = "";
-        
+
         const parts = [];
         if (commentCount > 0) {
           parts.push(`Comment [${commentCount}]`);
@@ -192,7 +223,7 @@ class GGnUploadTemplator {
         if (maskCount > 0) {
           parts.push(`Mask [${maskCount}]`);
         }
-        
+
         variablesRow.innerHTML = `Available variables: ${parts.join(", ")}`;
       }
     }
@@ -384,10 +415,7 @@ class GGnUploadTemplator {
     const template = this.templates[templateName];
     if (!template) return;
 
-    const extracted = parseTemplateWithOptionals(
-      template.mask,
-      torrentName,
-    );
+    const extracted = parseTemplateWithOptionals(template.mask, torrentName);
     let appliedCount = 0;
 
     Object.entries(template.fieldMappings).forEach(
@@ -401,7 +429,11 @@ class GGnUploadTemplator {
           const radioButtons = document.querySelectorAll(
             `${formPrefix}input[name="${fieldName}"][type="radio"]`,
           );
-          const newValue = interpolate(String(valueTemplate), extracted, commentVariables);
+          const newValue = interpolate(
+            String(valueTemplate),
+            extracted,
+            commentVariables,
+          );
 
           radioButtons.forEach((radio) => {
             if (radio.hasAttribute("disabled")) {
@@ -445,7 +477,11 @@ class GGnUploadTemplator {
               appliedCount++;
             }
           } else {
-            const interpolated = interpolate(String(valueTemplate), extracted, commentVariables);
+            const interpolated = interpolate(
+              String(valueTemplate),
+              extracted,
+              commentVariables,
+            );
             if (firstElement.value !== interpolated) {
               firstElement.value = interpolated;
               firstElement.dispatchEvent(new Event("input", { bubbles: true }));
@@ -486,7 +522,9 @@ class GGnUploadTemplator {
           const torrentData = await TorrentUtils.parseTorrentFile(
             input.files[0],
           );
-          const commentVariables = TorrentUtils.parseCommentVariables(torrentData.comment);
+          const commentVariables = TorrentUtils.parseCommentVariables(
+            torrentData.comment,
+          );
           this.applyTemplate(templateName, torrentData.name, commentVariables);
           return;
         } catch (error) {
@@ -515,7 +553,7 @@ class GGnUploadTemplator {
           this.showStatus(
             "Torrent file selected. Click 'Apply Template' to fill form.",
           );
-          
+
           // Update variable count when torrent file changes
           this.updateVariableCount();
         }
@@ -546,8 +584,14 @@ class GGnUploadTemplator {
           const torrentData = await TorrentUtils.parseTorrentFile(
             input.files[0],
           );
-          const commentVariables = TorrentUtils.parseCommentVariables(torrentData.comment);
-          this.applyTemplate(this.selectedTemplate, torrentData.name, commentVariables);
+          const commentVariables = TorrentUtils.parseCommentVariables(
+            torrentData.comment,
+          );
+          this.applyTemplate(
+            this.selectedTemplate,
+            torrentData.name,
+            commentVariables,
+          );
           return;
         } catch (error) {
           console.error("Error processing torrent file:", error);
@@ -804,6 +848,249 @@ class GGnUploadTemplator {
         this.deleteAllConfig();
       }
     });
+
+    // Sandbox handlers
+    const sandboxMaskInput = modal.querySelector("#sandbox-mask-input");
+    const sandboxMaskDisplay = modal.querySelector("#sandbox-mask-display");
+    const sandboxSampleInput = modal.querySelector("#sandbox-sample-input");
+    const sandboxResultsContainer = modal.querySelector("#sandbox-results");
+    const sandboxSetSelect = modal.querySelector("#sandbox-set-select");
+    const saveBtn = modal.querySelector("#save-sandbox-set");
+    const renameBtn = modal.querySelector("#rename-sandbox-set");
+    const deleteBtn = modal.querySelector("#delete-sandbox-set");
+    const sandboxCursorInfo = modal.querySelector("#sandbox-mask-cursor-info");
+    const sandboxStatusContainer = modal.querySelector("#sandbox-mask-status");
+
+    let sandboxDebounceTimeout = null;
+    let currentLoadedSet = this.currentSandboxSet || "";
+    
+    const updateButtonStates = () => {
+      if (currentLoadedSet && currentLoadedSet !== "") {
+        saveBtn.textContent = "Update";
+        renameBtn.style.display = "";
+        deleteBtn.style.display = "";
+      } else {
+        saveBtn.textContent = "Save";
+        renameBtn.style.display = "none";
+        deleteBtn.style.display = "none";
+      }
+    };
+    
+    updateButtonStates();
+
+    const updateSandboxTest = () => {
+      const mask = sandboxMaskInput.value;
+      const sampleText = sandboxSampleInput.value.trim();
+      const samples = sampleText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s);
+
+      if (!mask || samples.length === 0) {
+        sandboxResultsContainer.innerHTML =
+          '<div class="gut-no-variables">Enter a mask and sample torrent names to test.</div>';
+        return;
+      }
+
+      const result = testMaskAgainstSamples(mask, samples);
+      renderSandboxResults(modal, result);
+    };
+
+    const debouncedUpdateSandboxTest = () => {
+      if (sandboxDebounceTimeout) {
+        clearTimeout(sandboxDebounceTimeout);
+      }
+      sandboxDebounceTimeout = setTimeout(updateSandboxTest, 300);
+    };
+
+    // Setup mask validation with cursor info and status messages
+    const performSandboxValidation = setupMaskValidation(
+      sandboxMaskInput,
+      sandboxCursorInfo,
+      sandboxStatusContainer,
+      sandboxMaskDisplay,
+      () => {
+        debouncedUpdateSandboxTest();
+      }
+    );
+
+    sandboxMaskInput?.addEventListener("scroll", () => {
+      sandboxMaskDisplay.scrollTop = sandboxMaskInput.scrollTop;
+      sandboxMaskDisplay.scrollLeft = sandboxMaskInput.scrollLeft;
+    });
+
+    sandboxSampleInput?.addEventListener("input", debouncedUpdateSandboxTest);
+
+    sandboxSetSelect?.addEventListener("change", () => {
+      const value = sandboxSetSelect.value;
+      
+      if (!value || value === "") {
+        currentLoadedSet = "";
+        this.currentSandboxSet = "";
+        updateButtonStates();
+        return;
+      }
+
+      const sets = JSON.parse(
+        localStorage.getItem("ggn-upload-templator-sandbox-sets") || "{}",
+      );
+      const data = sets[value];
+
+      if (data) {
+        sandboxMaskInput.value = data.mask || "";
+        sandboxSampleInput.value = data.samples || "";
+        updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+        updateSandboxTest();
+        currentLoadedSet = value;
+        this.currentSandboxSet = value;
+        localStorage.setItem("ggn-upload-templator-sandbox-current", value);
+        updateButtonStates();
+      }
+    });
+
+    saveBtn?.addEventListener("click", () => {
+      if (currentLoadedSet && currentLoadedSet !== "") {
+        const data = {
+          mask: sandboxMaskInput.value,
+          samples: sandboxSampleInput.value,
+        };
+        
+        this.saveSandboxSet(currentLoadedSet, data);
+        this.showStatus(`Test set "${currentLoadedSet}" updated successfully!`);
+      } else {
+        const name = prompt("Enter a name for this test set:");
+        if (name && name.trim()) {
+          const trimmedName = name.trim();
+          const data = {
+            mask: sandboxMaskInput.value,
+            samples: sandboxSampleInput.value,
+          };
+          
+          this.saveSandboxSet(trimmedName, data);
+          this.currentSandboxSet = trimmedName;
+          currentLoadedSet = trimmedName;
+          localStorage.setItem("ggn-upload-templator-sandbox-current", trimmedName);
+          
+          const existingOption = sandboxSetSelect.querySelector(`option[value="${trimmedName}"]`);
+          if (existingOption) {
+            existingOption.selected = true;
+          } else {
+            const newOption = document.createElement("option");
+            newOption.value = trimmedName;
+            newOption.textContent = trimmedName;
+            sandboxSetSelect.appendChild(newOption);
+            newOption.selected = true;
+          }
+          
+          updateButtonStates();
+          this.showStatus(`Test set "${trimmedName}" saved successfully!`);
+        }
+      }
+    });
+
+    deleteBtn?.addEventListener("click", () => {
+      if (!currentLoadedSet || currentLoadedSet === "") {
+        return;
+      }
+
+      if (confirm(`Delete test set "${currentLoadedSet}"?`)) {
+        this.deleteSandboxSet(currentLoadedSet);
+
+        const option = sandboxSetSelect.querySelector(
+          `option[value="${currentLoadedSet}"]`,
+        );
+        if (option) {
+          option.remove();
+        }
+
+        sandboxSetSelect.value = "";
+        currentLoadedSet = "";
+        this.currentSandboxSet = "";
+        localStorage.setItem("ggn-upload-templator-sandbox-current", "");
+        sandboxMaskInput.value = "";
+        sandboxSampleInput.value = "";
+        sandboxResultsContainer.innerHTML =
+          '<div class="gut-no-variables">Enter a mask and sample torrent names to test.</div>';
+        
+        updateButtonStates();
+        this.showStatus(`Test set deleted successfully!`);
+      }
+    });
+
+    renameBtn?.addEventListener("click", () => {
+      if (!currentLoadedSet || currentLoadedSet === "") {
+        return;
+      }
+
+      const newName = prompt(`Rename test set "${currentLoadedSet}" to:`, currentLoadedSet);
+      if (!newName || !newName.trim() || newName.trim() === currentLoadedSet) {
+        return;
+      }
+
+      const trimmedName = newName.trim();
+
+      if (this.sandboxSets[trimmedName]) {
+        alert(`A test set named "${trimmedName}" already exists.`);
+        return;
+      }
+
+      const data = this.sandboxSets[currentLoadedSet];
+      this.sandboxSets[trimmedName] = data;
+      delete this.sandboxSets[currentLoadedSet];
+      localStorage.setItem(
+        "ggn-upload-templator-sandbox-sets",
+        JSON.stringify(this.sandboxSets),
+      );
+
+      const option = sandboxSetSelect.querySelector(
+        `option[value="${currentLoadedSet}"]`,
+      );
+      if (option) {
+        option.value = trimmedName;
+        option.textContent = trimmedName;
+        option.selected = true;
+      }
+
+      currentLoadedSet = trimmedName;
+      this.currentSandboxSet = trimmedName;
+      localStorage.setItem("ggn-upload-templator-sandbox-current", trimmedName);
+
+      this.showStatus(`Test set renamed to "${trimmedName}" successfully!`);
+    });
+
+    const resetFieldsLink = modal.querySelector("#reset-sandbox-fields");
+    resetFieldsLink?.addEventListener("click", (e) => {
+      e.preventDefault();
+      sandboxMaskInput.value = "";
+      sandboxSampleInput.value = "";
+      sandboxResultsContainer.innerHTML =
+        '<div class="gut-no-variables">Enter a mask and sample names to see match results.</div>';
+      const resultsLabel = modal.querySelector("#sandbox-results-label");
+      if (resultsLabel) {
+        resultsLabel.textContent = "Match Results:";
+      }
+      updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+    });
+
+    // Auto-load the last selected test set on open
+    if (sandboxMaskInput && currentLoadedSet && currentLoadedSet !== "") {
+      const sets = JSON.parse(
+        localStorage.getItem("ggn-upload-templator-sandbox-sets") || "{}",
+      );
+      const data = sets[currentLoadedSet];
+      
+      if (data) {
+        sandboxMaskInput.value = data.mask || "";
+        sandboxSampleInput.value = data.samples || "";
+        updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+        updateSandboxTest();
+      }
+    } else if (sandboxMaskInput) {
+      updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+      if (sandboxMaskInput.value && sandboxSampleInput.value) {
+        updateSandboxTest();
+      }
+    }
 
     // Track recording state to prevent modal closing during recording
     let isRecording = false;
@@ -1120,6 +1407,55 @@ class GGnUploadTemplator {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  saveSandboxSet(name, data) {
+    this.sandboxSets[name] = data;
+    localStorage.setItem(
+      "ggn-upload-templator-sandbox-sets",
+      JSON.stringify(this.sandboxSets),
+    );
+  }
+
+  deleteSandboxSet(name) {
+    delete this.sandboxSets[name];
+    localStorage.setItem(
+      "ggn-upload-templator-sandbox-sets",
+      JSON.stringify(this.sandboxSets),
+    );
+    if (this.currentSandboxSet === name) {
+      this.currentSandboxSet = "";
+      localStorage.setItem("ggn-upload-templator-sandbox-current", "");
+    }
+  }
+
+  showSandboxWithMask(mask, sample) {
+    this.showTemplateAndSettingsManager();
+
+    setTimeout(() => {
+      const modal = document.querySelector(".gut-modal");
+      if (!modal) return;
+
+      const sandboxTabBtn = modal.querySelector('[data-tab="sandbox"]');
+      if (sandboxTabBtn) {
+        sandboxTabBtn.click();
+      }
+
+      setTimeout(() => {
+        const sandboxMaskInput = modal.querySelector("#sandbox-mask-input");
+        const sandboxMaskDisplay = modal.querySelector("#sandbox-mask-display");
+        const sandboxSampleInput = modal.querySelector("#sandbox-sample-input");
+
+        if (sandboxMaskInput && sandboxSampleInput) {
+          sandboxMaskInput.value = mask;
+          sandboxSampleInput.value = sample;
+
+          updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+
+          sandboxMaskInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }, 50);
+    }, 50);
   }
 }
 

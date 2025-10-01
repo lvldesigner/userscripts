@@ -6,9 +6,89 @@ import {
   findMatchingOption,
   validateMaskVariables,
   validateMaskWithDetails,
+  testMaskAgainstSamples,
 } from "../utils/template.js";
-import { updateMaskHighlighting, renderStatusMessages } from "../utils/highlighting.js";
-import { TEMPLATE_CREATOR_HTML, MAIN_UI_HTML, VARIABLES_MODAL_HTML } from "./template.js";
+import {
+  updateMaskHighlighting,
+  renderStatusMessages,
+} from "../utils/highlighting.js";
+import {
+  TEMPLATE_CREATOR_HTML,
+  MAIN_UI_HTML,
+  VARIABLES_MODAL_HTML,
+} from "./template.js";
+
+// Reusable mask validation and cursor info setup
+export function setupMaskValidation(maskInput, cursorInfoElement, statusContainer, overlayElement, onValidationChange = null) {
+  const updateCursorInfo = (validation) => {
+    if (!validation || validation.errors.length === 0) {
+      cursorInfoElement.textContent = "";
+      cursorInfoElement.style.display = "none";
+      return;
+    }
+
+    const firstError = validation.errors[0];
+    const errorPos =
+      firstError.position !== undefined ? firstError.position : null;
+
+    if (errorPos === null) {
+      cursorInfoElement.textContent = "";
+      cursorInfoElement.style.display = "none";
+      return;
+    }
+
+    const pos = maskInput.selectionStart;
+    const maskValue = maskInput.value;
+
+    cursorInfoElement.style.display = "block";
+
+    const errorRangeEnd =
+      firstError.rangeEnd !== undefined ? firstError.rangeEnd : errorPos + 1;
+
+    if (pos >= errorPos && pos < errorRangeEnd) {
+      const charAtError =
+        errorPos < maskValue.length ? maskValue[errorPos] : "";
+      cursorInfoElement.innerHTML = `<span style="color: #f44336;">⚠ Error at position ${errorPos}${charAtError ? ` ('${escapeHtml(charAtError)}')` : " (end)"}</span>`;
+    } else {
+      const charAtPos =
+        pos !== null && pos < maskValue.length ? maskValue[pos] : "";
+      const charAtError =
+        errorPos < maskValue.length ? maskValue[errorPos] : "";
+      cursorInfoElement.innerHTML = `Cursor: ${pos}${charAtPos ? ` ('${escapeHtml(charAtPos)}')` : " (end)"} | <span style="color: #f44336;">Error: ${errorPos}${charAtError ? ` ('${escapeHtml(charAtError)}')` : " (end)"}</span>`;
+    }
+  };
+
+  const performValidation = () => {
+    const validation = validateMaskWithDetails(maskInput.value);
+    updateMaskHighlighting(maskInput, overlayElement);
+    renderStatusMessages(statusContainer, validation);
+    updateCursorInfo(validation);
+    
+    if (onValidationChange) {
+      onValidationChange(validation);
+    }
+    
+    return validation;
+  };
+
+  // Set up event listeners
+  maskInput.addEventListener("input", performValidation);
+  maskInput.addEventListener("click", () => {
+    const validation = validateMaskWithDetails(maskInput.value);
+    updateCursorInfo(validation);
+  });
+  maskInput.addEventListener("keyup", () => {
+    const validation = validateMaskWithDetails(maskInput.value);
+    updateCursorInfo(validation);
+  });
+  maskInput.addEventListener("focus", () => {
+    const validation = validateMaskWithDetails(maskInput.value);
+    updateCursorInfo(validation);
+  });
+
+  // Return the validation function for initial setup
+  return performValidation;
+}
 
 // Create and inject UI elements
 export function injectUI(instance) {
@@ -119,7 +199,9 @@ export async function showTemplateCreator(
       try {
         const torrentData = await TorrentUtils.parseTorrentFile(input.files[0]);
         selectedTorrentName = torrentData.name || "";
-        commentVariables = TorrentUtils.parseCommentVariables(torrentData.comment);
+        commentVariables = TorrentUtils.parseCommentVariables(
+          torrentData.comment,
+        );
         break;
       } catch (error) {
         console.warn("Could not parse selected torrent file:", error);
@@ -224,54 +306,28 @@ export async function showTemplateCreator(
   toggleBtn.addEventListener("click", toggleUnselectedFields);
   filterInput.addEventListener("input", filterFields);
 
-  const updateCursorInfo = (validation) => {
-    if (!validation || validation.errors.length === 0) {
-      cursorInfo.textContent = '';
-      cursorInfo.style.display = 'none';
-      return;
+  // Setup mask validation with cursor info
+  const overlayDiv = modal.querySelector("#mask-highlight-overlay");
+  const statusContainer = modal.querySelector("#mask-status-container");
+  const saveButton = modal.querySelector("#save-template");
+  
+  const performValidation = setupMaskValidation(
+    maskInput,
+    cursorInfo,
+    statusContainer,
+    overlayDiv,
+    (validation) => {
+      saveButton.disabled = !validation.valid;
+      updatePreviews();
     }
-
-    const firstError = validation.errors[0];
-    const errorPos = firstError.position !== undefined ? firstError.position : null;
-    
-    if (errorPos === null) {
-      cursorInfo.textContent = '';
-      cursorInfo.style.display = 'none';
-      return;
-    }
-
-    const pos = maskInput.selectionStart;
-    const maskValue = maskInput.value;
-    
-    cursorInfo.style.display = 'block';
-    
-    const errorRangeEnd = firstError.rangeEnd !== undefined ? firstError.rangeEnd : errorPos + 1;
-    
-    if (pos >= errorPos && pos < errorRangeEnd) {
-      const charAtError = errorPos < maskValue.length ? maskValue[errorPos] : '';
-      cursorInfo.innerHTML = `<span style="color: #f44336;">⚠ Error at position ${errorPos}${charAtError ? ` ('${escapeHtml(charAtError)}')` : ' (end)'}</span>`;
-    } else {
-      const charAtPos = pos !== null && pos < maskValue.length ? maskValue[pos] : '';
-      const charAtError = errorPos < maskValue.length ? maskValue[errorPos] : '';
-      cursorInfo.innerHTML = `Cursor: ${pos}${charAtPos ? ` ('${escapeHtml(charAtPos)}')` : ' (end)'} | <span style="color: #f44336;">Error: ${errorPos}${charAtError ? ` ('${escapeHtml(charAtError)}')` : ' (end)'}</span>`;
-    }
-  };
+  );
 
   const updatePreviews = () => {
     const mask = maskInput.value;
     const sample = sampleInput.value;
-    const saveButton = modal.querySelector("#save-template");
-    
+
     const validation = validateMaskWithDetails(mask);
-    const statusContainer = modal.querySelector("#mask-status-container");
-    const overlayDiv = modal.querySelector("#mask-highlight-overlay");
-    
-    updateMaskHighlighting(maskInput, overlayDiv);
-    renderStatusMessages(statusContainer, validation);
-    updateCursorInfo(validation);
-    
-    saveButton.disabled = !validation.valid;
-    
+
     const parseResult = parseTemplateWithOptionals(mask, sample);
     const maskExtracted = { ...parseResult };
     delete maskExtracted._matchedOptionals;
@@ -281,8 +337,10 @@ export async function showTemplateCreator(
 
     const extractedVarsContainer = modal.querySelector("#extracted-variables");
     if (Object.keys(allVariables).length === 0) {
-      const hasMaskVariables = validation.variables.valid.length > 0 || validation.variables.reserved.length > 0;
-      
+      const hasMaskVariables =
+        validation.variables.valid.length > 0 ||
+        validation.variables.reserved.length > 0;
+
       if (hasMaskVariables) {
         extractedVarsContainer.innerHTML =
           '<div class="gut-no-variables">Select a torrent file or provide a sample torrent name to extract variables.</div>';
@@ -302,12 +360,13 @@ export async function showTemplateCreator(
         )
         .join("");
     }
-    
+
     if (parseResult._matchedOptionals && parseResult._optionalCount) {
-      const matchCount = parseResult._matchedOptionals.filter(x => x).length;
-      const optionalInfo = document.createElement('div');
-      optionalInfo.className = 'gut-variable-item';
-      optionalInfo.style.cssText = 'background: #2a4a3a; border-left: 3px solid #4caf50;';
+      const matchCount = parseResult._matchedOptionals.filter((x) => x).length;
+      const optionalInfo = document.createElement("div");
+      optionalInfo.className = "gut-variable-item";
+      optionalInfo.style.cssText =
+        "background: #2a4a3a; border-left: 3px solid #4caf50;";
       optionalInfo.innerHTML = `
         <span class="gut-variable-name" style="color: #4caf50;">Optional blocks</span>
         <span class="gut-variable-value">Matched ${matchCount}/${parseResult._optionalCount}</span>
@@ -399,19 +458,8 @@ export async function showTemplateCreator(
     }
   });
 
-  maskInput.addEventListener('click', () => {
-    const validation = validateMaskWithDetails(maskInput.value);
-    updateCursorInfo(validation);
-  });
-  maskInput.addEventListener('keyup', () => {
-    const validation = validateMaskWithDetails(maskInput.value);
-    updateCursorInfo(validation);
-  });
-  maskInput.addEventListener('focus', () => {
-    const validation = validateMaskWithDetails(maskInput.value);
-    updateCursorInfo(validation);
-  });
-
+  // Initial validation and preview
+  performValidation();
   updatePreviews();
 
   // Update visibility when checkboxes change
@@ -496,6 +544,18 @@ export async function showTemplateCreator(
       instance.showTemplateAndSettingsManager();
     });
   }
+
+  // Test mask in sandbox link
+  const sandboxLink = modal.querySelector("#test-mask-sandbox-link");
+  if (sandboxLink) {
+    sandboxLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      const mask = maskInput.value;
+      const sample = sampleInput.value;
+      document.body.removeChild(modal);
+      instance.showSandboxWithMask(mask, sample);
+    });
+  }
 }
 
 export function showVariablesModal(instance, variables) {
@@ -505,9 +565,11 @@ export function showVariablesModal(instance, variables) {
 
   document.body.appendChild(modal);
 
-  modal.querySelector("#close-variables-modal").addEventListener("click", () => {
-    document.body.removeChild(modal);
-  });
+  modal
+    .querySelector("#close-variables-modal")
+    .addEventListener("click", () => {
+      document.body.removeChild(modal);
+    });
 
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
@@ -524,8 +586,123 @@ export function showVariablesModal(instance, variables) {
   document.addEventListener("keydown", handleEscKey);
 }
 
-function escapeHtml(text) {
+export function escapeHtml(text) {
   const div = document.createElement("div");
   div.textContent = text;
   return div.innerHTML;
+}
+
+export function renderSandboxResults(modal, testResults) {
+  const resultsContainer = modal.querySelector("#sandbox-results");
+  const resultsLabel = modal.querySelector("#sandbox-results-label");
+
+  if (!resultsContainer || !testResults || testResults.results.length === 0) {
+    resultsContainer.innerHTML =
+      '<div class="gut-no-variables">Enter a mask and sample names to see match results.</div>';
+    resultsLabel.textContent = "Match Results:";
+    return;
+  }
+
+  const matchCount = testResults.results.filter((r) => r.matched).length;
+  const totalCount = testResults.results.length;
+  resultsLabel.textContent = `Match Results (${matchCount}/${totalCount} matched):`;
+
+  const html = testResults.results
+    .map((result, resultIndex) => {
+      const isMatch = result.matched;
+      const icon = isMatch ? "✓" : "✗";
+      const className = isMatch ? "gut-sandbox-match" : "gut-sandbox-no-match";
+
+      let variablesHtml = "";
+      if (isMatch && Object.keys(result.variables).length > 0) {
+        variablesHtml =
+          '<div class="gut-sandbox-variables" style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px;">' +
+          Object.entries(result.variables)
+            .map(
+              ([key, value]) =>
+                `<div class="gut-variable-item" style="margin: 0; flex: 0 0 auto; cursor: pointer;" data-result-index="${resultIndex}" data-var-name="${escapeHtml(key)}">
+            <span class="gut-variable-name">\${${escapeHtml(key)}}</span><span style="display: inline-block; color: #898989; margin: 0 8px;"> = </span><span class="gut-variable-value">${value ? escapeHtml(value) : "(empty)"}</span>
+          </div>`,
+            )
+            .join("") +
+          "</div>";
+
+        if (result.optionalInfo) {
+          variablesHtml += `<div style="margin-top: 8px; font-size: 11px; color: #4caf50;">
+          Optional blocks: ${result.optionalInfo.matched}/${result.optionalInfo.total} matched
+        </div>`;
+        }
+      }
+
+      return `
+      <div class="${className}" style="margin-bottom: 12px; padding: 8px; background: #1e1e1e; border-left: 3px solid ${isMatch ? "#4caf50" : "#f44336"}; border-radius: 4px;" data-result-index="${resultIndex}">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px; color: ${isMatch ? "#4caf50" : "#f44336"};">${icon}</span>
+          <span class="gut-sandbox-sample-name" style="flex: 1; font-family: 'Fira Code', monospace; font-size: 13px;" data-result-index="${resultIndex}">${escapeHtml(result.name)}</span>
+        </div>
+        ${variablesHtml}
+      </div>
+    `;
+    })
+    .join("");
+
+  resultsContainer.innerHTML = html;
+  
+  resultsContainer._testResults = testResults;
+
+  if (!resultsContainer._hasEventListeners) {
+    resultsContainer.addEventListener(
+      "mouseenter",
+      (e) => {
+        if (e.target.classList.contains("gut-variable-item")) {
+          const resultIndex = parseInt(e.target.dataset.resultIndex);
+          const varName = e.target.dataset.varName;
+          const currentResults = resultsContainer._testResults;
+          
+          if (!currentResults || !currentResults.results[resultIndex]) {
+            return;
+          }
+          
+          const result = currentResults.results[resultIndex];
+
+          if (result.positions && result.positions[varName]) {
+            const sampleNameEl = resultsContainer.querySelector(
+              `.gut-sandbox-sample-name[data-result-index="${resultIndex}"]`,
+            );
+            const pos = result.positions[varName];
+            const name = result.name;
+            const before = escapeHtml(name.substring(0, pos.start));
+            const highlight = escapeHtml(name.substring(pos.start, pos.end));
+            const after = escapeHtml(name.substring(pos.end));
+
+            sampleNameEl.innerHTML = `${before}<span style="background: #bb86fc; color: #000; padding: 2px 4px; border-radius: 2px;">${highlight}</span>${after}`;
+          }
+        }
+      },
+      true,
+    );
+
+    resultsContainer.addEventListener(
+      "mouseleave",
+      (e) => {
+        if (e.target.classList.contains("gut-variable-item")) {
+          const resultIndex = parseInt(e.target.dataset.resultIndex);
+          const currentResults = resultsContainer._testResults;
+          
+          if (!currentResults || !currentResults.results[resultIndex]) {
+            return;
+          }
+          
+          const result = currentResults.results[resultIndex];
+          const sampleNameEl = resultsContainer.querySelector(
+            `.gut-sandbox-sample-name[data-result-index="${resultIndex}"]`,
+          );
+          sampleNameEl.textContent = result.name;
+        }
+      },
+      true,
+    );
+    
+    resultsContainer._hasEventListeners = true;
+  }
 }

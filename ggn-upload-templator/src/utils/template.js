@@ -389,3 +389,49 @@ export function parseTemplateWithOptionals(mask, torrentName) {
     throw e;
   }
 }
+
+export function testMaskAgainstSamples(mask, sampleNames) {
+  const validation = validateMaskWithDetails(mask);
+  const sampleArray = Array.isArray(sampleNames) ? sampleNames : 
+    sampleNames.split('\n').map(s => s.trim()).filter(s => s);
+  
+  return {
+    validation,
+    results: sampleArray.map(name => {
+      try {
+        const parsed = parseTemplateWithOptionals(mask, name);
+        const { _matchedOptionals, _optionalCount, ...variables } = parsed;
+        const matched = Object.keys(variables).length > 0;
+        
+        const positions = {};
+        if (matched) {
+          for (const [varName, value] of Object.entries(variables)) {
+            const index = name.indexOf(value);
+            if (index !== -1) {
+              positions[varName] = { start: index, end: index + value.length };
+            }
+          }
+        }
+        
+        return {
+          name,
+          matched,
+          variables,
+          positions,
+          optionalInfo: _matchedOptionals ? {
+            matched: _matchedOptionals.filter(x => x).length,
+            total: _optionalCount
+          } : null
+        };
+      } catch (e) {
+        return {
+          name,
+          matched: false,
+          variables: {},
+          positions: {},
+          error: e.message
+        };
+      }
+    })
+  };
+}
