@@ -8,6 +8,12 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.9
+
+![](https://files.catbox.moe/g4mclk.png)
+
+- Add Mask Sandbox for testing masks against multiple sample names
+
 ### v0.8
 
 ![](https://files.catbox.moe/7xkrsw.png)
