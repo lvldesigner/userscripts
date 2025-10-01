@@ -4,6 +4,7 @@ export const MODAL_HTML = (instance) => `
     <div class="gut-modal-tabs">
       <button class="gut-tab-btn active" data-tab="templates">Templates</button>
       <button class="gut-tab-btn" data-tab="settings">Settings</button>
+      <button class="gut-tab-btn" data-tab="hints">Variable Hints</button>
       <button class="gut-tab-btn" data-tab="sandbox">Mask Sandbox</button>
     </div>
 
@@ -88,6 +89,8 @@ export const MODAL_HTML = (instance) => `
         </div>
       </div>
     </div>
+
+    ${HINTS_TAB_HTML(instance)}
 
     ${SANDBOX_TAB_HTML(instance)}
 
@@ -326,6 +329,72 @@ export const TEMPLATE_CREATOR_HTML = (
     </div>
   </div>
 `;
+
+export const HINTS_TAB_HTML = (instance) => {
+  const hints = instance.hints || {};
+  
+  const isDefaultHint = (name) => {
+    const defaultHints = ['number', 'alpha', 'alnum', 'version', 'date_dots', 'date_dashes', 'lang_codes', 'resolution'];
+    return defaultHints.includes(name);
+  };
+  
+  const renderHintRow = (name, hint, isDefault) => `
+    <div class="gut-hint-item" data-hint="${instance.escapeHtml(name)}">
+      <div class="gut-hint-header">
+        <span class="gut-hint-name">${instance.escapeHtml(name)}${isDefault ? ' <span style="font-size: 10px; color: #666;">(default)</span>' : ''}</span>
+        <span class="gut-hint-type-badge">${hint.type}</span>
+      </div>
+      <div class="gut-hint-description">${instance.escapeHtml(hint.description || '')}</div>
+      ${hint.type === 'pattern' ? `<div class="gut-hint-pattern">Pattern: <code>${instance.escapeHtml(hint.pattern)}</code></div>` : ''}
+      ${hint.type === 'map' ? `<div class="gut-hint-mappings">${Object.keys(hint.mappings || {}).length} mappings${hint.strict === false ? ' (non-strict)' : ''}</div>` : ''}
+      <div class="gut-hint-actions">
+        ${isDefault ? '' : '<button class="gut-btn gut-btn-danger gut-btn-small" data-action="delete-hint">Delete</button>'}
+        ${hint.type === 'map' ? '<button class="gut-btn gut-btn-secondary gut-btn-small" data-action="view-mappings">View Mappings</button>' : ''}
+      </div>
+    </div>
+  `;
+  
+  const defaultHintRows = Object.entries(hints)
+    .filter(([name]) => isDefaultHint(name))
+    .map(([name, hint]) => renderHintRow(name, hint, true))
+    .join('');
+  
+  const customHintRows = Object.entries(hints)
+    .filter(([name]) => !isDefaultHint(name))
+    .map(([name, hint]) => renderHintRow(name, hint, false))
+    .join('');
+  
+  return `
+    <div class="gut-tab-content" id="hints-tab">
+      <div class="gut-form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <label style="margin: 0;">Variable Hints</label>
+          <button class="gut-btn gut-btn-primary gut-btn-small" id="add-hint-btn">+ Add Custom Hint</button>
+        </div>
+        <div style="font-size: 12px; color: #888; margin-bottom: 15px;">
+          Use hints in your mask to constrain what variables match. Syntax: <code>\${varname:hint}</code>
+          <br>Examples: <code>\${version:v*}</code>, <code>\${date:####-##-##}</code>, <code>\${lang:lang_codes}</code>
+        </div>
+      </div>
+      
+      <div class="gut-form-group">
+        <label>Default Hints</label>
+        <div class="gut-hints-list">
+          ${defaultHintRows}
+        </div>
+      </div>
+      
+      ${customHintRows ? `
+        <div class="gut-form-group">
+          <label>Custom Hints</label>
+          <div class="gut-hints-list">
+            ${customHintRows}
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+};
 
 export const SANDBOX_TAB_HTML = (instance) => {
   const savedSets = instance.sandboxSets || {};

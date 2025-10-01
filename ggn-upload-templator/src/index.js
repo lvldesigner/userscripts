@@ -37,6 +37,7 @@ import {
   showTemplateAndSettingsManager,
   showSandboxWithMask,
 } from "./modal-manager.js";
+import { loadHints, saveHints } from "./hint-storage.js";
 import style from "./style.css?raw";
 
 const firaCodeFont = `
@@ -57,12 +58,14 @@ class GGnUploadTemplator {
     };
     this.sandboxSets = loadSandboxSets();
     this.currentSandboxSet = loadCurrentSandboxSet();
+    this.hints = loadHints();
 
     logDebug("Initialized core state", {
       templates: Object.keys(this.templates),
       selectedTemplate: this.selectedTemplate,
       hideUnselectedFields: this.hideUnselectedFields,
       config: this.config,
+      hints: Object.keys(this.hints),
     });
     this.init();
   }
@@ -160,6 +163,15 @@ class GGnUploadTemplator {
 
   showSandboxWithMask(mask, sample) {
     showSandboxWithMask(this, mask, sample);
+  }
+
+  saveHints(hints) {
+    this.hints = hints;
+    return saveHints(hints);
+  }
+
+  getHints() {
+    return this.hints;
   }
 
   showStatus(message, type = "success") {

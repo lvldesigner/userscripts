@@ -1,36 +1,190 @@
+export function parseVariableWithHint(varString) {
+  const colonIndex = varString.indexOf(':');
+  if (colonIndex === -1) {
+    return { varName: varString, hint: null };
+  }
+  return {
+    varName: varString.substring(0, colonIndex),
+    hint: varString.substring(colonIndex + 1)
+  };
+}
+
+export function parseHint(hintString, availableHints = {}) {
+  if (!hintString) {
+    return { type: 'none', data: null };
+  }
+
+  if (hintString.startsWith('/')) {
+    const regexPattern = hintString.slice(1).replace(/\/$/, '');
+    return { type: 'regex', data: regexPattern };
+  }
+
+  if (/[*#@?]/.test(hintString)) {
+    return { type: 'pattern', data: hintString };
+  }
+
+  const namedHint = availableHints[hintString];
+  if (namedHint) {
+    return { type: namedHint.type, data: namedHint };
+  }
+
+  return { type: 'unknown', data: hintString };
+}
+
+export function compileHintToRegex(hint, availableHints = {}) {
+  const parsed = parseHint(hint, availableHints);
+  
+  switch (parsed.type) {
+    case 'regex':
+      return typeof parsed.data === 'string' ? parsed.data : parsed.data.pattern;
+    
+    case 'pattern':
+      const patternStr = typeof parsed.data === 'string' ? parsed.data : parsed.data.pattern;
+      return compileSimplePattern(patternStr);
+    
+    case 'map':
+      const mappings = typeof parsed.data === 'object' && parsed.data.mappings 
+        ? parsed.data.mappings 
+        : parsed.data;
+      const keys = Object.keys(mappings || {});
+      if (keys.length === 0) return '.+';
+      const escapedKeys = keys.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      return `(?:${escapedKeys.join('|')})`;
+    
+    case 'unknown':
+    case 'none':
+    default:
+      return null;
+  }
+}
+
+function compileSimplePattern(pattern) {
+  let regex = '';
+  let i = 0;
+  
+  while (i < pattern.length) {
+    const char = pattern[i];
+    const nextChar = pattern[i + 1];
+    
+    if (char === '*') {
+      regex += '.*?';
+      i++;
+    } else if (char === '#') {
+      if (nextChar === '+') {
+        regex += '\\d+';
+        i += 2;
+      } else {
+        let count = 1;
+        while (pattern[i + count] === '#') {
+          count++;
+        }
+        if (count > 1) {
+          regex += `\\d{${count}}`;
+          i += count;
+        } else {
+          regex += '\\d';
+          i++;
+        }
+      }
+    } else if (char === '@') {
+      if (nextChar === '+') {
+        regex += '[a-zA-Z]+';
+        i += 2;
+      } else {
+        let count = 1;
+        while (pattern[i + count] === '@') {
+          count++;
+        }
+        if (count > 1) {
+          regex += `[a-zA-Z]{${count}}`;
+          i += count;
+        } else {
+          regex += '[a-zA-Z]';
+          i++;
+        }
+      }
+    } else if (char === '?') {
+      regex += '.';
+      i++;
+    } else {
+      regex += char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      i++;
+    }
+  }
+  
+  return regex;
+}
+
+export function applyValueMap(variables, mask, availableHints = {}) {
+  const mapped = {};
+  const varPattern = /\$\{([^}]+)\}/g;
+  let match;
+  
+  while ((match = varPattern.exec(mask)) !== null) {
+    const { varName, hint } = parseVariableWithHint(match[1]);
+    
+    if (hint && variables[varName] !== undefined) {
+      const parsed = parseHint(hint, availableHints);
+      
+      if (parsed.type === 'map' && parsed.data.mappings) {
+        const mappedValue = parsed.data.mappings[variables[varName]];
+        if (mappedValue !== undefined) {
+          mapped[varName] = mappedValue;
+        } else if (parsed.data.strict === false) {
+          mapped[varName] = variables[varName];
+        }
+      } else {
+        mapped[varName] = variables[varName];
+      }
+    } else if (variables[varName] !== undefined) {
+      mapped[varName] = variables[varName];
+    }
+  }
+  
+  return mapped;
+}
+
 // Parse torrent name using template mask
-export function parseTemplate(mask, torrentName, greedyMatching = true) {
+export function parseTemplate(mask, torrentName, greedyMatching = true, availableHints = {}) {
   if (!mask || !torrentName) return {};
 
-  // Convert template mask to regex with named groups
-  // Support ${var_name} syntax with escaping for literal $, {, }
+  const variablePlaceholders = [];
+  let placeholderIndex = 0;
+  
   let regexPattern = mask
-    // First, temporarily replace escaped characters with placeholders
     .replace(/\\\$/g, "___ESCAPED_DOLLAR___")
     .replace(/\\\{/g, "___ESCAPED_LBRACE___")
     .replace(/\\\}/g, "___ESCAPED_RBRACE___")
     .replace(/\\\\/g, "___ESCAPED_BACKSLASH___")
-    // Escape all regex special characters
-    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-    // Convert ${field} to named groups
-    // Use greedy or non-greedy based on the greedyMatching parameter
-    .replace(/\\\$\\\{([^}]+)\\\}/g, (match, varName, offset, string) => {
-      if (greedyMatching) {
-        // When greedy matching is enabled, use greedy quantifiers for all variables
-        return `(?<${varName}>.+)`;
-      } else {
-        // Default behavior: non-greedy for variables with more variables after them, greedy for the last
-        const remainingString = string.slice(offset + match.length);
-        const hasMoreVariables = /\\\$\\\{[^}]+\\\}/.test(remainingString);
+    .replace(/\$\{([^}]+)\}/g, (match, varString) => {
+      const placeholder = `___VAR_PLACEHOLDER_${placeholderIndex}___`;
+      variablePlaceholders.push({ placeholder, varString, match });
+      placeholderIndex++;
+      return placeholder;
+    });
 
-        if (hasMoreVariables) {
-          return `(?<${varName}>.*?)`; // Non-greedy for variables with more variables after them
-        } else {
-          return `(?<${varName}>.+)`; // Greedy for the last variable (requires at least 1 char)
-        }
-      }
-    })
-    // Restore escaped characters as literal matches
+  regexPattern = regexPattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  for (let i = 0; i < variablePlaceholders.length; i++) {
+    const { placeholder, varString, match } = variablePlaceholders[i];
+    const { varName, hint } = parseVariableWithHint(varString);
+    
+    const hintPattern = hint ? compileHintToRegex(hint, availableHints) : null;
+    
+    let captureGroup;
+    if (hintPattern) {
+      captureGroup = `(?<${varName}>${hintPattern})`;
+    } else if (greedyMatching) {
+      captureGroup = `(?<${varName}>.+)`;
+    } else {
+      const isLastVariable = i === variablePlaceholders.length - 1;
+      captureGroup = isLastVariable ? `(?<${varName}>.+)` : `(?<${varName}>.*?)`;
+    }
+    
+    regexPattern = regexPattern.replace(placeholder.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), captureGroup);
+  }
+
+  regexPattern = regexPattern
     .replace(/___ESCAPED_DOLLAR___/g, "\\$")
     .replace(/___ESCAPED_LBRACE___/g, "\\{")
     .replace(/___ESCAPED_RBRACE___/g, "\\}")
@@ -39,7 +193,9 @@ export function parseTemplate(mask, torrentName, greedyMatching = true) {
   try {
     const regex = new RegExp(regexPattern, "i");
     const match = torrentName.match(regex);
-    return match?.groups || {};
+    const extracted = match?.groups || {};
+    
+    return applyValueMap(extracted, mask, availableHints);
   } catch (e) {
     console.warn("Invalid template regex:", e);
     return {};
@@ -54,7 +210,7 @@ export function validateMaskVariables(mask) {
   let match;
   
   while ((match = varPattern.exec(mask)) !== null) {
-    const varName = match[1];
+    const { varName } = parseVariableWithHint(match[1]);
     if (varName.startsWith('_')) {
       invalidVars.push(varName);
     }
@@ -66,7 +222,7 @@ export function validateMaskVariables(mask) {
   };
 }
 
-export function validateMaskWithDetails(mask) {
+export function validateMaskWithDetails(mask, availableHints = {}) {
   if (!mask) {
     return {
       valid: true,
@@ -127,11 +283,12 @@ export function validateMaskWithDetails(mask) {
   const varPositions = new Map();
   
   while ((match = varPattern.exec(mask)) !== null) {
-    const varName = match[1].trim();
+    const fullVarString = match[1];
+    const { varName, hint } = parseVariableWithHint(fullVarString);
     const position = match.index;
 
-    if (varName !== match[1]) {
-      warnings.push({ type: 'warning', message: `Variable "\${${match[1]}}" has leading or trailing whitespace`, position });
+    if (fullVarString !== fullVarString.trim()) {
+      warnings.push({ type: 'warning', message: `Variable "\${${fullVarString}}" has leading or trailing whitespace`, position });
     }
 
     if (!/^[a-zA-Z0-9_]+$/.test(varName)) {
@@ -145,6 +302,19 @@ export function validateMaskWithDetails(mask) {
       reservedVars.push(varName);
       warnings.push({ type: 'warning', message: `Variable "\${${varName}}" uses reserved prefix "_" (reserved for comment variables)`, position });
       continue;
+    }
+
+    if (hint) {
+      const parsed = parseHint(hint, availableHints);
+      if (parsed.type === 'unknown') {
+        warnings.push({ type: 'warning', message: `Unknown hint "${hint}" for variable "\${${varName}}" - will be treated as literal pattern`, position });
+      } else if (parsed.type === 'regex') {
+        try {
+          new RegExp(parsed.data);
+        } catch (e) {
+          errors.push({ type: 'error', message: `Invalid regex pattern in hint for "\${${varName}}": ${e.message}`, position, rangeEnd: position + match[0].length });
+        }
+      }
     }
 
     if (/^\d/.test(varName)) {
@@ -361,37 +531,127 @@ export function parseMaskStructure(mask) {
   return { parts, optionalCount };
 }
 
-export function parseTemplateWithOptionals(mask, torrentName) {
+function valueMatchesHint(value, hint, availableHints) {
+  const regexPattern = compileHintToRegex(hint, availableHints);
+  
+  if (regexPattern) {
+    try {
+      const regex = new RegExp(`^${regexPattern}$`);
+      return regex.test(value);
+    } catch {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+function scoreMatch(extracted, maskVariant, combo, availableHints) {
+  let hintMatches = 0;
+  let hintViolations = 0;
+  let totalMatches = 0;
+  const varPattern = /\$\{([^}]+)\}/g;
+  let match;
+  
+  while ((match = varPattern.exec(maskVariant)) !== null) {
+    const { varName, hint } = parseVariableWithHint(match[1]);
+    
+    if (extracted[varName] !== undefined && extracted[varName] !== '') {
+      totalMatches++;
+      
+      const hintFromMask = hint;
+      const hintFromAvailable = availableHints[varName];
+      
+      let shouldCheckHint = false;
+      let regexToTest = null;
+      
+      if (hintFromMask) {
+        shouldCheckHint = true;
+        const regexPattern = compileHintToRegex(hintFromMask, availableHints);
+        if (regexPattern) {
+          regexToTest = new RegExp(`^${regexPattern}$`);
+        }
+      } else if (hintFromAvailable) {
+        shouldCheckHint = true;
+        
+        if (typeof hintFromAvailable === 'string') {
+          const regexPattern = compileHintToRegex(hintFromAvailable, availableHints);
+          if (regexPattern) {
+            regexToTest = new RegExp(`^${regexPattern}$`);
+          }
+        } else if (hintFromAvailable instanceof RegExp) {
+          regexToTest = hintFromAvailable;
+        } else if (typeof hintFromAvailable === 'object' && hintFromAvailable.pattern) {
+          const regexPattern = compileHintToRegex(hintFromAvailable.pattern, availableHints);
+          if (regexPattern) {
+            regexToTest = new RegExp(`^${regexPattern}$`);
+          }
+        }
+      }
+      
+      if (shouldCheckHint && regexToTest) {
+        try {
+          if (regexToTest.test(extracted[varName])) {
+            hintMatches++;
+          } else {
+            hintViolations++;
+          }
+        } catch {
+          
+        }
+      }
+    }
+  }
+  
+  const optionalCount = combo.filter(x => x).length;
+  
+  const positionScore = combo.reduce((acc, isPresent, idx) => {
+    return acc + (isPresent ? (1 / Math.pow(1000, idx + 1)) : 0);
+  }, 0);
+  
+  const score = (hintMatches * 100) - (hintViolations * 100) + (optionalCount * 10) + totalMatches + positionScore;
+  
+  return score;
+}
+
+export function parseTemplateWithOptionals(mask, torrentName, availableHints = {}) {
   try {
     const parsed = parseMaskStructure(mask);
     
     if (parsed.optionalCount === 0) {
-      return parseTemplate(mask, torrentName);
+      return parseTemplate(mask, torrentName, true, availableHints);
     }
     
     const combinations = generateCombinationsDescending(parsed.optionalCount);
+    let bestMatch = null;
+    let bestScore = -1;
     
     for (const combo of combinations) {
       const maskVariant = buildMaskFromCombination(parsed.parts, combo);
-      const extracted = parseTemplate(maskVariant, torrentName);
+      const extracted = parseTemplate(maskVariant, torrentName, true, availableHints);
       
       if (Object.keys(extracted).length > 0) {
-        return {
-          ...extracted,
-          _matchedOptionals: combo,
-          _optionalCount: parsed.optionalCount
-        };
+        const score = scoreMatch(extracted, maskVariant, combo, availableHints);
+        
+        if (score > bestScore) {
+          bestScore = score;
+          bestMatch = {
+            ...extracted,
+            _matchedOptionals: combo,
+            _optionalCount: parsed.optionalCount
+          };
+        }
       }
     }
     
-    return {};
+    return bestMatch || {};
   } catch (e) {
     throw e;
   }
 }
 
-export function testMaskAgainstSamples(mask, sampleNames) {
-  const validation = validateMaskWithDetails(mask);
+export function testMaskAgainstSamples(mask, sampleNames, availableHints = {}) {
+  const validation = validateMaskWithDetails(mask, availableHints);
   const sampleArray = Array.isArray(sampleNames) ? sampleNames : 
     sampleNames.split('\n').map(s => s.trim()).filter(s => s);
   
@@ -399,7 +659,7 @@ export function testMaskAgainstSamples(mask, sampleNames) {
     validation,
     results: sampleArray.map(name => {
       try {
-        const parsed = parseTemplateWithOptionals(mask, name);
+        const parsed = parseTemplateWithOptionals(mask, name, availableHints);
         const { _matchedOptionals, _optionalCount, ...variables } = parsed;
         const matched = Object.keys(variables).length > 0;
         

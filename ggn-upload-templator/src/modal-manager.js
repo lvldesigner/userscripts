@@ -242,7 +242,7 @@ export function showTemplateAndSettingsManager(instance) {
       return;
     }
 
-    const result = testMaskAgainstSamples(mask, samples);
+    const result = testMaskAgainstSamples(mask, samples, instance.hints);
     renderSandboxResults(modal, result);
   };
 
@@ -260,7 +260,8 @@ export function showTemplateAndSettingsManager(instance) {
     sandboxMaskDisplay,
     () => {
       debouncedUpdateSandboxTest();
-    }
+    },
+    instance.hints
   );
 
   sandboxMaskInput?.addEventListener("scroll", () => {
@@ -529,6 +530,81 @@ export function showTemplateAndSettingsManager(instance) {
       }
     }
   });
+
+  modal.querySelectorAll('[data-action="delete-hint"]').forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const hintItem = e.target.closest(".gut-hint-item");
+      const hintName = hintItem?.dataset.hint;
+      if (hintName && confirm(`Delete hint "${hintName}"?`)) {
+        const { saveHints } = require("./hint-storage.js");
+        delete instance.hints[hintName];
+        saveHints(instance.hints);
+        hintItem.remove();
+      }
+    });
+  });
+
+  modal.querySelectorAll('[data-action="view-mappings"]').forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const hintItem = e.target.closest(".gut-hint-item");
+      const hintName = hintItem?.dataset.hint;
+      if (hintName && instance.hints[hintName]?.mappings) {
+        const mappings = instance.hints[hintName].mappings;
+        const mappingText = Object.entries(mappings)
+          .map(([key, value]) => `${key} → ${value}`)
+          .join('\n');
+        alert(`Mappings for "${hintName}":\n\n${mappingText}`);
+      }
+    });
+  });
+
+  const addHintBtn = modal.querySelector("#add-hint-btn");
+  if (addHintBtn) {
+    addHintBtn.addEventListener("click", () => {
+      const name = prompt("Enter hint name (e.g., 'my_hint'):");
+      if (!name || !/^[a-zA-Z0-9_]+$/.test(name)) {
+        alert("Invalid hint name. Use only letters, numbers, and underscores.");
+        return;
+      }
+      if (instance.hints[name]) {
+        alert(`Hint "${name}" already exists.`);
+        return;
+      }
+      
+      const type = prompt("Enter hint type:\n1. pattern (e.g., v*)\n2. regex (e.g., /v\\d+/)\n3. map (key-value mappings)\n\nEnter 1, 2, or 3:");
+      
+      let hintDef;
+      if (type === '1') {
+        const pattern = prompt("Enter pattern (use *, #, @, ?):");
+        if (!pattern) return;
+        hintDef = { type: 'pattern', pattern, description: prompt("Description (optional):") || '' };
+      } else if (type === '2') {
+        const regex = prompt("Enter regex pattern (without slashes):");
+        if (!regex) return;
+        try {
+          new RegExp(regex);
+          hintDef = { type: 'regex', pattern: regex, description: prompt("Description (optional):") || '' };
+        } catch (e) {
+          alert(`Invalid regex: ${e.message}`);
+          return;
+        }
+      } else if (type === '3') {
+        alert("Map hints must be created by editing the config directly for now.");
+        return;
+      } else {
+        alert("Invalid type selection.");
+        return;
+      }
+      
+      const { saveHints } = require("./hint-storage.js");
+      instance.hints[name] = hintDef;
+      saveHints(instance.hints);
+      
+      document.body.removeChild(modal);
+      showTemplateAndSettingsManager(instance);
+      modal.querySelector('[data-tab="hints"]')?.click();
+    });
+  }
 
   modal.querySelector("#close-manager").addEventListener("click", () => {
     document.body.removeChild(modal);

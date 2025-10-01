@@ -851,3 +851,69 @@
     font-size: 11px;
     color: #b39ddb;
 }
+
+.gut-hints-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.gut-hint-item {
+    background: #2a2a2a;
+    border: 1px solid #404040;
+    border-radius: 4px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.gut-hint-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.gut-hint-name {
+    font-weight: 500;
+    color: #64b5f6;
+    font-family: "Fira Code", monospace;
+}
+
+.gut-hint-type-badge {
+    font-size: 10px;
+    padding: 2px 6px;
+    background: #404040;
+    border-radius: 3px;
+    color: #b0b0b0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.gut-hint-description {
+    font-size: 12px;
+    color: #b0b0b0;
+}
+
+.gut-hint-pattern {
+    font-size: 11px;
+    color: #a5d6a7;
+    font-family: "Fira Code", monospace;
+}
+
+.gut-hint-pattern code {
+    background: #1a1a1a;
+    padding: 2px 6px;
+    border-radius: 3px;
+}
+
+.gut-hint-mappings {
+    font-size: 11px;
+    color: #b39ddb;
+}
+
+.gut-hint-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+}

@@ -34,6 +34,7 @@ export async function getCurrentVariables(instance) {
             const parseResult = parseTemplateWithOptionals(
               template.mask,
               torrentData.name,
+              instance.hints,
             );
             const { _matchedOptionals, _optionalCount, ...extracted } =
               parseResult;
@@ -91,7 +92,7 @@ export function applyTemplate(
   const template = instance.templates[templateName];
   if (!template) return;
 
-  const extracted = parseTemplateWithOptionals(template.mask, torrentName);
+  const extracted = parseTemplateWithOptionals(template.mask, torrentName, instance.hints);
   let appliedCount = 0;
 
   Object.entries(template.fieldMappings).forEach(

@@ -64,7 +64,7 @@ function buildLayeredHighlighting(text, optionalBlocks, varMatches, nestedOption
       const fullMatch = segment.varMatch.match[0];
       const isUnclosed = !fullMatch.endsWith('}');
       const isEmpty = varName.trim() === '';
-      const isInvalid = varName && !/^[a-zA-Z0-9_]+$/.test(varName.trim());
+      const isInvalid = varName && !/^[a-zA-Z0-9_]+(?::[^}]+)?$/.test(varName.trim());
       const isReserved = varName.trim().startsWith('_');
 
       let varClass = 'gut-highlight-variable';

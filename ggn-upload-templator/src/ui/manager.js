@@ -19,7 +19,7 @@ import {
 } from "./template.js";
 
 // Reusable mask validation and cursor info setup
-export function setupMaskValidation(maskInput, cursorInfoElement, statusContainer, overlayElement, onValidationChange = null) {
+export function setupMaskValidation(maskInput, cursorInfoElement, statusContainer, overlayElement, onValidationChange = null, availableHints = {}) {
   const updateCursorInfo = (validation) => {
     if (!validation || validation.errors.length === 0) {
       cursorInfoElement.textContent = "";
@@ -59,7 +59,7 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
   };
 
   const performValidation = () => {
-    const validation = validateMaskWithDetails(maskInput.value);
+    const validation = validateMaskWithDetails(maskInput.value, availableHints);
     updateMaskHighlighting(maskInput, overlayElement);
     renderStatusMessages(statusContainer, validation);
     updateCursorInfo(validation);
@@ -74,15 +74,15 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
   // Set up event listeners
   maskInput.addEventListener("input", performValidation);
   maskInput.addEventListener("click", () => {
-    const validation = validateMaskWithDetails(maskInput.value);
+    const validation = validateMaskWithDetails(maskInput.value, availableHints);
     updateCursorInfo(validation);
   });
   maskInput.addEventListener("keyup", () => {
-    const validation = validateMaskWithDetails(maskInput.value);
+    const validation = validateMaskWithDetails(maskInput.value, availableHints);
     updateCursorInfo(validation);
   });
   maskInput.addEventListener("focus", () => {
-    const validation = validateMaskWithDetails(maskInput.value);
+    const validation = validateMaskWithDetails(maskInput.value, availableHints);
     updateCursorInfo(validation);
   });
 
@@ -319,16 +319,17 @@ export async function showTemplateCreator(
     (validation) => {
       saveButton.disabled = !validation.valid;
       updatePreviews();
-    }
+    },
+    instance.hints
   );
 
   const updatePreviews = () => {
     const mask = maskInput.value;
     const sample = sampleInput.value;
 
-    const validation = validateMaskWithDetails(mask);
+    const validation = validateMaskWithDetails(mask, instance.hints);
 
-    const parseResult = parseTemplateWithOptionals(mask, sample);
+    const parseResult = parseTemplateWithOptionals(mask, sample, instance.hints);
     const maskExtracted = { ...parseResult };
     delete maskExtracted._matchedOptionals;
     delete maskExtracted._optionalCount;
