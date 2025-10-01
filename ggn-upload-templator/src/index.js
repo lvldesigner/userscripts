@@ -1,7 +1,7 @@
 import { DEFAULT_CONFIG } from "./config.js";
 import { logDebug } from "./utils/log.js";
 import { injectUI, showTemplateCreator, showVariablesModal } from "./ui/manager.js";
-import { parseTemplate, interpolate } from "./utils/template.js";
+import { parseTemplateWithOptionals, interpolate } from "./utils/template.js";
 import {
   getCurrentFormData,
   findElementByFieldName,
@@ -122,7 +122,6 @@ class GGnUploadTemplator {
     const commentVariables = {};
     const maskVariables = {};
 
-    // Get mask variables if template is selected
     if (this.selectedTemplate && this.selectedTemplate !== "none") {
       const template = this.templates[this.selectedTemplate];
       if (template) {
@@ -143,15 +142,11 @@ class GGnUploadTemplator {
                 input.files[0],
               );
               
-              // Extract comment variables first
               Object.assign(commentVariables, TorrentUtils.parseCommentVariables(torrentData.comment));
 
-              // Extract mask variables
-              Object.assign(maskVariables, parseTemplate(
-                template.mask,
-                torrentData.name,
-                template.greedyMatching !== false,
-              ));
+              const parseResult = parseTemplateWithOptionals(template.mask, torrentData.name);
+              const { _matchedOptionals, _optionalCount, ...extracted } = parseResult;
+              Object.assign(maskVariables, extracted);
               
               break;
             } catch (error) {
@@ -310,12 +305,9 @@ class GGnUploadTemplator {
       }
     }
 
-    const greedyMatching = modal.querySelector("#greedy-matching").checked;
-
     this.templates[name] = {
       mask,
       fieldMappings,
-      greedyMatching,
       customUnselectedFields:
         customUnselectedFields.length > 0 ? customUnselectedFields : undefined,
       variableMatching:
@@ -392,10 +384,9 @@ class GGnUploadTemplator {
     const template = this.templates[templateName];
     if (!template) return;
 
-    const extracted = parseTemplate(
+    const extracted = parseTemplateWithOptionals(
       template.mask,
       torrentName,
-      template.greedyMatching !== false,
     );
     let appliedCount = 0;
 
@@ -1071,6 +1062,9 @@ class GGnUploadTemplator {
       fieldMappings: { ...originalTemplate.fieldMappings },
       customUnselectedFields: originalTemplate.customUnselectedFields
         ? [...originalTemplate.customUnselectedFields]
+        : undefined,
+      variableMatching: originalTemplate.variableMatching
+        ? { ...originalTemplate.variableMatching }
         : undefined,
     };
 

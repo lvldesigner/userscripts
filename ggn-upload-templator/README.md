@@ -8,6 +8,13 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.8
+
+![](https://files.catbox.moe/7xkrsw.png)
+
+- Add optional variables with `{? ... ?}` syntax for flexible filename matching
+- Remove greedy matching setting (now uses smart non-greedy parsing by default)
+
 ### v0.7
 
 ![](https://files.catbox.moe/snd92p.png)

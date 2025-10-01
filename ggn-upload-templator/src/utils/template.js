@@ -86,21 +86,40 @@ export function validateMaskWithDetails(mask) {
   const seenVars = new Set();
   const duplicates = new Set();
 
+  try {
+    const parsed = parseMaskStructure(mask);
+    
+    if (parsed.optionalCount > 0) {
+      info.push({ type: 'info', message: `${parsed.optionalCount} optional block${parsed.optionalCount === 1 ? '' : 's'} defined` });
+    }
+  } catch (e) {
+    const posMatch = e.message.match(/position (\d+)/);
+    const position = posMatch ? parseInt(posMatch[1], 10) : 0;
+    const rangeEnd = e.rangeEnd !== undefined ? e.rangeEnd : position + 2;
+    errors.push({ type: 'error', message: e.message, position, rangeEnd });
+  }
+
   const unclosedPattern = /\$\{[^}]*$/;
   if (unclosedPattern.test(mask)) {
-    errors.push({ type: 'error', message: 'Unclosed variable: missing closing brace "}"', position: mask.lastIndexOf('${') });
+    const position = mask.lastIndexOf('${');
+    const rangeEnd = mask.length;
+    errors.push({ type: 'error', message: 'Unclosed variable: missing closing brace "}"', position, rangeEnd });
   }
 
   const emptyVarPattern = /\$\{\s*\}/g;
   let emptyMatch;
   while ((emptyMatch = emptyVarPattern.exec(mask)) !== null) {
-    errors.push({ type: 'error', message: 'Empty variable: ${}', position: emptyMatch.index });
+    const position = emptyMatch.index;
+    const rangeEnd = position + emptyMatch[0].length;
+    errors.push({ type: 'error', message: 'Empty variable: ${}', position, rangeEnd });
   }
 
   const nestedPattern = /\$\{[^}]*\$\{/g;
   let nestedMatch;
   while ((nestedMatch = nestedPattern.exec(mask)) !== null) {
-    errors.push({ type: 'error', message: 'Nested braces are not allowed', position: nestedMatch.index });
+    const position = nestedMatch.index;
+    const rangeEnd = nestedMatch.index + nestedMatch[0].length;
+    errors.push({ type: 'error', message: 'Nested braces are not allowed', position, rangeEnd });
   }
 
   const varPattern = /\$\{([^}]+)\}/g;
@@ -117,7 +136,8 @@ export function validateMaskWithDetails(mask) {
 
     if (!/^[a-zA-Z0-9_]+$/.test(varName)) {
       invalidVars.push(varName);
-      errors.push({ type: 'error', message: `Invalid variable name "\${${varName}}": only letters, numbers, and underscores allowed`, position });
+      const rangeEnd = position + match[0].length;
+      errors.push({ type: 'error', message: `Invalid variable name "\${${varName}}": only letters, numbers, and underscores allowed`, position, rangeEnd });
       continue;
     }
 
@@ -225,4 +245,147 @@ export function findMatchingOption(options, variableValue, matchType) {
   }
 
   return null;
+}
+
+function generateCombinationsDescending(count) {
+  const total = Math.pow(2, count);
+  const combinations = [];
+  
+  for (let i = total - 1; i >= 0; i--) {
+    const combo = [];
+    for (let j = 0; j < count; j++) {
+      combo.push((i & (1 << j)) !== 0);
+    }
+    combinations.push(combo);
+  }
+  
+  return combinations;
+}
+
+function buildMaskFromCombination(parts, combo) {
+  let result = '';
+  let optionalIndex = 0;
+  
+  for (const part of parts) {
+    if (part.type === 'required') {
+      result += part.content;
+    } else if (part.type === 'optional') {
+      if (combo[optionalIndex]) {
+        result += part.content;
+      }
+      optionalIndex++;
+    }
+  }
+  
+  return result;
+}
+
+export function parseMaskStructure(mask) {
+  if (!mask) {
+    return { parts: [], optionalCount: 0 };
+  }
+
+  const parts = [];
+  let current = '';
+  let i = 0;
+  let optionalCount = 0;
+  let inOptional = false;
+  let optionalStart = -1;
+  
+  while (i < mask.length) {
+    if (mask[i] === '\\' && i + 1 < mask.length) {
+      current += mask.slice(i, i + 2);
+      i += 2;
+      continue;
+    }
+    
+    if (mask[i] === '{' && mask[i + 1] === '?') {
+      if (inOptional) {
+        let nestedEnd = i + 2;
+        while (nestedEnd < mask.length) {
+          if (mask[nestedEnd] === '\\' && nestedEnd + 1 < mask.length) {
+            nestedEnd += 2;
+            continue;
+          }
+          if (mask[nestedEnd] === '?' && mask[nestedEnd + 1] === '}') {
+            nestedEnd += 2;
+            break;
+          }
+          nestedEnd++;
+        }
+        const error = new Error(`Nested optional blocks not allowed at position ${i}`);
+        error.rangeEnd = nestedEnd;
+        throw error;
+      }
+      
+      if (current) {
+        parts.push({ type: 'required', content: current });
+        current = '';
+      }
+      
+      inOptional = true;
+      optionalStart = i;
+      i += 2;
+      continue;
+    }
+    
+    if (mask[i] === '?' && mask[i + 1] === '}' && inOptional) {
+      if (current.trim() === '') {
+        throw new Error(`Empty optional block at position ${optionalStart}`);
+      }
+      
+      parts.push({ type: 'optional', content: current });
+      current = '';
+      inOptional = false;
+      optionalCount++;
+      i += 2;
+      continue;
+    }
+    
+    current += mask[i];
+    i++;
+  }
+  
+  if (inOptional) {
+    throw new Error(`Unclosed optional block starting at position ${optionalStart}`);
+  }
+  
+  if (current) {
+    parts.push({ type: 'required', content: current });
+  }
+  
+  if (optionalCount > 8) {
+    throw new Error(`Too many optional blocks (${optionalCount}). Maximum is 8.`);
+  }
+  
+  return { parts, optionalCount };
+}
+
+export function parseTemplateWithOptionals(mask, torrentName) {
+  try {
+    const parsed = parseMaskStructure(mask);
+    
+    if (parsed.optionalCount === 0) {
+      return parseTemplate(mask, torrentName);
+    }
+    
+    const combinations = generateCombinationsDescending(parsed.optionalCount);
+    
+    for (const combo of combinations) {
+      const maskVariant = buildMaskFromCombination(parsed.parts, combo);
+      const extracted = parseTemplate(maskVariant, torrentName);
+      
+      if (Object.keys(extracted).length > 0) {
+        return {
+          ...extracted,
+          _matchedOptionals: combo,
+          _optionalCount: parsed.optionalCount
+        };
+      }
+    }
+    
+    return {};
+  } catch (e) {
+    throw e;
+  }
 }

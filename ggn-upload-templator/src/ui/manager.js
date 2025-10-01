@@ -1,7 +1,7 @@
 import { getCurrentFormData } from "../utils/form.js";
 import { TorrentUtils } from "../utils/torrent.js";
 import {
-  parseTemplate,
+  parseTemplateWithOptionals,
   interpolate,
   findMatchingOption,
   validateMaskVariables,
@@ -143,6 +143,7 @@ export async function showTemplateCreator(
   const maskInput = modal.querySelector("#torrent-mask");
   const sampleInput = modal.querySelector("#sample-torrent");
   const templateInputs = modal.querySelectorAll(".template-input");
+  const cursorInfo = modal.querySelector("#mask-cursor-info");
 
   // Toggle unselected fields visibility
   const toggleBtn = modal.querySelector("#toggle-unselected");
@@ -223,10 +224,42 @@ export async function showTemplateCreator(
   toggleBtn.addEventListener("click", toggleUnselectedFields);
   filterInput.addEventListener("input", filterFields);
 
+  const updateCursorInfo = (validation) => {
+    if (!validation || validation.errors.length === 0) {
+      cursorInfo.textContent = '';
+      cursorInfo.style.display = 'none';
+      return;
+    }
+
+    const firstError = validation.errors[0];
+    const errorPos = firstError.position !== undefined ? firstError.position : null;
+    
+    if (errorPos === null) {
+      cursorInfo.textContent = '';
+      cursorInfo.style.display = 'none';
+      return;
+    }
+
+    const pos = maskInput.selectionStart;
+    const maskValue = maskInput.value;
+    
+    cursorInfo.style.display = 'block';
+    
+    const errorRangeEnd = firstError.rangeEnd !== undefined ? firstError.rangeEnd : errorPos + 1;
+    
+    if (pos >= errorPos && pos < errorRangeEnd) {
+      const charAtError = errorPos < maskValue.length ? maskValue[errorPos] : '';
+      cursorInfo.innerHTML = `<span style="color: #f44336;">⚠ Error at position ${errorPos}${charAtError ? ` ('${escapeHtml(charAtError)}')` : ' (end)'}</span>`;
+    } else {
+      const charAtPos = pos !== null && pos < maskValue.length ? maskValue[pos] : '';
+      const charAtError = errorPos < maskValue.length ? maskValue[errorPos] : '';
+      cursorInfo.innerHTML = `Cursor: ${pos}${charAtPos ? ` ('${escapeHtml(charAtPos)}')` : ' (end)'} | <span style="color: #f44336;">Error: ${errorPos}${charAtError ? ` ('${escapeHtml(charAtError)}')` : ' (end)'}</span>`;
+    }
+  };
+
   const updatePreviews = () => {
     const mask = maskInput.value;
     const sample = sampleInput.value;
-    const greedyMatching = modal.querySelector("#greedy-matching").checked;
     const saveButton = modal.querySelector("#save-template");
     
     const validation = validateMaskWithDetails(mask);
@@ -235,15 +268,17 @@ export async function showTemplateCreator(
     
     updateMaskHighlighting(maskInput, overlayDiv);
     renderStatusMessages(statusContainer, validation);
+    updateCursorInfo(validation);
     
     saveButton.disabled = !validation.valid;
     
-    const maskExtracted = parseTemplate(mask, sample, greedyMatching);
+    const parseResult = parseTemplateWithOptionals(mask, sample);
+    const maskExtracted = { ...parseResult };
+    delete maskExtracted._matchedOptionals;
+    delete maskExtracted._optionalCount;
 
-    // Merge comment variables first, then mask variables
     const allVariables = { ...commentVariables, ...maskExtracted };
 
-    // Update extracted variables section
     const extractedVarsContainer = modal.querySelector("#extracted-variables");
     if (Object.keys(allVariables).length === 0) {
       const hasMaskVariables = validation.variables.valid.length > 0 || validation.variables.reserved.length > 0;
@@ -266,6 +301,18 @@ export async function showTemplateCreator(
           `,
         )
         .join("");
+    }
+    
+    if (parseResult._matchedOptionals && parseResult._optionalCount) {
+      const matchCount = parseResult._matchedOptionals.filter(x => x).length;
+      const optionalInfo = document.createElement('div');
+      optionalInfo.className = 'gut-variable-item';
+      optionalInfo.style.cssText = 'background: #2a4a3a; border-left: 3px solid #4caf50;';
+      optionalInfo.innerHTML = `
+        <span class="gut-variable-name" style="color: #4caf50;">Optional blocks</span>
+        <span class="gut-variable-value">Matched ${matchCount}/${parseResult._optionalCount}</span>
+      `;
+      extractedVarsContainer.appendChild(optionalInfo);
     }
 
     templateInputs.forEach((input) => {
@@ -352,16 +399,25 @@ export async function showTemplateCreator(
     }
   });
 
+  maskInput.addEventListener('click', () => {
+    const validation = validateMaskWithDetails(maskInput.value);
+    updateCursorInfo(validation);
+  });
+  maskInput.addEventListener('keyup', () => {
+    const validation = validateMaskWithDetails(maskInput.value);
+    updateCursorInfo(validation);
+  });
+  maskInput.addEventListener('focus', () => {
+    const validation = validateMaskWithDetails(maskInput.value);
+    updateCursorInfo(validation);
+  });
+
   updatePreviews();
 
   // Update visibility when checkboxes change
   modal.addEventListener("change", (e) => {
     if (e.target.type === "checkbox") {
-      if (e.target.id === "greedy-matching") {
-        updatePreviews(); // Update previews when greedy matching changes
-      } else {
-        filterFields(); // Re-apply all visibility rules including filter
-      }
+      filterFields();
     }
   });
 
