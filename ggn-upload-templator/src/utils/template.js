@@ -144,10 +144,7 @@ export function applyValueMap(variables, mask, availableHints = {}) {
   return mapped;
 }
 
-// Parse torrent name using template mask
-export function parseTemplate(mask, torrentName, greedyMatching = true, availableHints = {}) {
-  if (!mask || !torrentName) return {};
-
+function compileMaskToRegexPattern(mask, greedyMatching = true, availableHints = {}) {
   const variablePlaceholders = [];
   let placeholderIndex = 0;
   
@@ -189,6 +186,14 @@ export function parseTemplate(mask, torrentName, greedyMatching = true, availabl
     .replace(/___ESCAPED_LBRACE___/g, "\\{")
     .replace(/___ESCAPED_RBRACE___/g, "\\}")
     .replace(/___ESCAPED_BACKSLASH___/g, "\\\\");
+
+  return regexPattern;
+}
+
+export function parseTemplate(mask, torrentName, greedyMatching = true, availableHints = {}) {
+  if (!mask || !torrentName) return {};
+
+  const regexPattern = compileMaskToRegexPattern(mask, greedyMatching, availableHints);
 
   try {
     const regex = new RegExp(regexPattern, "i");
@@ -647,6 +652,32 @@ export function parseTemplateWithOptionals(mask, torrentName, availableHints = {
     return bestMatch || {};
   } catch (e) {
     throw e;
+  }
+}
+
+export function compileUserMaskToRegex(mask, availableHints = {}) {
+  if (!mask) return "";
+  
+  try {
+    const parsed = parseMaskStructure(mask);
+    
+    if (parsed.optionalCount === 0) {
+      return compileMaskToRegexPattern(mask, true, availableHints);
+    }
+    
+    let regexPattern = '';
+    for (const part of parsed.parts) {
+      const partRegex = compileMaskToRegexPattern(part.content, true, availableHints);
+      if (part.type === 'optional') {
+        regexPattern += `(?:${partRegex})?`;
+      } else {
+        regexPattern += partRegex;
+      }
+    }
+    
+    return regexPattern;
+  } catch (e) {
+    return compileMaskToRegexPattern(mask, true, availableHints);
   }
 }
 

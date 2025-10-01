@@ -423,12 +423,16 @@ export const SANDBOX_TAB_HTML = (instance) => {
       </div>
 
       <div class="gut-form-group">
-        <label for="sandbox-mask-input">Mask:</label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+          <label for="sandbox-mask-input" style="margin-bottom: 0;">Mask:</label>
+          <a href="#" id="toggle-compiled-regex" class="gut-link" style="font-size: 11px;">Show compiled regex</a>
+        </div>
         <div class="gut-mask-input-container">
           <div class="gut-mask-highlight-overlay" id="sandbox-mask-display"></div>
           <input type="text" id="sandbox-mask-input" autocomplete="off" class="gut-mask-input" placeholder="\${artist} - \${album} {?[\${year}]?}">
         </div>
         <div class="gut-mask-cursor-info" id="sandbox-mask-cursor-info"></div>
+        <div class="gut-compiled-regex-display" id="sandbox-compiled-regex"></div>
         <div class="gut-mask-status-container" id="sandbox-mask-status"></div>
       </div>
 

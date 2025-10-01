@@ -772,6 +772,24 @@
     }
 }
 
+.gut-compiled-regex-display {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    background: #0f0f0f;
+    border: 1px solid #404040;
+    font-family: 'Fira Code', monospace;
+    font-size: 12px;
+    color: #888888;
+    word-break: break-all;
+    animation: slideDown 0.2s ease-out;
+}
+
+.gut-compiled-regex-display.visible {
+    display: block;
+}
+
 .gut-sandbox-results {
     margin-top: 12px;
     padding: 12px;

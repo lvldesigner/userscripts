@@ -11,7 +11,7 @@ import {
   renderSandboxResults,
   setupMaskValidation,
 } from "./ui/manager.js";
-import { testMaskAgainstSamples } from "./utils/template.js";
+import { testMaskAgainstSamples, compileUserMaskToRegex } from "./utils/template.js";
 import { getFieldLabel } from "./utils/form.js";
 import { updateMaskHighlighting } from "./utils/highlighting.js";
 import { buildKeybindingFromEvent } from "./utils/keyboard.js";
@@ -210,9 +210,12 @@ export function showTemplateAndSettingsManager(instance) {
   const deleteBtn = modal.querySelector("#delete-sandbox-set");
   const sandboxCursorInfo = modal.querySelector("#sandbox-mask-cursor-info");
   const sandboxStatusContainer = modal.querySelector("#sandbox-mask-status");
+  const toggleCompiledRegexLink = modal.querySelector("#toggle-compiled-regex");
+  const sandboxCompiledRegexDisplay = modal.querySelector("#sandbox-compiled-regex");
 
   let sandboxDebounceTimeout = null;
   let currentLoadedSet = instance.currentSandboxSet || "";
+  let showingCompiledRegex = localStorage.getItem("ggn-upload-templator-show-compiled-regex") === "true";
   
   const updateButtonStates = () => {
     if (currentLoadedSet && currentLoadedSet !== "") {
@@ -246,11 +249,30 @@ export function showTemplateAndSettingsManager(instance) {
     renderSandboxResults(modal, result);
   };
 
+  const updateCompiledRegex = () => {
+    if (showingCompiledRegex) {
+      const mask = sandboxMaskInput.value;
+      if (mask) {
+        try {
+          const compiledRegex = compileUserMaskToRegex(mask, instance.hints);
+          sandboxCompiledRegexDisplay.textContent = compiledRegex;
+        } catch (error) {
+          sandboxCompiledRegexDisplay.textContent = `Error: ${error.message}`;
+        }
+      } else {
+        sandboxCompiledRegexDisplay.textContent = "";
+      }
+    }
+  };
+
   const debouncedUpdateSandboxTest = () => {
     if (sandboxDebounceTimeout) {
       clearTimeout(sandboxDebounceTimeout);
     }
-    sandboxDebounceTimeout = setTimeout(updateSandboxTest, 300);
+    sandboxDebounceTimeout = setTimeout(() => {
+      updateSandboxTest();
+      updateCompiledRegex();
+    }, 300);
   };
 
   const performSandboxValidation = setupMaskValidation(
@@ -295,6 +317,12 @@ export function showTemplateAndSettingsManager(instance) {
       instance.currentSandboxSet = value;
       localStorage.setItem("ggn-upload-templator-sandbox-current", value);
       updateButtonStates();
+      
+      if (showingCompiledRegex) {
+        updateCompiledRegex();
+        sandboxCompiledRegexDisplay.classList.add("visible");
+        toggleCompiledRegexLink.textContent = "Hide compiled regex";
+      }
     }
   });
 
@@ -408,6 +436,29 @@ export function showTemplateAndSettingsManager(instance) {
     instance.showStatus(`Test set renamed to "${trimmedName}" successfully!`);
   });
 
+  toggleCompiledRegexLink?.addEventListener("click", (e) => {
+    e.preventDefault();
+    showingCompiledRegex = !showingCompiledRegex;
+    localStorage.setItem("ggn-upload-templator-show-compiled-regex", showingCompiledRegex);
+    
+    if (showingCompiledRegex) {
+      const mask = sandboxMaskInput.value;
+      if (!mask) {
+        instance.showStatus("Enter a mask first", "error");
+        showingCompiledRegex = false;
+        localStorage.setItem("ggn-upload-templator-show-compiled-regex", "false");
+        return;
+      }
+      
+      updateCompiledRegex();
+      sandboxCompiledRegexDisplay.classList.add("visible");
+      toggleCompiledRegexLink.textContent = "Hide compiled regex";
+    } else {
+      sandboxCompiledRegexDisplay.classList.remove("visible");
+      toggleCompiledRegexLink.textContent = "Show compiled regex";
+    }
+  });
+
   const resetFieldsLink = modal.querySelector("#reset-sandbox-fields");
   resetFieldsLink?.addEventListener("click", (e) => {
     e.preventDefault();
@@ -420,6 +471,10 @@ export function showTemplateAndSettingsManager(instance) {
       resultsLabel.textContent = "Match Results:";
     }
     updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+    
+    if (showingCompiledRegex) {
+      updateCompiledRegex();
+    }
   });
 
   if (sandboxMaskInput && currentLoadedSet && currentLoadedSet !== "") {
@@ -433,11 +488,23 @@ export function showTemplateAndSettingsManager(instance) {
       sandboxSampleInput.value = data.samples || "";
       updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
       updateSandboxTest();
+      
+      if (showingCompiledRegex) {
+        updateCompiledRegex();
+        sandboxCompiledRegexDisplay.classList.add("visible");
+        toggleCompiledRegexLink.textContent = "Hide compiled regex";
+      }
     }
   } else if (sandboxMaskInput) {
     updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
     if (sandboxMaskInput.value && sandboxSampleInput.value) {
       updateSandboxTest();
+    }
+    
+    if (showingCompiledRegex) {
+      updateCompiledRegex();
+      sandboxCompiledRegexDisplay.classList.add("visible");
+      toggleCompiledRegexLink.textContent = "Hide compiled regex";
     }
   }
 

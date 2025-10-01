@@ -39,7 +39,7 @@ describe('Variable hints with optional blocks', () => {
   });
   
   it('should prefer both optionals when both match without hints', () => {
-    const mask = '${game} - ${name} {?[${version}]?}{?[${language}]?}[${date}][${layout}] {${product}}.${ext}';
+    const mask = '${game} - ${name} {?[${version:version}]?}{?[${language}]?}[${date}][${layout}] {${product}}.${ext}';
     
     const result = parseTemplateWithOptionals(
       mask,
@@ -53,7 +53,7 @@ describe('Variable hints with optional blocks', () => {
   });
   
   it('should prefer first optional when both have equal score', () => {
-    const mask = '${game} - ${name} {?[${version}]?}{?[${language}]?}[${date}][${layout}] {${product}}.${ext}';
+    const mask = '${game} - ${name} {?[${version:version}]?}{?[${language}]?}[${date}][${layout}] {${product}}.${ext}';
     
     const result = parseTemplateWithOptionals(
       mask,
@@ -67,7 +67,7 @@ describe('Variable hints with optional blocks', () => {
   });
   
   it('should prefer second optional when first does not match', () => {
-    const mask = '${game} - ${name} {?[${version}]?}{?[${language}]?}[${date}][${layout}] {${product}}.${ext}';
+    const mask = '${game} - ${name} {?[${version:version}]?}{?[${language}]?}[${date}][${layout}] {${product}}.${ext}';
     
     const result = parseTemplateWithOptionals(
       mask,
@@ -81,7 +81,7 @@ describe('Variable hints with optional blocks', () => {
   });
   
   it('should prefer three optionals over two when all match', () => {
-    const mask = '${game} {?[${version}]?}{?[${language}]?}{?[${edition}]?}[${date}].${ext}';
+    const mask = '${game} {?[${version:version}]?}{?[${language}]?}{?[${edition}]?}[${date}].${ext}';
     
     const result = parseTemplateWithOptionals(
       mask,
