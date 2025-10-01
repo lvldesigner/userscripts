@@ -4,27 +4,39 @@ import {
   injectUI,
   showTemplateCreator,
   showVariablesModal,
-  renderSandboxResults,
-  setupMaskValidation,
 } from "./ui/manager.js";
-import { parseTemplateWithOptionals, interpolate, testMaskAgainstSamples } from "./utils/template.js";
 import {
-  getCurrentFormData,
-  findElementByFieldName,
-  getFieldLabel,
-} from "./utils/form.js";
-import { TorrentUtils } from "./utils/torrent.js";
+  loadTemplates,
+  loadSelectedTemplate,
+  loadHideUnselected,
+  loadSettings,
+  loadSandboxSets,
+  loadCurrentSandboxSet,
+} from "./storage.js";
 import {
-  parseKeybinding,
-  matchesKeybinding,
-  buildKeybindingFromEvent,
-} from "./utils/keyboard.js";
-import { updateMaskHighlighting } from "./utils/highlighting.js";
+  saveTemplate,
+  deleteTemplate,
+  cloneTemplate,
+  editTemplate,
+  selectTemplate,
+  updateTemplateSelector,
+} from "./template-operations.js";
 import {
-  MODAL_HTML,
-  TEMPLATE_SELECTOR_HTML,
-  TEMPLATE_LIST_HTML,
-} from "./ui/template.js";
+  getCurrentVariables,
+  updateVariableCount,
+  applyTemplate,
+  checkAndApplyToExistingTorrent,
+  watchFileInputs,
+  applyTemplateToCurrentTorrent,
+} from "./form-operations.js";
+import {
+  setupSubmitKeybinding,
+  setupApplyKeybinding,
+} from "./keybinding-setup.js";
+import {
+  showTemplateAndSettingsManager,
+  showSandboxWithMask,
+} from "./modal-manager.js";
 import style from "./style.css?raw";
 
 const firaCodeFont = `
@@ -36,62 +48,15 @@ GM_addStyle(style);
 
 class GGnUploadTemplator {
   constructor() {
-    // Load templates, selected template, hideUnselectedFields, and config
-    try {
-      this.templates = JSON.parse(
-        localStorage.getItem("ggn-upload-templator-templates") || "{}",
-      );
-    } catch (error) {
-      console.error("Failed to load templates:", error);
-      this.templates = {};
-    }
-
-    try {
-      this.selectedTemplate =
-        localStorage.getItem("ggn-upload-templator-selected") || null;
-    } catch (error) {
-      console.error("Failed to load selected template:", error);
-      this.selectedTemplate = null;
-    }
-
-    try {
-      this.hideUnselectedFields = JSON.parse(
-        localStorage.getItem("ggn-upload-templator-hide-unselected") || "true",
-      );
-    } catch (error) {
-      console.error("Failed to load hide unselected setting:", error);
-      this.hideUnselectedFields = true;
-    }
-
-    // Load user settings or use defaults
-    try {
-      this.config = {
-        ...DEFAULT_CONFIG,
-        ...JSON.parse(
-          localStorage.getItem("ggn-upload-templator-settings") || "{}",
-        ),
-      };
-    } catch (error) {
-      console.error("Failed to load config:", error);
-      this.config = { ...DEFAULT_CONFIG };
-    }
-
-    try {
-      this.sandboxSets = JSON.parse(
-        localStorage.getItem("ggn-upload-templator-sandbox-sets") || "{}",
-      );
-    } catch (error) {
-      console.error("Failed to load sandbox sets:", error);
-      this.sandboxSets = {};
-    }
-
-    try {
-      this.currentSandboxSet =
-        localStorage.getItem("ggn-upload-templator-sandbox-current") || "";
-    } catch (error) {
-      console.error("Failed to load current sandbox set:", error);
-      this.currentSandboxSet = "";
-    }
+    this.templates = loadTemplates();
+    this.selectedTemplate = loadSelectedTemplate();
+    this.hideUnselectedFields = loadHideUnselected();
+    this.config = {
+      ...DEFAULT_CONFIG,
+      ...loadSettings(),
+    };
+    this.sandboxSets = loadSandboxSets();
+    this.currentSandboxSet = loadCurrentSandboxSet();
 
     logDebug("Initialized core state", {
       templates: Object.keys(this.templates),
@@ -112,14 +77,14 @@ class GGnUploadTemplator {
     }
 
     try {
-      this.watchFileInputs();
+      watchFileInputs(this);
     } catch (error) {
       console.error("File input watching setup failed:", error);
     }
 
     if (this.config.SUBMIT_KEYBINDING) {
       try {
-        this.setupSubmitKeybinding();
+        setupSubmitKeybinding(this);
       } catch (error) {
         console.error("Submit keybinding setup failed:", error);
       }
@@ -127,7 +92,7 @@ class GGnUploadTemplator {
 
     if (this.config.APPLY_KEYBINDING) {
       try {
-        this.setupApplyKeybinding();
+        setupApplyKeybinding(this);
       } catch (error) {
         console.error("Apply keybinding setup failed:", error);
       }
@@ -136,1252 +101,67 @@ class GGnUploadTemplator {
     logDebug("Initialized");
   }
 
-  // Show template creation modal
   async showTemplateCreator(editTemplateName = null, editTemplate = null) {
     await showTemplateCreator(this, editTemplateName, editTemplate);
   }
 
-  // Get current variables (mask + comment)
   async getCurrentVariables() {
-    const commentVariables = {};
-    const maskVariables = {};
-
-    if (this.selectedTemplate && this.selectedTemplate !== "none") {
-      const template = this.templates[this.selectedTemplate];
-      if (template) {
-        const fileInputs = this.config.TARGET_FORM_SELECTOR
-          ? document.querySelectorAll(
-              `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
-            )
-          : document.querySelectorAll('input[type="file"]');
-
-        for (const input of fileInputs) {
-          if (
-            input.files &&
-            input.files[0] &&
-            input.files[0].name.toLowerCase().endsWith(".torrent")
-          ) {
-            try {
-              const torrentData = await TorrentUtils.parseTorrentFile(
-                input.files[0],
-              );
-
-              Object.assign(
-                commentVariables,
-                TorrentUtils.parseCommentVariables(torrentData.comment),
-              );
-
-              const parseResult = parseTemplateWithOptionals(
-                template.mask,
-                torrentData.name,
-              );
-              const { _matchedOptionals, _optionalCount, ...extracted } =
-                parseResult;
-              Object.assign(maskVariables, extracted);
-
-              break;
-            } catch (error) {
-              console.warn("Could not parse torrent file:", error);
-            }
-          }
-        }
-      }
-    }
-
-    return {
-      all: { ...commentVariables, ...maskVariables },
-      comment: commentVariables,
-      mask: maskVariables,
-    };
+    return await getCurrentVariables(this);
   }
 
-  // Show variables modal
   async showVariablesModal() {
     const variables = await this.getCurrentVariables();
     showVariablesModal(this, variables.all);
   }
 
-  // Update variable count display
   async updateVariableCount() {
-    const variables = await this.getCurrentVariables();
-    const commentCount = Object.keys(variables.comment).length;
-    const maskCount = Object.keys(variables.mask).length;
-    const totalCount = commentCount + maskCount;
-
-    const variablesRow = document.getElementById("variables-row");
-
-    if (variablesRow) {
-      if (totalCount === 0) {
-        variablesRow.style.display = "none";
-      } else {
-        variablesRow.style.display = "";
-
-        const parts = [];
-        if (commentCount > 0) {
-          parts.push(`Comment [${commentCount}]`);
-        }
-        if (maskCount > 0) {
-          parts.push(`Mask [${maskCount}]`);
-        }
-
-        variablesRow.innerHTML = `Available variables: ${parts.join(", ")}`;
-      }
-    }
+    await updateVariableCount(this);
   }
 
-  // Save template from modal
   saveTemplate(modal, editingTemplateName = null) {
-    const name = modal.querySelector("#template-name").value.trim();
-    const mask = modal.querySelector("#torrent-mask").value.trim();
-
-    if (!name || !mask) {
-      alert("Please provide both template name and torrent mask.");
-      return;
-    }
-
-    // If editing and name changed, or creating new and name exists
-    if (
-      (editingTemplateName &&
-        name !== editingTemplateName &&
-        this.templates[name]) ||
-      (!editingTemplateName && this.templates[name])
-    ) {
-      if (!confirm(`Template "${name}" already exists. Overwrite?`)) {
-        return;
-      }
-    }
-
-    const fieldMappings = {};
-    const variableMatchingConfig = {};
-    const checkedFields = modal.querySelectorAll(
-      '.gut-field-row input[type="checkbox"]:checked',
-    );
-
-    checkedFields.forEach((checkbox) => {
-      const fieldName = checkbox.dataset.field;
-      const templateInput = modal.querySelector(
-        `[data-template="${fieldName}"]`,
-      );
-      if (templateInput) {
-        if (templateInput.type === "checkbox") {
-          fieldMappings[fieldName] = templateInput.checked;
-        } else if (templateInput.tagName.toLowerCase() === "select") {
-          // Check if this select field is in variable mode
-          const variableToggle = modal.querySelector(
-            `.gut-variable-toggle[data-field="${fieldName}"]`,
-          );
-          const isVariableMode =
-            variableToggle && variableToggle.dataset.state === "on";
-
-          if (isVariableMode) {
-            // Store variable matching configuration
-            const variableInput = modal.querySelector(
-              `.gut-variable-input[data-field="${fieldName}"]`,
-            );
-            const matchTypeSelect = modal.querySelector(
-              `.gut-match-type[data-field="${fieldName}"]`,
-            );
-
-            variableMatchingConfig[fieldName] = {
-              variableName: variableInput ? variableInput.value.trim() : "",
-              matchType: matchTypeSelect ? matchTypeSelect.value : "exact",
-            };
-
-            // Store the variable input value instead of selected option
-            fieldMappings[fieldName] = variableInput
-              ? variableInput.value.trim()
-              : "";
-          } else {
-            // Static mode - store the selected value
-            fieldMappings[fieldName] = templateInput.value;
-          }
-        } else {
-          fieldMappings[fieldName] = templateInput.value;
-        }
-      }
-    });
-
-    // Capture custom unselected fields (different from default ignored list)
-    const allFieldRows = modal.querySelectorAll(".gut-field-row");
-    const customUnselectedFields = [];
-
-    allFieldRows.forEach((row) => {
-      const checkbox = row.querySelector('input[type="checkbox"]');
-      if (checkbox) {
-        const fieldName = checkbox.dataset.field;
-        const isDefaultIgnored = this.config.IGNORED_FIELDS_BY_DEFAULT.includes(
-          fieldName.toLowerCase(),
-        );
-        const isCurrentlyChecked = checkbox.checked;
-
-        // If this field differs from the default behavior, track it
-        if (
-          (isDefaultIgnored && isCurrentlyChecked) ||
-          (!isDefaultIgnored && !isCurrentlyChecked)
-        ) {
-          customUnselectedFields.push({
-            field: fieldName,
-            selected: isCurrentlyChecked,
-          });
-        }
-      }
-    });
-
-    // If editing and the name changed, delete the old template
-    if (editingTemplateName && name !== editingTemplateName) {
-      delete this.templates[editingTemplateName];
-      if (this.selectedTemplate === editingTemplateName) {
-        this.selectedTemplate = name;
-        localStorage.setItem("ggn-upload-templator-selected", name);
-      }
-    }
-
-    this.templates[name] = {
-      mask,
-      fieldMappings,
-      customUnselectedFields:
-        customUnselectedFields.length > 0 ? customUnselectedFields : undefined,
-      variableMatching:
-        Object.keys(variableMatchingConfig).length > 0
-          ? variableMatchingConfig
-          : undefined,
-    };
-
-    localStorage.setItem(
-      "ggn-upload-templator-templates",
-      JSON.stringify(this.templates),
-    );
-    this.updateTemplateSelector();
-    this.updateVariableCount();
-
-    const action = editingTemplateName ? "updated" : "saved";
-    this.showStatus(`Template "${name}" ${action} successfully!`);
-
-    document.body.removeChild(modal);
+    saveTemplate(this, modal, editingTemplateName);
   }
 
-  // Update template selector dropdown
   updateTemplateSelector() {
-    const selector = document.getElementById("template-selector");
-    if (!selector) return;
-
-    selector.innerHTML = TEMPLATE_SELECTOR_HTML(this);
-
-    // Update edit button visibility
-    this.updateEditButtonVisibility();
+    updateTemplateSelector(this);
   }
 
-  // Update edit button visibility based on selected template
-  updateEditButtonVisibility() {
-    const editBtn = document.getElementById("edit-selected-template-btn");
-    if (!editBtn) return;
-
-    const shouldShow =
-      this.selectedTemplate &&
-      this.selectedTemplate !== "none" &&
-      this.templates[this.selectedTemplate];
-
-    editBtn.style.display = shouldShow ? "" : "none";
-  }
-
-  // Select template
   selectTemplate(templateName) {
-    this.selectedTemplate = templateName || null;
-
-    if (templateName) {
-      localStorage.setItem("ggn-upload-templator-selected", templateName);
-    } else {
-      localStorage.removeItem("ggn-upload-templator-selected");
-    }
-
-    // Update edit button visibility
-    this.updateEditButtonVisibility();
-
-    // Update variable count
-    this.updateVariableCount();
-
-    if (templateName === "none") {
-      this.showStatus("No template selected - auto-fill disabled");
-    } else if (templateName) {
-      this.showStatus(`Template "${templateName}" selected`);
-
-      // Check if there's already a torrent file selected and apply template immediately
-      this.checkAndApplyToExistingTorrent(templateName);
-    }
+    selectTemplate(this, templateName);
   }
 
-  // Apply template to form
   applyTemplate(templateName, torrentName, commentVariables = {}) {
-    const template = this.templates[templateName];
-    if (!template) return;
-
-    const extracted = parseTemplateWithOptionals(template.mask, torrentName);
-    let appliedCount = 0;
-
-    Object.entries(template.fieldMappings).forEach(
-      ([fieldName, valueTemplate]) => {
-        const firstElement = findElementByFieldName(fieldName, this.config);
-
-        if (firstElement && firstElement.type === "radio") {
-          const formPrefix = this.config.TARGET_FORM_SELECTOR
-            ? `${this.config.TARGET_FORM_SELECTOR} `
-            : "";
-          const radioButtons = document.querySelectorAll(
-            `${formPrefix}input[name="${fieldName}"][type="radio"]`,
-          );
-          const newValue = interpolate(
-            String(valueTemplate),
-            extracted,
-            commentVariables,
-          );
-
-          radioButtons.forEach((radio) => {
-            if (radio.hasAttribute("disabled")) {
-              radio.removeAttribute("disabled");
-            }
-
-            const shouldBeChecked = radio.value === newValue;
-            if (shouldBeChecked !== radio.checked) {
-              radio.checked = shouldBeChecked;
-              if (shouldBeChecked) {
-                radio.dispatchEvent(new Event("input", { bubbles: true }));
-                radio.dispatchEvent(new Event("change", { bubbles: true }));
-                appliedCount++;
-              }
-            }
-          });
-        } else if (firstElement) {
-          if (firstElement.hasAttribute("disabled")) {
-            firstElement.removeAttribute("disabled");
-          }
-
-          if (firstElement.type === "checkbox") {
-            let newChecked;
-            if (typeof valueTemplate === "boolean") {
-              newChecked = valueTemplate;
-            } else {
-              const interpolated = interpolate(
-                String(valueTemplate),
-                extracted,
-                commentVariables,
-              );
-              newChecked = /^(true|1|yes|on)$/i.test(interpolated);
-            }
-
-            if (newChecked !== firstElement.checked) {
-              firstElement.checked = newChecked;
-              firstElement.dispatchEvent(new Event("input", { bubbles: true }));
-              firstElement.dispatchEvent(
-                new Event("change", { bubbles: true }),
-              );
-              appliedCount++;
-            }
-          } else {
-            const interpolated = interpolate(
-              String(valueTemplate),
-              extracted,
-              commentVariables,
-            );
-            if (firstElement.value !== interpolated) {
-              firstElement.value = interpolated;
-              firstElement.dispatchEvent(new Event("input", { bubbles: true }));
-              firstElement.dispatchEvent(
-                new Event("change", { bubbles: true }),
-              );
-              appliedCount++;
-            }
-          }
-        }
-      },
-    );
-
-    if (appliedCount > 0) {
-      this.showStatus(
-        `Template "${templateName}" applied to ${appliedCount} field(s)`,
-      );
-    }
+    applyTemplate(this, templateName, torrentName, commentVariables);
   }
 
-  // Check for existing torrent file and apply template
   async checkAndApplyToExistingTorrent(templateName) {
-    if (!templateName || templateName === "none") return;
-
-    const fileInputs = this.config.TARGET_FORM_SELECTOR
-      ? document.querySelectorAll(
-          `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
-        )
-      : document.querySelectorAll('input[type="file"]');
-
-    for (const input of fileInputs) {
-      if (
-        input.files &&
-        input.files[0] &&
-        input.files[0].name.toLowerCase().endsWith(".torrent")
-      ) {
-        try {
-          const torrentData = await TorrentUtils.parseTorrentFile(
-            input.files[0],
-          );
-          const commentVariables = TorrentUtils.parseCommentVariables(
-            torrentData.comment,
-          );
-          this.applyTemplate(templateName, torrentData.name, commentVariables);
-          return;
-        } catch (error) {
-          console.warn("Could not parse existing torrent file:", error);
-        }
-      }
-    }
+    await checkAndApplyToExistingTorrent(this, templateName);
   }
 
-  // Watch file inputs for changes (no auto-application)
-  watchFileInputs() {
-    const fileInputs = this.config.TARGET_FORM_SELECTOR
-      ? document.querySelectorAll(
-          `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
-        )
-      : document.querySelectorAll('input[type="file"]');
-
-    fileInputs.forEach((input) => {
-      input.addEventListener("change", (e) => {
-        // File input change detected, but no auto-application
-        // User can manually apply template via button
-        if (
-          e.target.files[0] &&
-          e.target.files[0].name.toLowerCase().endsWith(".torrent")
-        ) {
-          this.showStatus(
-            "Torrent file selected. Click 'Apply Template' to fill form.",
-          );
-
-          // Update variable count when torrent file changes
-          this.updateVariableCount();
-        }
-      });
-    });
-  }
-
-  // Apply template to the currently selected torrent file
   async applyTemplateToCurrentTorrent() {
-    if (!this.selectedTemplate || this.selectedTemplate === "none") {
-      this.showStatus("No template selected", "error");
-      return;
-    }
-
-    const fileInputs = this.config.TARGET_FORM_SELECTOR
-      ? document.querySelectorAll(
-          `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
-        )
-      : document.querySelectorAll('input[type="file"]');
-
-    for (const input of fileInputs) {
-      if (
-        input.files &&
-        input.files[0] &&
-        input.files[0].name.toLowerCase().endsWith(".torrent")
-      ) {
-        try {
-          const torrentData = await TorrentUtils.parseTorrentFile(
-            input.files[0],
-          );
-          const commentVariables = TorrentUtils.parseCommentVariables(
-            torrentData.comment,
-          );
-          this.applyTemplate(
-            this.selectedTemplate,
-            torrentData.name,
-            commentVariables,
-          );
-          return;
-        } catch (error) {
-          console.error("Error processing torrent file:", error);
-          this.showStatus("Error processing torrent file", "error");
-        }
-      }
-    }
-
-    this.showStatus("No torrent file selected", "error");
+    await applyTemplateToCurrentTorrent(this);
   }
 
-  // Setup global keybinding for form submission
-  setupSubmitKeybinding() {
-    const keybinding = this.config.CUSTOM_SUBMIT_KEYBINDING || "Ctrl+Enter";
-    const keys = parseKeybinding(keybinding);
-
-    document.addEventListener("keydown", (e) => {
-      // Check if the pressed keys match the custom keybinding
-      if (matchesKeybinding(e, keys)) {
-        e.preventDefault();
-
-        const targetForm = document.querySelector(
-          this.config.TARGET_FORM_SELECTOR,
-        );
-        if (targetForm) {
-          // Look for submit button within the form
-          const submitButton =
-            targetForm.querySelector(
-              'input[type="submit"], button[type="submit"]',
-            ) ||
-            targetForm.querySelector(
-              'input[name*="submit"], button[name*="submit"]',
-            ) ||
-            targetForm.querySelector(".submit-btn, #submit-btn");
-
-          if (submitButton) {
-            this.showStatus(`Form submitted via ${keybinding}`);
-            submitButton.click();
-          } else {
-            // Fallback: submit the form directly
-            this.showStatus(`Form submitted via ${keybinding}`);
-            targetForm.submit();
-          }
-        }
-      }
-    });
-  }
-
-  // Setup global keybinding for applying template
-  setupApplyKeybinding() {
-    const keybinding = this.config.CUSTOM_APPLY_KEYBINDING || "Ctrl+Shift+A";
-    const keys = parseKeybinding(keybinding);
-
-    document.addEventListener("keydown", (e) => {
-      // Check if the pressed keys match the custom keybinding
-      if (matchesKeybinding(e, keys)) {
-        e.preventDefault();
-        this.applyTemplateToCurrentTorrent();
-      }
-    });
-  }
-
-  // Show combined template and settings manager modal
   showTemplateAndSettingsManager() {
-    const modal = document.createElement("div");
-    modal.className = "gut-modal";
-    modal.innerHTML = MODAL_HTML(this);
-
-    document.body.appendChild(modal);
-
-    // Tab switching
-    modal.querySelectorAll(".gut-tab-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        const tabName = e.target.dataset.tab;
-
-        // Update tab buttons
-        modal
-          .querySelectorAll(".gut-tab-btn")
-          .forEach((b) => b.classList.remove("active"));
-        e.target.classList.add("active");
-
-        // Update tab content
-        modal
-          .querySelectorAll(".gut-tab-content")
-          .forEach((c) => c.classList.remove("active"));
-        modal.querySelector(`#${tabName}-tab`).classList.add("active");
-      });
-    });
-
-    // Custom selectors preview functionality
-    const customSelectorsTextarea = modal.querySelector(
-      "#setting-custom-selectors",
-    );
-    const previewGroup = modal.querySelector("#custom-selectors-preview-group");
-    const matchedContainer = modal.querySelector("#custom-selectors-matched");
-
-    const updateCustomSelectorsPreview = () => {
-      const selectorsText = customSelectorsTextarea.value.trim();
-      const selectors = selectorsText
-        .split("\n")
-        .map((selector) => selector.trim())
-        .filter((selector) => selector);
-
-      // Temporarily update config for preview
-      const originalSelectors = this.config.CUSTOM_FIELD_SELECTORS;
-      this.config.CUSTOM_FIELD_SELECTORS = selectors;
-
-      if (selectors.length === 0) {
-        previewGroup.style.display = "none";
-        // Restore original config
-        this.config.CUSTOM_FIELD_SELECTORS = originalSelectors;
-        return;
-      }
-
-      previewGroup.style.display = "block";
-
-      let matchedElements = [];
-      const formSelector =
-        modal.querySelector("#setting-form-selector").value.trim() ||
-        this.config.TARGET_FORM_SELECTOR;
-      const targetForm = document.querySelector(formSelector);
-
-      selectors.forEach((selector) => {
-        try {
-          const elements = targetForm
-            ? targetForm.querySelectorAll(selector)
-            : document.querySelectorAll(selector);
-
-          Array.from(elements).forEach((element) => {
-            // Get element info
-            const tagName = element.tagName.toLowerCase();
-            const id = element.id;
-            const name = element.name || element.getAttribute("name");
-            const classes = element.className || "";
-            const label = getFieldLabel(element, this.config);
-
-            // Create a unique identifier for deduplication
-            const elementId =
-              element.id ||
-              element.name ||
-              `${tagName}-${Array.from(element.parentNode.children).indexOf(element)}`;
-
-            if (!matchedElements.find((e) => e.elementId === elementId)) {
-              matchedElements.push({
-                elementId,
-                element,
-                tagName,
-                id,
-                name,
-                classes,
-                label,
-                selector,
-              });
-            }
-          });
-        } catch (e) {
-          console.warn(`Invalid custom selector: ${selector}`, e);
-        }
-      });
-
-      // Update the label with the count
-      const matchedElementsLabel = modal.querySelector(
-        "#matched-elements-label",
-      );
-      if (matchedElements.length === 0) {
-        matchedElementsLabel.textContent = "Matched Elements:";
-        matchedContainer.innerHTML =
-          '<div class="gut-no-variables">No elements matched by custom selectors.</div>';
-      } else {
-        matchedElementsLabel.textContent = `Matched Elements (${matchedElements.length}):`;
-        matchedContainer.innerHTML = matchedElements
-          .map((item) => {
-            const displayName =
-              item.label || item.name || item.id || `${item.tagName}`;
-            const displayInfo = [
-              item.tagName.toUpperCase(),
-              item.id ? `#${item.id}` : "",
-              item.name ? `name="${item.name}"` : "",
-              item.classes
-                ? `.${item.classes
-                    .split(" ")
-                    .filter((c) => c)
-                    .join(".")}`
-                : "",
-            ]
-              .filter((info) => info)
-              .join(" ");
-
-            return `
-              <div class="gut-variable-item">
-                <span class="gut-variable-name">${this.escapeHtml(displayName)}</span>
-                <span class="gut-variable-value">${this.escapeHtml(displayInfo)}</span>
-              </div>
-            `;
-          })
-          .join("");
-      }
-
-      // Restore original config
-      this.config.CUSTOM_FIELD_SELECTORS = originalSelectors;
-    };
-
-    // Initial preview update
-    updateCustomSelectorsPreview();
-
-    // Update preview when custom selectors change
-    customSelectorsTextarea.addEventListener(
-      "input",
-      updateCustomSelectorsPreview,
-    );
-
-    // Update preview when form selector changes (affects scope)
-    modal
-      .querySelector("#setting-form-selector")
-      .addEventListener("input", updateCustomSelectorsPreview);
-
-    // GGn Infobox link handler
-    modal.querySelector("#ggn-infobox-link")?.addEventListener("click", (e) => {
-      e.preventDefault();
-      const currentValue = customSelectorsTextarea.value.trim();
-      const ggnInfoboxSelector = ".infobox-input-holder input";
-
-      // Add the selector if it's not already present
-      if (!currentValue.includes(ggnInfoboxSelector)) {
-        const newValue = currentValue
-          ? `${currentValue}\n${ggnInfoboxSelector}`
-          : ggnInfoboxSelector;
-        customSelectorsTextarea.value = newValue;
-        updateCustomSelectorsPreview();
-      }
-    });
-
-    // Settings handlers
-    modal.querySelector("#save-settings")?.addEventListener("click", () => {
-      this.saveSettings(modal);
-    });
-
-    modal.querySelector("#reset-settings")?.addEventListener("click", () => {
-      if (
-        confirm(
-          "Reset all settings to defaults? This will require a page reload.",
-        )
-      ) {
-        this.resetSettings(modal);
-      }
-    });
-
-    modal.querySelector("#delete-all-config")?.addEventListener("click", () => {
-      if (
-        confirm(
-          "⚠️ WARNING: This will permanently delete ALL GGn Upload Templator data including templates, settings, and selected template.\n\nThis action CANNOT be undone!\n\nAre you sure you want to continue?",
-        )
-      ) {
-        this.deleteAllConfig();
-      }
-    });
-
-    // Sandbox handlers
-    const sandboxMaskInput = modal.querySelector("#sandbox-mask-input");
-    const sandboxMaskDisplay = modal.querySelector("#sandbox-mask-display");
-    const sandboxSampleInput = modal.querySelector("#sandbox-sample-input");
-    const sandboxResultsContainer = modal.querySelector("#sandbox-results");
-    const sandboxSetSelect = modal.querySelector("#sandbox-set-select");
-    const saveBtn = modal.querySelector("#save-sandbox-set");
-    const renameBtn = modal.querySelector("#rename-sandbox-set");
-    const deleteBtn = modal.querySelector("#delete-sandbox-set");
-    const sandboxCursorInfo = modal.querySelector("#sandbox-mask-cursor-info");
-    const sandboxStatusContainer = modal.querySelector("#sandbox-mask-status");
-
-    let sandboxDebounceTimeout = null;
-    let currentLoadedSet = this.currentSandboxSet || "";
-    
-    const updateButtonStates = () => {
-      if (currentLoadedSet && currentLoadedSet !== "") {
-        saveBtn.textContent = "Update";
-        renameBtn.style.display = "";
-        deleteBtn.style.display = "";
-      } else {
-        saveBtn.textContent = "Save";
-        renameBtn.style.display = "none";
-        deleteBtn.style.display = "none";
-      }
-    };
-    
-    updateButtonStates();
-
-    const updateSandboxTest = () => {
-      const mask = sandboxMaskInput.value;
-      const sampleText = sandboxSampleInput.value.trim();
-      const samples = sampleText
-        .split("\n")
-        .map((s) => s.trim())
-        .filter((s) => s);
-
-      if (!mask || samples.length === 0) {
-        sandboxResultsContainer.innerHTML =
-          '<div class="gut-no-variables">Enter a mask and sample torrent names to test.</div>';
-        return;
-      }
-
-      const result = testMaskAgainstSamples(mask, samples);
-      renderSandboxResults(modal, result);
-    };
-
-    const debouncedUpdateSandboxTest = () => {
-      if (sandboxDebounceTimeout) {
-        clearTimeout(sandboxDebounceTimeout);
-      }
-      sandboxDebounceTimeout = setTimeout(updateSandboxTest, 300);
-    };
-
-    // Setup mask validation with cursor info and status messages
-    const performSandboxValidation = setupMaskValidation(
-      sandboxMaskInput,
-      sandboxCursorInfo,
-      sandboxStatusContainer,
-      sandboxMaskDisplay,
-      () => {
-        debouncedUpdateSandboxTest();
-      }
-    );
-
-    sandboxMaskInput?.addEventListener("scroll", () => {
-      sandboxMaskDisplay.scrollTop = sandboxMaskInput.scrollTop;
-      sandboxMaskDisplay.scrollLeft = sandboxMaskInput.scrollLeft;
-    });
-
-    sandboxSampleInput?.addEventListener("input", debouncedUpdateSandboxTest);
-
-    sandboxSetSelect?.addEventListener("change", () => {
-      const value = sandboxSetSelect.value;
-      
-      if (!value || value === "") {
-        currentLoadedSet = "";
-        this.currentSandboxSet = "";
-        updateButtonStates();
-        return;
-      }
-
-      const sets = JSON.parse(
-        localStorage.getItem("ggn-upload-templator-sandbox-sets") || "{}",
-      );
-      const data = sets[value];
-
-      if (data) {
-        sandboxMaskInput.value = data.mask || "";
-        sandboxSampleInput.value = data.samples || "";
-        updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
-        updateSandboxTest();
-        currentLoadedSet = value;
-        this.currentSandboxSet = value;
-        localStorage.setItem("ggn-upload-templator-sandbox-current", value);
-        updateButtonStates();
-      }
-    });
-
-    saveBtn?.addEventListener("click", () => {
-      if (currentLoadedSet && currentLoadedSet !== "") {
-        const data = {
-          mask: sandboxMaskInput.value,
-          samples: sandboxSampleInput.value,
-        };
-        
-        this.saveSandboxSet(currentLoadedSet, data);
-        this.showStatus(`Test set "${currentLoadedSet}" updated successfully!`);
-      } else {
-        const name = prompt("Enter a name for this test set:");
-        if (name && name.trim()) {
-          const trimmedName = name.trim();
-          const data = {
-            mask: sandboxMaskInput.value,
-            samples: sandboxSampleInput.value,
-          };
-          
-          this.saveSandboxSet(trimmedName, data);
-          this.currentSandboxSet = trimmedName;
-          currentLoadedSet = trimmedName;
-          localStorage.setItem("ggn-upload-templator-sandbox-current", trimmedName);
-          
-          const existingOption = sandboxSetSelect.querySelector(`option[value="${trimmedName}"]`);
-          if (existingOption) {
-            existingOption.selected = true;
-          } else {
-            const newOption = document.createElement("option");
-            newOption.value = trimmedName;
-            newOption.textContent = trimmedName;
-            sandboxSetSelect.appendChild(newOption);
-            newOption.selected = true;
-          }
-          
-          updateButtonStates();
-          this.showStatus(`Test set "${trimmedName}" saved successfully!`);
-        }
-      }
-    });
-
-    deleteBtn?.addEventListener("click", () => {
-      if (!currentLoadedSet || currentLoadedSet === "") {
-        return;
-      }
-
-      if (confirm(`Delete test set "${currentLoadedSet}"?`)) {
-        this.deleteSandboxSet(currentLoadedSet);
-
-        const option = sandboxSetSelect.querySelector(
-          `option[value="${currentLoadedSet}"]`,
-        );
-        if (option) {
-          option.remove();
-        }
-
-        sandboxSetSelect.value = "";
-        currentLoadedSet = "";
-        this.currentSandboxSet = "";
-        localStorage.setItem("ggn-upload-templator-sandbox-current", "");
-        sandboxMaskInput.value = "";
-        sandboxSampleInput.value = "";
-        sandboxResultsContainer.innerHTML =
-          '<div class="gut-no-variables">Enter a mask and sample torrent names to test.</div>';
-        
-        updateButtonStates();
-        this.showStatus(`Test set deleted successfully!`);
-      }
-    });
-
-    renameBtn?.addEventListener("click", () => {
-      if (!currentLoadedSet || currentLoadedSet === "") {
-        return;
-      }
-
-      const newName = prompt(`Rename test set "${currentLoadedSet}" to:`, currentLoadedSet);
-      if (!newName || !newName.trim() || newName.trim() === currentLoadedSet) {
-        return;
-      }
-
-      const trimmedName = newName.trim();
-
-      if (this.sandboxSets[trimmedName]) {
-        alert(`A test set named "${trimmedName}" already exists.`);
-        return;
-      }
-
-      const data = this.sandboxSets[currentLoadedSet];
-      this.sandboxSets[trimmedName] = data;
-      delete this.sandboxSets[currentLoadedSet];
-      localStorage.setItem(
-        "ggn-upload-templator-sandbox-sets",
-        JSON.stringify(this.sandboxSets),
-      );
-
-      const option = sandboxSetSelect.querySelector(
-        `option[value="${currentLoadedSet}"]`,
-      );
-      if (option) {
-        option.value = trimmedName;
-        option.textContent = trimmedName;
-        option.selected = true;
-      }
-
-      currentLoadedSet = trimmedName;
-      this.currentSandboxSet = trimmedName;
-      localStorage.setItem("ggn-upload-templator-sandbox-current", trimmedName);
-
-      this.showStatus(`Test set renamed to "${trimmedName}" successfully!`);
-    });
-
-    const resetFieldsLink = modal.querySelector("#reset-sandbox-fields");
-    resetFieldsLink?.addEventListener("click", (e) => {
-      e.preventDefault();
-      sandboxMaskInput.value = "";
-      sandboxSampleInput.value = "";
-      sandboxResultsContainer.innerHTML =
-        '<div class="gut-no-variables">Enter a mask and sample names to see match results.</div>';
-      const resultsLabel = modal.querySelector("#sandbox-results-label");
-      if (resultsLabel) {
-        resultsLabel.textContent = "Match Results:";
-      }
-      updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
-    });
-
-    // Auto-load the last selected test set on open
-    if (sandboxMaskInput && currentLoadedSet && currentLoadedSet !== "") {
-      const sets = JSON.parse(
-        localStorage.getItem("ggn-upload-templator-sandbox-sets") || "{}",
-      );
-      const data = sets[currentLoadedSet];
-      
-      if (data) {
-        sandboxMaskInput.value = data.mask || "";
-        sandboxSampleInput.value = data.samples || "";
-        updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
-        updateSandboxTest();
-      }
-    } else if (sandboxMaskInput) {
-      updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
-      if (sandboxMaskInput.value && sandboxSampleInput.value) {
-        updateSandboxTest();
-      }
-    }
-
-    // Track recording state to prevent modal closing during recording
-    let isRecording = false;
-
-    // Generic function to set up record keybinding handler
-    const setupRecordKeybindingHandler = (
-      inputSelector,
-      keybindingSpanIndex,
-      recordBtnSelector,
-    ) => {
-      modal.querySelector(recordBtnSelector)?.addEventListener("click", () => {
-        const input = modal.querySelector(inputSelector);
-        const keybindingSpans = modal.querySelectorAll(".gut-keybinding-text");
-        const keybindingSpan = keybindingSpans[keybindingSpanIndex];
-        const recordBtn = modal.querySelector(recordBtnSelector);
-
-        // Change button text to indicate recording mode
-        recordBtn.textContent = "Press keys...";
-        recordBtn.disabled = true;
-        isRecording = true;
-
-        const handleKeydown = (e) => {
-          e.preventDefault();
-          const isModifierKey = ["Control", "Alt", "Shift", "Meta"].includes(
-            e.key,
-          );
-
-          if (e.key === "Escape") {
-            // Cancel recording on Esc
-            recordBtn.textContent = "Record";
-            recordBtn.disabled = false;
-            isRecording = false;
-            document.removeEventListener("keydown", handleKeydown);
-            return;
-          }
-
-          if (!isModifierKey) {
-            // Non-modifier key pressed, finalize the combination
-            const keybinding = buildKeybindingFromEvent(e);
-            input.value = keybinding;
-            if (keybindingSpan) {
-              keybindingSpan.textContent = keybinding;
-            }
-
-            // Reset button
-            recordBtn.textContent = "Record";
-            recordBtn.disabled = false;
-            isRecording = false;
-
-            document.removeEventListener("keydown", handleKeydown);
-          }
-          // If only modifiers, keep listening for the main key
-        };
-
-        document.addEventListener("keydown", handleKeydown);
-      });
-    };
-
-    // Set up record handlers for submit and apply keybindings
-    setupRecordKeybindingHandler(
-      "#custom-submit-keybinding-input",
-      0,
-      "#record-submit-keybinding-btn",
-    );
-    setupRecordKeybindingHandler(
-      "#custom-apply-keybinding-input",
-      1,
-      "#record-apply-keybinding-btn",
-    );
-
-    // Template actions
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        document.body.removeChild(modal);
-        return;
-      }
-
-      const action = e.target.dataset.action;
-      const templateName = e.target.dataset.template;
-
-      if (action && templateName) {
-        switch (action) {
-          case "edit":
-            document.body.removeChild(modal);
-            this.editTemplate(templateName);
-            break;
-          case "clone":
-            this.cloneTemplate(templateName);
-            this.refreshTemplateManager(modal);
-            break;
-          case "delete":
-            if (confirm(`Delete template "${templateName}"?`)) {
-              this.deleteTemplate(templateName);
-              this.refreshTemplateManager(modal);
-            }
-            break;
-        }
-      }
-    });
-
-    modal.querySelector("#close-manager").addEventListener("click", () => {
-      document.body.removeChild(modal);
-    });
-
-    // Close on Esc key for template manager
-    const handleEscKey = (e) => {
-      if (e.key === "Escape" && document.body.contains(modal) && !isRecording) {
-        document.body.removeChild(modal);
-        document.removeEventListener("keydown", handleEscKey);
-      }
-    };
-    document.addEventListener("keydown", handleEscKey);
+    showTemplateAndSettingsManager(this);
   }
 
-  // Save settings from modal
-  saveSettings(modal) {
-    const formSelector = modal
-      .querySelector("#setting-form-selector")
-      .value.trim();
-    const submitKeybinding = modal.querySelector(
-      "#setting-submit-keybinding",
-    ).checked;
-    const customSubmitKeybinding = modal
-      .querySelector("#custom-submit-keybinding-input")
-      .value.trim();
-    const applyKeybinding = modal.querySelector(
-      "#setting-apply-keybinding",
-    ).checked;
-    const customApplyKeybinding = modal
-      .querySelector("#custom-apply-keybinding-input")
-      .value.trim();
-    const customSelectorsText = modal
-      .querySelector("#setting-custom-selectors")
-      .value.trim();
-    const customSelectors = customSelectorsText
-      .split("\n")
-      .map((selector) => selector.trim())
-      .filter((selector) => selector);
-    const ignoredFieldsText = modal
-      .querySelector("#setting-ignored-fields")
-      .value.trim();
-    const ignoredFields = ignoredFieldsText
-      .split("\n")
-      .map((field) => field.trim())
-      .filter((field) => field);
-
-    this.config = {
-      TARGET_FORM_SELECTOR: formSelector || DEFAULT_CONFIG.TARGET_FORM_SELECTOR,
-      SUBMIT_KEYBINDING: submitKeybinding,
-      CUSTOM_SUBMIT_KEYBINDING:
-        customSubmitKeybinding || DEFAULT_CONFIG.CUSTOM_SUBMIT_KEYBINDING,
-      APPLY_KEYBINDING: applyKeybinding,
-      CUSTOM_APPLY_KEYBINDING:
-        customApplyKeybinding || DEFAULT_CONFIG.CUSTOM_APPLY_KEYBINDING,
-      CUSTOM_FIELD_SELECTORS:
-        customSelectors.length > 0
-          ? customSelectors
-          : DEFAULT_CONFIG.CUSTOM_FIELD_SELECTORS,
-      IGNORED_FIELDS_BY_DEFAULT:
-        ignoredFields.length > 0
-          ? ignoredFields
-          : DEFAULT_CONFIG.IGNORED_FIELDS_BY_DEFAULT,
-    };
-
-    localStorage.setItem(
-      "ggn-upload-templator-settings",
-      JSON.stringify(this.config),
-    );
-    this.showStatus(
-      "Settings saved successfully! Reload the page for some changes to take effect.",
-    );
-  }
-
-  // Reset settings to defaults
-  resetSettings(modal) {
-    localStorage.removeItem("ggn-upload-templator-settings");
-    this.config = { ...DEFAULT_CONFIG };
-
-    // Update the form fields
-    modal.querySelector("#setting-form-selector").value =
-      this.config.TARGET_FORM_SELECTOR;
-    modal.querySelector("#setting-submit-keybinding").checked =
-      this.config.SUBMIT_KEYBINDING;
-    modal.querySelector("#custom-submit-keybinding-input").value =
-      this.config.CUSTOM_SUBMIT_KEYBINDING;
-    modal.querySelector("#setting-apply-keybinding").checked =
-      this.config.APPLY_KEYBINDING;
-    modal.querySelector("#custom-apply-keybinding-input").value =
-      this.config.CUSTOM_APPLY_KEYBINDING;
-    modal.querySelector("#setting-custom-selectors").value =
-      this.config.CUSTOM_FIELD_SELECTORS.join("\n");
-    modal.querySelector("#setting-ignored-fields").value =
-      this.config.IGNORED_FIELDS_BY_DEFAULT.join("\n");
-
-    // Update the keybinding texts
-    const submitKeybindingSpan = modal.querySelector(".gut-keybinding-text");
-    submitKeybindingSpan.textContent = this.config.CUSTOM_SUBMIT_KEYBINDING;
-    const applyKeybindingSpans = modal.querySelectorAll(".gut-keybinding-text");
-    if (applyKeybindingSpans.length > 1) {
-      applyKeybindingSpans[1].textContent = this.config.CUSTOM_APPLY_KEYBINDING;
-    }
-
-    this.showStatus(
-      "Settings reset to defaults! Reload the page for changes to take effect.",
-    );
-  }
-
-  // Delete all local configuration
-  deleteAllConfig() {
-    // Remove all localStorage items related to GGn Upload Templator
-    localStorage.removeItem("ggn-upload-templator-templates");
-    localStorage.removeItem("ggn-upload-templator-selected");
-    localStorage.removeItem("ggn-upload-templator-hide-unselected");
-    localStorage.removeItem("ggn-upload-templator-settings");
-
-    // Reset instance variables
-    this.templates = {};
-    this.selectedTemplate = null;
-    this.hideUnselectedFields = true;
-    this.config = { ...DEFAULT_CONFIG };
-
-    // Update UI
-    this.updateTemplateSelector();
-
-    this.showStatus(
-      "All local configuration deleted! Reload the page for changes to take full effect.",
-      "success",
-    );
-  }
-
-  // Delete template by name
   deleteTemplate(templateName) {
-    delete this.templates[templateName];
-    localStorage.setItem(
-      "ggn-upload-templator-templates",
-      JSON.stringify(this.templates),
-    );
-
-    if (this.selectedTemplate === templateName) {
-      this.selectedTemplate = null;
-      localStorage.removeItem("ggn-upload-templator-selected");
-    }
-
-    this.updateTemplateSelector();
-    this.showStatus(`Template "${templateName}" deleted`);
+    deleteTemplate(this, templateName);
   }
 
-  // Clone template
   cloneTemplate(templateName) {
-    const originalTemplate = this.templates[templateName];
-    if (!originalTemplate) return;
-
-    const cloneName = `${templateName} (Clone)`;
-    this.templates[cloneName] = {
-      mask: originalTemplate.mask,
-      fieldMappings: { ...originalTemplate.fieldMappings },
-      customUnselectedFields: originalTemplate.customUnselectedFields
-        ? [...originalTemplate.customUnselectedFields]
-        : undefined,
-      variableMatching: originalTemplate.variableMatching
-        ? { ...originalTemplate.variableMatching }
-        : undefined,
-    };
-
-    localStorage.setItem(
-      "ggn-upload-templator-templates",
-      JSON.stringify(this.templates),
-    );
-
-    this.updateTemplateSelector();
-    this.showStatus(`Template "${cloneName}" created`);
+    cloneTemplate(this, templateName);
   }
 
-  // Edit template
   editTemplate(templateName) {
-    const template = this.templates[templateName];
-    if (!template) return;
-
-    // Pre-populate the template creator with existing data
-    this.showTemplateCreator(templateName, template);
+    editTemplate(this, templateName);
   }
 
-  // Refresh template manager modal content
-  refreshTemplateManager(modal) {
-    const templateList = modal.querySelector(".gut-template-list");
-    if (!templateList) return;
-
-    templateList.innerHTML = TEMPLATE_LIST_HTML(this);
+  showSandboxWithMask(mask, sample) {
+    showSandboxWithMask(this, mask, sample);
   }
 
-  // Show status message
   showStatus(message, type = "success") {
     const existing = document.querySelector(".gut-status");
     if (existing) existing.remove();
@@ -1402,64 +182,13 @@ class GGnUploadTemplator {
     }, 3000);
   }
 
-  // Escape HTML to prevent XSS
   escapeHtml(text) {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   }
-
-  saveSandboxSet(name, data) {
-    this.sandboxSets[name] = data;
-    localStorage.setItem(
-      "ggn-upload-templator-sandbox-sets",
-      JSON.stringify(this.sandboxSets),
-    );
-  }
-
-  deleteSandboxSet(name) {
-    delete this.sandboxSets[name];
-    localStorage.setItem(
-      "ggn-upload-templator-sandbox-sets",
-      JSON.stringify(this.sandboxSets),
-    );
-    if (this.currentSandboxSet === name) {
-      this.currentSandboxSet = "";
-      localStorage.setItem("ggn-upload-templator-sandbox-current", "");
-    }
-  }
-
-  showSandboxWithMask(mask, sample) {
-    this.showTemplateAndSettingsManager();
-
-    setTimeout(() => {
-      const modal = document.querySelector(".gut-modal");
-      if (!modal) return;
-
-      const sandboxTabBtn = modal.querySelector('[data-tab="sandbox"]');
-      if (sandboxTabBtn) {
-        sandboxTabBtn.click();
-      }
-
-      setTimeout(() => {
-        const sandboxMaskInput = modal.querySelector("#sandbox-mask-input");
-        const sandboxMaskDisplay = modal.querySelector("#sandbox-mask-display");
-        const sandboxSampleInput = modal.querySelector("#sandbox-sample-input");
-
-        if (sandboxMaskInput && sandboxSampleInput) {
-          sandboxMaskInput.value = mask;
-          sandboxSampleInput.value = sample;
-
-          updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
-
-          sandboxMaskInput.dispatchEvent(new Event("input", { bubbles: true }));
-        }
-      }, 50);
-    }, 50);
-  }
 }
 
-// Initialize when DOM is ready
 logDebug("Script loaded (readyState:", document.readyState, ")");
 
 if (document.readyState === "loading") {
