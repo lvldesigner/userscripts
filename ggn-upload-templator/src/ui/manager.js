@@ -619,6 +619,7 @@ export function renderSandboxResults(modal, testResults) {
         variablesHtml =
           '<div class="gut-sandbox-variables" style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px;">' +
           Object.entries(result.variables)
+            .filter(([key]) => key !== '_matchedOptionals' && key !== '_optionalCount')
             .map(
               ([key, value]) =>
                 `<div class="gut-variable-item" style="margin: 0; flex: 0 0 auto; cursor: pointer;" data-result-index="${resultIndex}" data-var-name="${escapeHtml(key)}">
