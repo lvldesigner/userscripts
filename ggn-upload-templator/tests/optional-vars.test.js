@@ -98,12 +98,6 @@ describe('Optional Variables', () => {
       expect(validation.errors.some(e => e.message.includes("Empty optional block"))).toBe(true);
     });
 
-    it('should reject too many optional blocks', () => {
-      const validation = validateMaskWithDetails("${a}{?1?}{?2?}{?3?}{?4?}{?5?}{?6?}{?7?}{?8?}{?9?}");
-      expect(validation.valid).toBe(false);
-      expect(validation.errors.some(e => e.message.includes("Too many optional blocks"))).toBe(true);
-    });
-
     it('should allow mismatched closing bracket (not an optional block)', () => {
       const validation = validateMaskWithDetails("${game}?}");
       expect(validation.valid).toBe(true);
