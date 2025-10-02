@@ -78,7 +78,10 @@ export function loadHints() {
   try {
     const stored = GM_getValue("hints", null);
     const customHints = stored ? JSON.parse(stored) : {};
-    return { ...DEFAULT_HINTS, ...customHints };
+    const overrides = GM_getValue("hint_overrides", null);
+    const hintOverrides = overrides ? JSON.parse(overrides) : {};
+    
+    return { ...DEFAULT_HINTS, ...customHints, ...hintOverrides };
   } catch (e) {
     console.error("Failed to load hints:", e);
     return { ...DEFAULT_HINTS };
@@ -88,15 +91,51 @@ export function loadHints() {
 export function saveHints(hints) {
   try {
     const customHints = {};
+    const overrides = {};
+    
     for (const [name, hint] of Object.entries(hints)) {
-      if (!DEFAULT_HINTS[name]) {
+      if (DEFAULT_HINTS[name]) {
+        if (JSON.stringify(DEFAULT_HINTS[name]) !== JSON.stringify(hint)) {
+          overrides[name] = hint;
+        }
+      } else {
         customHints[name] = hint;
       }
     }
+    
     GM_setValue("hints", JSON.stringify(customHints));
+    GM_setValue("hint_overrides", JSON.stringify(overrides));
     return true;
   } catch (e) {
     console.error("Failed to save hints:", e);
+    return false;
+  }
+}
+
+export function isHintOverridden(name) {
+  try {
+    const overrides = GM_getValue("hint_overrides", null);
+    const hintOverrides = overrides ? JSON.parse(overrides) : {};
+    return !!hintOverrides[name];
+  } catch (e) {
+    return false;
+  }
+}
+
+export function resetHintToDefault(name) {
+  if (!DEFAULT_HINTS[name]) {
+    console.warn("Cannot reset non-default hint:", name);
+    return false;
+  }
+  
+  try {
+    const overrides = GM_getValue("hint_overrides", null);
+    const hintOverrides = overrides ? JSON.parse(overrides) : {};
+    delete hintOverrides[name];
+    GM_setValue("hint_overrides", JSON.stringify(hintOverrides));
+    return true;
+  } catch (e) {
+    console.error("Failed to reset hint:", e);
     return false;
   }
 }

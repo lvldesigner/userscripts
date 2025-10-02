@@ -20,6 +20,156 @@ import {
 
 // Reusable mask validation and cursor info setup
 export function setupMaskValidation(maskInput, cursorInfoElement, statusContainer, overlayElement, onValidationChange = null, availableHints = {}) {
+  let autocompleteDropdown = null;
+  let selectedIndex = -1;
+  let filteredHints = [];
+  
+  const closeAutocomplete = () => {
+    if (autocompleteDropdown) {
+      autocompleteDropdown.remove();
+      autocompleteDropdown = null;
+      selectedIndex = -1;
+      filteredHints = [];
+    }
+  };
+  
+  const showAutocomplete = (hints, cursorPos) => {
+    closeAutocomplete();
+    
+    if (hints.length === 0) return;
+    
+    filteredHints = hints;
+    selectedIndex = 0;
+    
+    autocompleteDropdown = document.createElement("div");
+    autocompleteDropdown.className = "gut-hint-autocomplete";
+    
+    const rect = maskInput.getBoundingClientRect();
+    const inputContainer = maskInput.parentElement;
+    const containerRect = inputContainer.getBoundingClientRect();
+    
+    autocompleteDropdown.style.position = "absolute";
+    autocompleteDropdown.style.top = `${rect.bottom - containerRect.top + 2}px`;
+    autocompleteDropdown.style.left = `${rect.left - containerRect.left}px`;
+    autocompleteDropdown.style.minWidth = `${rect.width}px`;
+    
+    hints.forEach((hint, index) => {
+      const item = document.createElement("div");
+      item.className = "gut-hint-autocomplete-item";
+      if (index === 0) item.classList.add("selected");
+      
+      item.innerHTML = `
+        <div class="gut-hint-autocomplete-name">${escapeHtml(hint.name)}</div>
+        <div class="gut-hint-autocomplete-type">${hint.type}</div>
+        <div class="gut-hint-autocomplete-desc">${escapeHtml(hint.description || '')}</div>
+      `;
+      
+      item.addEventListener("mouseenter", () => {
+        autocompleteDropdown.querySelectorAll(".gut-hint-autocomplete-item").forEach(i => i.classList.remove("selected"));
+        item.classList.add("selected");
+        selectedIndex = index;
+      });
+      
+      item.addEventListener("click", () => {
+        insertHint(hint.name);
+        closeAutocomplete();
+      });
+      
+      autocompleteDropdown.appendChild(item);
+    });
+    
+    inputContainer.style.position = "relative";
+    inputContainer.appendChild(autocompleteDropdown);
+  };
+  
+  const insertHint = (hintName) => {
+    const value = maskInput.value;
+    const cursorPos = maskInput.selectionStart;
+    const beforeCursor = value.substring(0, cursorPos);
+    const afterCursor = value.substring(cursorPos);
+    
+    const match = beforeCursor.match(/\$\{([a-zA-Z0-9_]+):([a-zA-Z0-9_]*)$/);
+    if (match) {
+      const [fullMatch, varName, partialHint] = match;
+      const newValue = beforeCursor.substring(0, beforeCursor.length - partialHint.length) + hintName + afterCursor;
+      maskInput.value = newValue;
+      maskInput.selectionStart = maskInput.selectionEnd = cursorPos - partialHint.length + hintName.length;
+      maskInput.dispatchEvent(new Event('input'));
+    }
+  };
+  
+  const updateAutocomplete = () => {
+    const cursorPos = maskInput.selectionStart;
+    const value = maskInput.value;
+    const beforeCursor = value.substring(0, cursorPos);
+    
+    const match = beforeCursor.match(/\$\{([a-zA-Z0-9_]+):([a-zA-Z0-9_]*)$/);
+    
+    if (match) {
+      const [, varName, partialHint] = match;
+      
+      const hints = Object.entries(availableHints)
+        .filter(([name]) => name.toLowerCase().startsWith(partialHint.toLowerCase()))
+        .map(([name, hint]) => ({
+          name,
+          type: hint.type,
+          description: hint.description || ''
+        }))
+        .slice(0, 10);
+      
+      if (hints.length > 0) {
+        showAutocomplete(hints, cursorPos);
+      } else {
+        closeAutocomplete();
+      }
+    } else {
+      closeAutocomplete();
+    }
+  };
+  
+  const handleKeyDown = (e) => {
+    if (!autocompleteDropdown) return;
+    
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      selectedIndex = Math.min(selectedIndex + 1, filteredHints.length - 1);
+      updateSelection();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      selectedIndex = Math.max(selectedIndex - 1, 0);
+      updateSelection();
+    } else if (e.key === "Enter") {
+      if (selectedIndex >= 0 && selectedIndex < filteredHints.length) {
+        e.preventDefault();
+        insertHint(filteredHints[selectedIndex].name);
+        closeAutocomplete();
+      }
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      closeAutocomplete();
+    } else if (e.key === "Tab") {
+      if (selectedIndex >= 0 && selectedIndex < filteredHints.length) {
+        e.preventDefault();
+        insertHint(filteredHints[selectedIndex].name);
+        closeAutocomplete();
+      }
+    }
+  };
+  
+  const updateSelection = () => {
+    if (!autocompleteDropdown) return;
+    
+    const items = autocompleteDropdown.querySelectorAll(".gut-hint-autocomplete-item");
+    items.forEach((item, index) => {
+      if (index === selectedIndex) {
+        item.classList.add("selected");
+        item.scrollIntoView({ block: "nearest" });
+      } else {
+        item.classList.remove("selected");
+      }
+    });
+  };
+  
   const updateCursorInfo = (validation) => {
     if (!validation || validation.errors.length === 0) {
       cursorInfoElement.textContent = "";
@@ -63,6 +213,7 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
     updateMaskHighlighting(maskInput, overlayElement);
     renderStatusMessages(statusContainer, validation);
     updateCursorInfo(validation);
+    updateAutocomplete();
     
     if (onValidationChange) {
       onValidationChange(validation);
@@ -76,14 +227,23 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
   maskInput.addEventListener("click", () => {
     const validation = validateMaskWithDetails(maskInput.value, availableHints);
     updateCursorInfo(validation);
+    updateAutocomplete();
   });
-  maskInput.addEventListener("keyup", () => {
-    const validation = validateMaskWithDetails(maskInput.value, availableHints);
-    updateCursorInfo(validation);
+  maskInput.addEventListener("keyup", (e) => {
+    if (!["ArrowDown", "ArrowUp", "Enter", "Escape", "Tab"].includes(e.key)) {
+      const validation = validateMaskWithDetails(maskInput.value, availableHints);
+      updateCursorInfo(validation);
+      updateAutocomplete();
+    }
   });
+  maskInput.addEventListener("keydown", handleKeyDown);
   maskInput.addEventListener("focus", () => {
     const validation = validateMaskWithDetails(maskInput.value, availableHints);
     updateCursorInfo(validation);
+    updateAutocomplete();
+  });
+  maskInput.addEventListener("blur", () => {
+    setTimeout(closeAutocomplete, 200);
   });
 
   // Return the validation function for initial setup

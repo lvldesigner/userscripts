@@ -6,7 +6,12 @@ import {
   saveSandboxSets,
   saveCurrentSandboxSet,
 } from "./storage.js";
-import { MODAL_HTML } from "./ui/template.js";
+import { 
+  saveHints, 
+  resetHintToDefault, 
+  loadHints 
+} from "./hint-storage.js";
+import { MODAL_HTML, HINT_EDITOR_MODAL_HTML } from "./ui/template.js";
 import {
   renderSandboxResults,
   setupMaskValidation,
@@ -600,76 +605,131 @@ export function showTemplateAndSettingsManager(instance) {
 
   modal.querySelectorAll('[data-action="delete-hint"]').forEach((btn) => {
     btn.addEventListener("click", (e) => {
+      e.preventDefault();
       const hintItem = e.target.closest(".gut-hint-item");
       const hintName = hintItem?.dataset.hint;
       if (hintName && confirm(`Delete hint "${hintName}"?`)) {
-        const { saveHints } = require("./hint-storage.js");
         delete instance.hints[hintName];
         saveHints(instance.hints);
         hintItem.remove();
+        
+        const customHintsList = modal.querySelector("#custom-hints-list");
+        const customHintsSection = modal.querySelector("#custom-hints-section");
+        if (customHintsList && customHintsList.children.length === 0 && customHintsSection) {
+          customHintsSection.style.display = "none";
+        }
       }
     });
   });
 
-  modal.querySelectorAll('[data-action="view-mappings"]').forEach((btn) => {
+  modal.querySelectorAll('[data-action="edit-hint"]').forEach((btn) => {
     btn.addEventListener("click", (e) => {
+      e.preventDefault();
       const hintItem = e.target.closest(".gut-hint-item");
       const hintName = hintItem?.dataset.hint;
-      if (hintName && instance.hints[hintName]?.mappings) {
-        const mappings = instance.hints[hintName].mappings;
-        const mappingText = Object.entries(mappings)
-          .map(([key, value]) => `${key} → ${value}`)
-          .join('\n');
-        alert(`Mappings for "${hintName}":\n\n${mappingText}`);
+      if (hintName && instance.hints[hintName]) {
+        showHintEditor(instance, modal, hintName, instance.hints[hintName]);
       }
     });
   });
+
+  modal.querySelectorAll('[data-action="reset-hint"]').forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const hintItem = e.target.closest(".gut-hint-item");
+      const hintName = hintItem?.dataset.hint;
+      if (hintName && confirm(`Reset "${hintName}" to default?`)) {
+        if (resetHintToDefault(hintName)) {
+          instance.hints = loadHints();
+          
+          document.body.removeChild(modal);
+          showTemplateAndSettingsManager(instance);
+          const hintsTab = document.querySelector('.gut-tab-btn[data-tab="hints"]');
+          if (hintsTab) hintsTab.click();
+        }
+      }
+    });
+  });
+
+  modal.querySelectorAll('.gut-hint-mappings-toggle').forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const hintName = e.target.dataset.hint;
+      const hintItem = modal.querySelector(`.gut-hint-item[data-hint="${hintName}"]`);
+      const content = hintItem?.querySelector('.gut-hint-mappings-content');
+      const toggle = e.target;
+      
+      if (content) {
+        if (content.style.display === 'none') {
+          content.style.display = 'block';
+          toggle.textContent = 'Hide';
+        } else {
+          content.style.display = 'none';
+          toggle.textContent = 'Show';
+        }
+      }
+    });
+  });
+
+  const hintFilterInput = modal.querySelector("#hint-filter-input");
+  if (hintFilterInput) {
+    hintFilterInput.addEventListener("input", (e) => {
+      const filterText = e.target.value.toLowerCase().trim();
+      const defaultHintsList = modal.querySelector("#default-hints-list");
+      const customHintsList = modal.querySelector("#custom-hints-list");
+      const customHintsSection = modal.querySelector("#custom-hints-section");
+      const filterCount = modal.querySelector("#hint-filter-count");
+      
+      let visibleCount = 0;
+      let totalCount = 0;
+      
+      const filterHints = (list) => {
+        if (!list) return;
+        const hintItems = list.querySelectorAll(".gut-hint-item");
+        
+        hintItems.forEach(item => {
+          totalCount++;
+          const hintName = item.dataset.hint?.toLowerCase() || "";
+          const description = item.querySelector(".gut-hint-description")?.textContent?.toLowerCase() || "";
+          const pattern = item.querySelector(".gut-hint-pattern")?.textContent?.toLowerCase() || "";
+          const type = item.querySelector(".gut-hint-type-badge")?.textContent?.toLowerCase() || "";
+          
+          const matches = !filterText || 
+            hintName.includes(filterText) || 
+            description.includes(filterText) || 
+            pattern.includes(filterText) ||
+            type.includes(filterText);
+          
+          if (matches) {
+            item.style.display = "";
+            visibleCount++;
+          } else {
+            item.style.display = "none";
+          }
+        });
+      };
+      
+      filterHints(defaultHintsList);
+      filterHints(customHintsList);
+      
+      if (customHintsSection) {
+        const customVisible = customHintsList?.querySelectorAll('.gut-hint-item:not([style*="display: none"])').length || 0;
+        customHintsSection.style.display = customVisible > 0 ? "" : "none";
+      }
+      
+      if (filterText) {
+        filterCount.textContent = `Showing ${visibleCount} of ${totalCount} hints`;
+        filterCount.style.display = "block";
+      } else {
+        filterCount.style.display = "none";
+      }
+    });
+  }
 
   const addHintBtn = modal.querySelector("#add-hint-btn");
   if (addHintBtn) {
     addHintBtn.addEventListener("click", () => {
-      const name = prompt("Enter hint name (e.g., 'my_hint'):");
-      if (!name || !/^[a-zA-Z0-9_]+$/.test(name)) {
-        alert("Invalid hint name. Use only letters, numbers, and underscores.");
-        return;
-      }
-      if (instance.hints[name]) {
-        alert(`Hint "${name}" already exists.`);
-        return;
-      }
-      
-      const type = prompt("Enter hint type:\n1. pattern (e.g., v*)\n2. regex (e.g., /v\\d+/)\n3. map (key-value mappings)\n\nEnter 1, 2, or 3:");
-      
-      let hintDef;
-      if (type === '1') {
-        const pattern = prompt("Enter pattern (use *, #, @, ?):");
-        if (!pattern) return;
-        hintDef = { type: 'pattern', pattern, description: prompt("Description (optional):") || '' };
-      } else if (type === '2') {
-        const regex = prompt("Enter regex pattern (without slashes):");
-        if (!regex) return;
-        try {
-          new RegExp(regex);
-          hintDef = { type: 'regex', pattern: regex, description: prompt("Description (optional):") || '' };
-        } catch (e) {
-          alert(`Invalid regex: ${e.message}`);
-          return;
-        }
-      } else if (type === '3') {
-        alert("Map hints must be created by editing the config directly for now.");
-        return;
-      } else {
-        alert("Invalid type selection.");
-        return;
-      }
-      
-      const { saveHints } = require("./hint-storage.js");
-      instance.hints[name] = hintDef;
-      saveHints(instance.hints);
-      
-      document.body.removeChild(modal);
-      showTemplateAndSettingsManager(instance);
-      modal.querySelector('[data-tab="hints"]')?.click();
+      showHintEditor(instance, modal, null, null);
     });
   }
 
@@ -739,6 +799,181 @@ export function saveSettingsFromModal(instance, modal) {
   instance.showStatus(
     "Settings saved successfully! Reload the page for some changes to take effect.",
   );
+}
+
+export function showHintEditor(instance, parentModal, hintName = null, hintData = null) {
+  const isDefaultHint = (name) => {
+    const defaultHints = ['number', 'alpha', 'alnum', 'version', 'date_dots', 'date_dashes', 'lang_codes', 'resolution'];
+    return defaultHints.includes(name);
+  };
+  
+  const editorModal = document.createElement("div");
+  editorModal.innerHTML = HINT_EDITOR_MODAL_HTML(instance, hintName, hintData);
+  document.body.appendChild(editorModal.firstElementChild);
+  
+  const modal = document.querySelector(".gut-hint-editor-modal");
+  const closeBtn = modal.querySelector(".gut-hint-editor-close");
+  const cancelBtn = modal.querySelector("#hint-editor-cancel");
+  const saveBtn = modal.querySelector("#hint-editor-save");
+  const nameInput = modal.querySelector("#hint-editor-name");
+  const typeInputs = modal.querySelectorAll('input[name="hint-type"]');
+  const patternGroup = modal.querySelector("#hint-pattern-group");
+  const mappingsGroup = modal.querySelector("#hint-mappings-group");
+  const patternInput = modal.querySelector("#hint-editor-pattern");
+  const patternLabel = modal.querySelector("#hint-pattern-label");
+  const descriptionInput = modal.querySelector("#hint-editor-description");
+  const strictInput = modal.querySelector("#hint-editor-strict");
+  const addMappingBtn = modal.querySelector("#hint-add-mapping");
+  const mappingsRows = modal.querySelector("#hint-mappings-rows");
+  
+  const closeModal = () => {
+    document.body.removeChild(modal);
+  };
+  
+  closeBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+  
+  typeInputs.forEach(input => {
+    input.addEventListener("change", (e) => {
+      const type = e.target.value;
+      if (type === 'pattern') {
+        patternGroup.style.display = 'block';
+        mappingsGroup.style.display = 'none';
+        patternLabel.textContent = 'Pattern *';
+        patternInput.placeholder = 'e.g., ##.##.####';
+      } else if (type === 'regex') {
+        patternGroup.style.display = 'block';
+        mappingsGroup.style.display = 'none';
+        patternLabel.textContent = 'Regex Pattern *';
+        patternInput.placeholder = 'e.g., v\\d+(?:\\.\\d+)*';
+      } else if (type === 'map') {
+        patternGroup.style.display = 'none';
+        mappingsGroup.style.display = 'block';
+      }
+    });
+  });
+  
+  addMappingBtn.addEventListener("click", () => {
+    const newRow = document.createElement("div");
+    newRow.className = "gut-mappings-row";
+    newRow.innerHTML = `
+      <input type="text" class="gut-input gut-mapping-key" placeholder="e.g., en">
+      <input type="text" class="gut-input gut-mapping-value" placeholder="e.g., English">
+      <button class="gut-btn gut-btn-danger gut-btn-small gut-remove-mapping" title="Remove">−</button>
+    `;
+    mappingsRows.appendChild(newRow);
+    
+    newRow.querySelector(".gut-remove-mapping").addEventListener("click", () => {
+      newRow.remove();
+    });
+  });
+  
+  mappingsRows.querySelectorAll(".gut-remove-mapping").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const row = e.target.closest(".gut-mappings-row");
+      if (mappingsRows.querySelectorAll(".gut-mappings-row").length > 1) {
+        row.remove();
+      } else {
+        alert("You must have at least one mapping row.");
+      }
+    });
+  });
+  
+  saveBtn.addEventListener("click", () => {
+    const name = nameInput.value.trim();
+    if (!name || !/^[a-zA-Z0-9_]+$/.test(name)) {
+      alert("Invalid hint name. Use only letters, numbers, and underscores.");
+      return;
+    }
+    
+    if (!hintName && instance.hints[name]) {
+      alert(`Hint "${name}" already exists.`);
+      return;
+    }
+    
+    const type = modal.querySelector('input[name="hint-type"]:checked').value;
+    const description = descriptionInput.value.trim();
+    
+    let hintDef = { type, description };
+    
+    if (type === 'pattern' || type === 'regex') {
+      const pattern = patternInput.value.trim();
+      if (!pattern) {
+        alert("Pattern is required.");
+        return;
+      }
+      
+      if (type === 'regex') {
+        try {
+          new RegExp(pattern);
+        } catch (e) {
+          alert(`Invalid regex: ${e.message}`);
+          return;
+        }
+      }
+      
+      hintDef.pattern = pattern;
+    } else if (type === 'map') {
+      const mappings = {};
+      const rows = mappingsRows.querySelectorAll(".gut-mappings-row");
+      let hasEmptyRow = false;
+      
+      rows.forEach(row => {
+        const key = row.querySelector(".gut-mapping-key").value.trim();
+        const value = row.querySelector(".gut-mapping-value").value.trim();
+        if (key && value) {
+          mappings[key] = value;
+        } else if (key || value) {
+          hasEmptyRow = true;
+        }
+      });
+      
+      if (Object.keys(mappings).length === 0) {
+        alert("At least one complete mapping is required.");
+        return;
+      }
+      
+      if (hasEmptyRow) {
+        if (!confirm("Some mapping rows are incomplete and will be ignored. Continue?")) {
+          return;
+        }
+      }
+      
+      hintDef.mappings = mappings;
+      hintDef.strict = strictInput.checked;
+    }
+    
+    const wasNewCustomHint = !hintName && !isDefaultHint(name);
+    
+    instance.hints[name] = hintDef;
+    saveHints(instance.hints);
+    
+    closeModal();
+    
+    document.body.removeChild(parentModal);
+    showTemplateAndSettingsManager(instance);
+    const hintsTab = document.querySelector('.gut-tab-btn[data-tab="hints"]');
+    if (hintsTab) hintsTab.click();
+    
+    if (wasNewCustomHint) {
+      setTimeout(() => {
+        const newModal = document.querySelector('.gut-modal');
+        const customHintsSection = newModal?.querySelector("#custom-hints-section");
+        if (customHintsSection) {
+          customHintsSection.style.display = "";
+        }
+      }, 50);
+    }
+  });
+  
+  const handleEscKey = (e) => {
+    if (e.key === "Escape" && document.body.contains(modal)) {
+      e.stopImmediatePropagation();
+      closeModal();
+      document.removeEventListener("keydown", handleEscKey);
+    }
+  };
+  document.addEventListener("keydown", handleEscKey);
 }
 
 export function resetSettings(instance, modal) {

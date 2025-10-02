@@ -37,7 +37,7 @@ import {
   showTemplateAndSettingsManager,
   showSandboxWithMask,
 } from "./modal-manager.js";
-import { loadHints, saveHints } from "./hint-storage.js";
+import { loadHints, saveHints, isHintOverridden } from "./hint-storage.js";
 import style from "./style.css?raw";
 
 const firaCodeFont = `
@@ -198,6 +198,10 @@ class GGnUploadTemplator {
     const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  isHintOverridden(name) {
+    return isHintOverridden(name);
   }
 }
 
