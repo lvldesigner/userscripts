@@ -909,7 +909,7 @@ export function renderMatchResults(container, testResults, options = {}) {
               const displayValue = value
                 ? truncateValue(escapeHtml(value))
                 : "(empty)";
-              return `<div class="gut-variable-item gut-match-variable-item" data-result-index="${resultIndex}" data-var-name="${escapeHtml(key)}" title="${value ? escapeHtml(value) : ""}">
+              return `<div class="gut-variable-item gut-match-variable-item" data-result-index="${resultIndex}" data-var-name="${escapeHtml(key)}">
             <span class="gut-variable-name">\${${escapeHtml(key)}}</span><span class="gut-match-separator"> = </span><span class="gut-variable-value">${displayValue}</span>
           </div>`;
             })
