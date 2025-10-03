@@ -30,6 +30,7 @@ import {
   IMPORT_NEW_HINTS_MODAL_HTML,
   RESET_DEFAULTS_MODAL_HTML,
   DELETE_ALL_HINTS_MODAL_HTML,
+  APPLY_CONFIRMATION_MODAL_HTML,
 } from "./ui/template.js";
 import { setupAutoResize } from "./utils/textarea.js";
 import { renderSandboxResults, setupMaskValidation } from "./ui/manager.js";
@@ -1821,4 +1822,44 @@ export function showDeleteAllHintsModal(instance) {
       ModalStack.pop();
     }
   });
+}
+
+export function showApplyConfirmationModal(instance, changes, onConfirm) {
+  const modalContainer = document.createElement("div");
+  modalContainer.innerHTML = APPLY_CONFIRMATION_MODAL_HTML(changes, instance);
+  const modal = modalContainer.firstElementChild;
+
+  ModalStack.push(modal, {
+    type: "stack",
+    metadata: { instance, changes, onConfirm },
+  });
+
+  const applyBtn = modal.querySelector("#apply-confirm-apply-btn");
+  const cancelBtn = modal.querySelector("#apply-confirm-cancel-btn");
+  const closeBtn = modal.querySelector("#modal-close-x");
+
+  const handleConfirm = () => {
+    ModalStack.pop();
+    if (onConfirm) {
+      onConfirm();
+    }
+  };
+
+  const handleCancel = () => {
+    ModalStack.pop();
+  };
+
+  applyBtn.addEventListener("click", handleConfirm);
+  cancelBtn.addEventListener("click", handleCancel);
+  closeBtn.addEventListener("click", handleCancel);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal && !ModalStack.isResizingModal()) {
+      handleCancel();
+    }
+  });
+
+  setTimeout(() => {
+    applyBtn.focus();
+  }, 0);
 }

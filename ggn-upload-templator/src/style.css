@@ -1418,3 +1418,82 @@
 .gut-match-highlight {
     background: rgba(77, 208, 225, 0.3);
 }
+
+.gut-confirmation-modal .gut-modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.gut-field-changes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 2px;
+}
+
+.gut-field-change-item {
+    background: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 8px 10px;
+}
+
+.gut-field-change-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.gut-field-name {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #e0e0e0;
+    font-size: 13px;
+}
+
+.gut-field-type-badge {
+    background: #2a2a2a;
+    color: #888;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: 'Fira Code', monospace;
+    text-transform: lowercase;
+}
+
+.gut-field-values {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-family: 'Fira Code', monospace;
+}
+
+.gut-value {
+    flex: 1;
+    padding: 4px 6px;
+    border-radius: 3px;
+    word-break: break-word;
+    min-width: 0;
+}
+
+.gut-value-old {
+    background: #252525;
+    border: 1px solid #444;
+    color: #b0b0b0;
+}
+
+.gut-value-new {
+    background: #1a2f2f;
+    border: 1px solid #0d7377;
+    color: #4dd0e1;
+}
+
+.gut-value-arrow {
+    color: #0d7377;
+    font-size: 14px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
