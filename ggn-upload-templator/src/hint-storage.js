@@ -19,15 +19,50 @@ export const DEFAULT_HINTS = {
     pattern: "v\\d+(?:\\.\\d+)*",
     description: 'Version numbers starting with "v" (e.g., v1, v2.0)',
   },
-  date_dots: {
+  date_ymd_dots: {
+    type: "pattern",
+    pattern: "####.##.##",
+    description: "Date in YYYY.MM.DD format",
+  },
+  date_ymd_dashes: {
+    type: "pattern",
+    pattern: "####-##-##",
+    description: "Date in YYYY-MM-DD format",
+  },
+  date_ymd_slashes: {
+    type: "pattern",
+    pattern: "####/##/##",
+    description: "Date in YYYY/MM/DD format",
+  },
+  date_dmy_dots: {
     type: "pattern",
     pattern: "##.##.####",
     description: "Date in DD.MM.YYYY format",
   },
-  date_dashes: {
+  date_dmy_dashes: {
     type: "pattern",
-    pattern: "####-##-##",
-    description: "Date in YYYY-MM-DD format",
+    pattern: "##-##-####",
+    description: "Date in DD-MM-YYYY format",
+  },
+  date_dmy_slashes: {
+    type: "pattern",
+    pattern: "##/##/####",
+    description: "Date in DD/MM/YYYY format",
+  },
+  date_mdy_dots: {
+    type: "pattern",
+    pattern: "##.##.####",
+    description: "Date in MM.DD.YYYY format",
+  },
+  date_mdy_dashes: {
+    type: "pattern",
+    pattern: "##-##-####",
+    description: "Date in MM-DD-YYYY format",
+  },
+  date_mdy_slashes: {
+    type: "pattern",
+    pattern: "##/##/####",
+    description: "Date in MM/DD/YYYY format",
   },
   lang_codes: {
     type: "map",
@@ -77,11 +112,7 @@ export const DEFAULT_HINTS = {
 export function loadHints() {
   try {
     const stored = GM_getValue("hints", null);
-    const customHints = stored ? JSON.parse(stored) : {};
-    const overrides = GM_getValue("hint_overrides", null);
-    const hintOverrides = overrides ? JSON.parse(overrides) : {};
-    
-    return { ...DEFAULT_HINTS, ...customHints, ...hintOverrides };
+    return stored ? JSON.parse(stored) : { ...DEFAULT_HINTS };
   } catch (e) {
     console.error("Failed to load hints:", e);
     return { ...DEFAULT_HINTS };
@@ -90,21 +121,7 @@ export function loadHints() {
 
 export function saveHints(hints) {
   try {
-    const customHints = {};
-    const overrides = {};
-    
-    for (const [name, hint] of Object.entries(hints)) {
-      if (DEFAULT_HINTS[name]) {
-        if (JSON.stringify(DEFAULT_HINTS[name]) !== JSON.stringify(hint)) {
-          overrides[name] = hint;
-        }
-      } else {
-        customHints[name] = hint;
-      }
-    }
-    
-    GM_setValue("hints", JSON.stringify(customHints));
-    GM_setValue("hint_overrides", JSON.stringify(overrides));
+    GM_setValue("hints", JSON.stringify(hints));
     return true;
   } catch (e) {
     console.error("Failed to save hints:", e);
@@ -112,30 +129,12 @@ export function saveHints(hints) {
   }
 }
 
-export function isHintOverridden(name) {
+export function resetAllHints() {
   try {
-    const overrides = GM_getValue("hint_overrides", null);
-    const hintOverrides = overrides ? JSON.parse(overrides) : {};
-    return !!hintOverrides[name];
-  } catch (e) {
-    return false;
-  }
-}
-
-export function resetHintToDefault(name) {
-  if (!DEFAULT_HINTS[name]) {
-    console.warn("Cannot reset non-default hint:", name);
-    return false;
-  }
-  
-  try {
-    const overrides = GM_getValue("hint_overrides", null);
-    const hintOverrides = overrides ? JSON.parse(overrides) : {};
-    delete hintOverrides[name];
-    GM_setValue("hint_overrides", JSON.stringify(hintOverrides));
+    GM_setValue("hints", JSON.stringify({ ...DEFAULT_HINTS }));
     return true;
   } catch (e) {
-    console.error("Failed to reset hint:", e);
+    console.error("Failed to reset hints:", e);
     return false;
   }
 }
@@ -152,11 +151,6 @@ export function addHint(name, hintDef, existingHints = null) {
 }
 
 export function deleteHint(name, existingHints = null) {
-  if (DEFAULT_HINTS[name]) {
-    console.warn("Cannot delete default hint:", name);
-    return false;
-  }
-
   const allHints = existingHints || loadHints();
   delete allHints[name];
   return saveHints(allHints);

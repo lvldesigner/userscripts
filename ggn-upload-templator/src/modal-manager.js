@@ -6,7 +6,7 @@ import {
   saveSandboxSets,
   saveCurrentSandboxSet,
 } from "./storage.js";
-import { saveHints, resetHintToDefault, loadHints } from "./hint-storage.js";
+import { saveHints, resetAllHints, loadHints } from "./hint-storage.js";
 import {
   MODAL_HTML,
   HINT_EDITOR_MODAL_HTML,
@@ -695,13 +695,12 @@ export function showTemplateAndSettingsManager(instance) {
     });
   });
 
-  modal.querySelectorAll('[data-action="reset-hint"]').forEach((btn) => {
-    btn.addEventListener("click", (e) => {
+  const resetAllHintsBtn = modal.querySelector("#reset-all-hints-btn");
+  if (resetAllHintsBtn) {
+    resetAllHintsBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      const hintItem = e.target.closest(".gut-hint-item");
-      const hintName = hintItem?.dataset.hint;
-      if (hintName && confirm(`Reset "${hintName}" to default?`)) {
-        if (resetHintToDefault(hintName)) {
+      if (confirm("Reset all hints to defaults? This will delete all custom hints and revert any changes. This action cannot be undone.")) {
+        if (resetAllHints()) {
           instance.hints = loadHints();
 
           ModalStack.pop();
@@ -713,7 +712,7 @@ export function showTemplateAndSettingsManager(instance) {
         }
       }
     });
-  });
+  }
 
   modal.querySelectorAll('[data-action="import-mappings"]').forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -780,9 +779,7 @@ export function showTemplateAndSettingsManager(instance) {
   if (hintFilterInput) {
     hintFilterInput.addEventListener("input", (e) => {
       const filterText = e.target.value.toLowerCase().trim();
-      const defaultHintsList = modal.querySelector("#default-hints-list");
-      const customHintsList = modal.querySelector("#custom-hints-list");
-      const customHintsSection = modal.querySelector("#custom-hints-section");
+      const hintsList = modal.querySelector("#hints-list");
       const filterCount = modal.querySelector("#hint-filter-count");
 
       let visibleCount = 0;
@@ -824,16 +821,7 @@ export function showTemplateAndSettingsManager(instance) {
         });
       };
 
-      filterHints(defaultHintsList);
-      filterHints(customHintsList);
-
-      if (customHintsSection) {
-        const customVisible =
-          customHintsList?.querySelectorAll(
-            '.gut-hint-item:not([style*="display: none"])',
-          ).length || 0;
-        customHintsSection.style.display = customVisible > 0 ? "" : "none";
-      }
+      filterHints(hintsList);
 
       if (filterText) {
         filterCount.textContent = `Showing ${visibleCount} of ${totalCount} hints`;
@@ -924,20 +912,6 @@ export function showHintEditor(
   hintName = null,
   hintData = null,
 ) {
-  const isDefaultHint = (name) => {
-    const defaultHints = [
-      "number",
-      "alpha",
-      "alnum",
-      "version",
-      "date_dots",
-      "date_dashes",
-      "lang_codes",
-      "resolution",
-    ];
-    return defaultHints.includes(name);
-  };
-
   const editorModal = document.createElement("div");
   editorModal.innerHTML = HINT_EDITOR_MODAL_HTML(instance, hintName, hintData);
   const modal = editorModal.firstElementChild;
@@ -1188,8 +1162,6 @@ export function showHintEditor(
       hintDef.strict = strictInput.checked;
     }
 
-    const wasNewCustomHint = !hintName && !isDefaultHint(name);
-
     instance.hints[name] = hintDef;
     saveHints(instance.hints);
 
@@ -1198,18 +1170,6 @@ export function showHintEditor(
     showTemplateAndSettingsManager(instance);
     const hintsTab = document.querySelector('.gut-tab-btn[data-tab="hints"]');
     if (hintsTab) hintsTab.click();
-
-    if (wasNewCustomHint) {
-      setTimeout(() => {
-        const newModal = document.querySelector(".gut-modal");
-        const customHintsSection = newModal?.querySelector(
-          "#custom-hints-section",
-        );
-        if (customHintsSection) {
-          customHintsSection.style.display = "";
-        }
-      }, 50);
-    }
   });
 }
 

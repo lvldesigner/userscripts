@@ -1100,10 +1100,25 @@
 
 .gut-hint-actions {
     display: flex;
-    gap: 4px;
+    gap: 0;
     font-size: 11px;
     align-items: center;
     white-space: nowrap;
+}
+
+.gut-hint-actions .gut-link {
+    text-decoration: none !important;
+}
+
+.gut-hint-actions .gut-link:hover {
+    text-decoration: underline !important;
+}
+
+.gut-hint-actions-separator {
+    color: #666;
+    font-size: 12px;
+    margin: 0 6px;
+    user-select: none;
 }
 
 .gut-hint-mappings {
@@ -1167,33 +1182,32 @@
 }
 
 .gut-radio-label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    padding: 8px 12px;
-    border: 1px solid #404040;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-    min-width: fit-content;
-    gap: 8px;
+    display: inline-flex !important;
+    align-items: center !important;
+    cursor: pointer !important;
+    padding: 8px 12px !important;
+    border: 1px solid #404040 !important;
+    border-radius: 4px !important;
+    transition: all 0.2s ease !important;
+    gap: 8px !important;
 }
 
 .gut-radio-label:hover {
-    background: #333;
-    border-color: #555;
+    background: #333 !important;
+    border-color: #555 !important;
 }
 
 .gut-radio-label input[type="radio"] {
-    flex-shrink: 0;
-    accent-color: #0d7377;
-    width: 16px;
-    height: 16px;
-    margin: 0;
+    flex-shrink: 0 !important;
+    accent-color: #0d7377 !important;
+    margin: 0 !important;
+    width: auto !important;
+    height: auto !important;
 }
 
 .gut-radio-label.selected {
-    background: #2a4a3a;
-    border-color: #4caf50;
+    background: rgb(77 208 225 / 15%);
+    border-color: rgb(77 208 225 / 67%) !important;
 }
 
 .gut-radio-label > span:first-of-type {
@@ -1297,7 +1311,7 @@
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 10px;
+    width: 4px;
     cursor: ew-resize;
     z-index: 10;
     transition: background-color 0.15s ease;

@@ -349,27 +349,7 @@ export const TEMPLATE_CREATOR_HTML = (
 export const HINTS_TAB_HTML = (instance) => {
   const hints = instance.hints || {};
 
-  const isDefaultHint = (name) => {
-    const defaultHints = [
-      "number",
-      "alpha",
-      "alnum",
-      "version",
-      "date_dots",
-      "date_dashes",
-      "lang_codes",
-      "resolution",
-    ];
-    return defaultHints.includes(name);
-  };
-
-  const isOverridden = (name) => {
-    return instance.isHintOverridden ? instance.isHintOverridden(name) : false;
-  };
-
-  const renderHintRow = (name, hint, isDefault) => {
-    const overridden = isOverridden(name);
-
+  const renderHintRow = (name, hint) => {
     const mappingsHtml =
       hint.type === "map" && hint.mappings
         ? `
@@ -409,12 +389,11 @@ export const HINTS_TAB_HTML = (instance) => {
           <div class="gut-hint-name-group">
             <span class="gut-hint-name">${instance.escapeHtml(name)}</span>
             <span class="gut-hint-type-badge">${hint.type}</span>
-            ${overridden ? '<span class="gut-hint-override-indicator" title="This default hint has been customized">modified</span>' : ""}
           </div>
           <div class="gut-hint-actions">
-            ${isDefault && !overridden ? '<a href="#" class="gut-link" data-action="edit-hint">Edit</a>' : ""}
-            ${overridden ? '<a href="#" class="gut-link" data-action="edit-hint">Edit</a> | <a href="#" class="gut-link" data-action="reset-hint">Reset to Default</a>' : ""}
-            ${!isDefault ? '<a href="#" class="gut-link" data-action="edit-hint">Edit</a> | <a href="#" class="gut-link gut-link-danger" data-action="delete-hint">Delete</a>' : ""}
+            <a href="#" class="gut-link" data-action="edit-hint">Edit</a>
+            <span class="gut-hint-actions-separator">•</span>
+            <a href="#" class="gut-link gut-link-danger" data-action="delete-hint">Delete</a>
           </div>
         </div>
         ${hint.description ? `<div class="gut-hint-description">${instance.escapeHtml(hint.description)}</div>` : ""}
@@ -425,50 +404,27 @@ export const HINTS_TAB_HTML = (instance) => {
     `;
   };
 
-  const defaultHintRows = Object.entries(hints)
-    .filter(([name]) => isDefaultHint(name))
-    .map(([name, hint]) => renderHintRow(name, hint, true))
-    .join("");
-
-  const customHintRows = Object.entries(hints)
-    .filter(([name]) => !isDefaultHint(name))
-    .map(([name, hint]) => renderHintRow(name, hint, false))
+  const hintRows = Object.entries(hints)
+    .map(([name, hint]) => renderHintRow(name, hint))
     .join("");
 
   return `
     <div class="gut-tab-content" id="hints-tab">
       <div class="gut-form-group">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <div style="font-size: 12px; color: #888;">
-            Use hints in your mask to constrain what variables match. Syntax: <span class="gut-variable-name">\${varname:hint}</span>
-            <br>Examples: <span class="gut-variable-name">\${version:v*}</span>, <span class="gut-variable-name">\${date:####-##-##}</span>, <span class="gut-variable-name">\${lang:lang_codes}</span>
-          </div>
-          <button class="gut-btn gut-btn-primary gut-btn-small" id="add-hint-btn">+ Add Custom Hint</button>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
+          <input type="text" id="hint-filter-input" class="gut-input" placeholder="Filter hints by name, description, pattern..." style="flex: 1;">
+          <button class="gut-btn gut-btn-primary gut-btn-small" id="add-hint-btn">+ Add Hint</button>
         </div>
-      </div>
-
-      <div class="gut-form-group">
-        <input type="text" id="hint-filter-input" class="gut-input" placeholder="Filter hints by name, description, pattern..." style="width: 100%;">
         <div id="hint-filter-count" style="font-size: 11px; color: #888; margin-top: 5px;"></div>
       </div>
 
-      ${
-        customHintRows
-          ? `
-        <div class="gut-form-group" id="custom-hints-section">
-          <label>Custom Hints</label>
-          <div class="gut-hints-list" id="custom-hints-list">
-            ${customHintRows}
-          </div>
-        </div>
-      `
-          : ""
-      }
-
       <div class="gut-form-group">
-        <label>Default Hints</label>
-        <div class="gut-hints-list" id="default-hints-list">
-          ${defaultHintRows}
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <label>Hints</label>
+          <a href="#" class="gut-link" id="reset-all-hints-btn">Reset All to Defaults</a>
+        </div>
+        <div class="gut-hints-list" id="hints-list">
+          ${hintRows}
         </div>
       </div>
     </div>
