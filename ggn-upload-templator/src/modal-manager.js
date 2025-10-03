@@ -7,7 +7,7 @@ import {
   saveCurrentSandboxSet,
 } from "./storage.js";
 import { saveHints, resetHintToDefault, loadHints } from "./hint-storage.js";
-import { MODAL_HTML, HINT_EDITOR_MODAL_HTML } from "./ui/template.js";
+import { MODAL_HTML, HINT_EDITOR_MODAL_HTML, MAP_IMPORT_MODAL_HTML } from "./ui/template.js";
 import { setupAutoResize } from "./utils/textarea.js";
 import { renderSandboxResults, setupMaskValidation } from "./ui/manager.js";
 import {
@@ -717,6 +717,28 @@ export function showTemplateAndSettingsManager(instance) {
     });
   });
 
+  modal.querySelectorAll('[data-action="import-mappings"]').forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const hintName = e.target.dataset.hint;
+      if (hintName && instance.hints[hintName]) {
+        const hintData = instance.hints[hintName];
+        showMapImportModal(instance, hintName, hintData.mappings || {}, 'import');
+      }
+    });
+  });
+
+  modal.querySelectorAll('[data-action="mass-edit-mappings"]').forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const hintName = e.target.dataset.hint;
+      if (hintName && instance.hints[hintName]) {
+        const hintData = instance.hints[hintName];
+        showMapImportModal(instance, hintName, hintData.mappings || {}, 'mass-edit');
+      }
+    });
+  });
+
   modal.querySelectorAll(".gut-hint-mappings-toggle").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -1008,6 +1030,63 @@ export function showHintEditor(
     });
   });
 
+  const importBtn = modal.querySelector("#hint-editor-import-btn");
+  const massEditBtn = modal.querySelector("#hint-editor-mass-edit-btn");
+
+  importBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const currentMappings = getCurrentMappingsFromEditor();
+    showMapImportModal(instance, hintName || "new_hint", currentMappings, "import", modal, updateEditorMappingsFromImport);
+  });
+
+  massEditBtn?.addEventListener("click", (e) => {
+    e.preventDefault();
+    const currentMappings = getCurrentMappingsFromEditor();
+    showMapImportModal(instance, hintName || "new_hint", currentMappings, "mass-edit", modal, updateEditorMappingsFromImport);
+  });
+
+  function getCurrentMappingsFromEditor() {
+    const mappings = {};
+    mappingsRows.querySelectorAll(".gut-mappings-row").forEach((row) => {
+      const key = row.querySelector(".gut-mapping-key").value.trim();
+      const value = row.querySelector(".gut-mapping-value").value.trim();
+      if (key) {
+        mappings[key] = value;
+      }
+    });
+    return mappings;
+  }
+
+  function updateEditorMappingsFromImport(newMappings) {
+    mappingsRows.innerHTML = "";
+    
+    const entries = Object.entries(newMappings);
+    if (entries.length === 0) {
+      entries.push(["", ""]);
+    }
+
+    entries.forEach(([key, value]) => {
+      const newRow = document.createElement("div");
+      newRow.className = "gut-mappings-row";
+      newRow.innerHTML = `
+        <input type="text" class="gut-input gut-mapping-key" placeholder="e.g., en" value="${instance.escapeHtml(key)}">
+        <input type="text" class="gut-input gut-mapping-value" placeholder="e.g., English" value="${instance.escapeHtml(value)}">
+        <button class="gut-btn gut-btn-danger gut-btn-small gut-remove-mapping" title="Remove">−</button>
+      `;
+      mappingsRows.appendChild(newRow);
+
+      newRow
+        .querySelector(".gut-remove-mapping")
+        .addEventListener("click", () => {
+          if (mappingsRows.querySelectorAll(".gut-mappings-row").length > 1) {
+            newRow.remove();
+          } else {
+            alert("You must have at least one mapping row.");
+          }
+        });
+    });
+  }
+
   saveBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
     if (!name || !/^[a-zA-Z0-9_]+$/.test(name)) {
@@ -1192,4 +1271,204 @@ export function showSandboxWithMask(instance, mask, sample) {
       }
     }, 50);
   }, 50);
+}
+
+export function showMapImportModal(instance, hintName, existingMappings, mode = 'import', editorModal = null, onComplete = null) {
+  const importModalContainer = document.createElement('div');
+  importModalContainer.innerHTML = MAP_IMPORT_MODAL_HTML(instance, hintName, existingMappings, mode);
+  const modal = importModalContainer.firstElementChild;
+
+  ModalStack.push(modal, {
+    type: 'stack',
+    metadata: { instance, hintName, existingMappings, mode, editorModal, onComplete }
+  });
+
+  const textarea = modal.querySelector('#import-mappings-textarea');
+  const separatorSelect = modal.querySelector('#import-separator-select');
+  const customSeparatorInput = modal.querySelector('#import-custom-separator');
+  const overwriteCheckbox = modal.querySelector('#import-overwrite-checkbox');
+  const previewGroup = modal.querySelector('#import-preview-group');
+  const previewContent = modal.querySelector('#import-preview-content');
+  const previewSummary = modal.querySelector('#import-preview-summary');
+  const confirmBtn = modal.querySelector('#import-confirm-btn');
+  const cancelBtn = modal.querySelector('#import-cancel-btn');
+  const closeBtn = modal.querySelector('#modal-close-x');
+
+  setupAutoResize(textarea, { minLines: 5, maxLines: 15 });
+
+  separatorSelect.addEventListener('change', () => {
+    if (separatorSelect.value === 'custom') {
+      customSeparatorInput.style.display = 'block';
+    } else {
+      customSeparatorInput.style.display = 'none';
+    }
+    updatePreview();
+  });
+
+  customSeparatorInput.addEventListener('input', updatePreview);
+  textarea.addEventListener('input', updatePreview);
+
+  function getSeparator() {
+    if (separatorSelect.value === 'custom') {
+      return customSeparatorInput.value || ',';
+    }
+    return separatorSelect.value === '\t' ? '\t' : separatorSelect.value;
+  }
+
+  function parseMappings(text, separator) {
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    const mappings = {};
+    const errors = [];
+
+    lines.forEach((line, idx) => {
+      const parts = line.split(separator).map(p => p.trim());
+      if (parts.length >= 2) {
+        const key = parts[0];
+        const value = parts.slice(1).join(separator).trim();
+        if (key && value) {
+          mappings[key] = value;
+        } else {
+          errors.push(`Line ${idx + 1}: Empty key or value`);
+        }
+      } else if (parts.length === 1 && parts[0]) {
+        errors.push(`Line ${idx + 1}: Missing separator or value`);
+      }
+    });
+
+    return { mappings, errors };
+  }
+
+  function updatePreview() {
+    const text = textarea.value.trim();
+    if (!text) {
+      previewGroup.style.display = 'none';
+      confirmBtn.disabled = true;
+      return;
+    }
+
+    const separator = getSeparator();
+    const { mappings, errors } = parseMappings(text, separator);
+
+    if (Object.keys(mappings).length === 0 && errors.length === 0) {
+      previewGroup.style.display = 'none';
+      confirmBtn.disabled = true;
+      return;
+    }
+
+    previewGroup.style.display = 'block';
+
+    const overwrite = mode === 'mass-edit' || (overwriteCheckbox && overwriteCheckbox.checked);
+    const newKeys = [];
+    const updateKeys = [];
+    const unchangedKeys = [];
+
+    Object.keys(mappings).forEach(key => {
+      if (existingMappings[key]) {
+        if (existingMappings[key] === mappings[key]) {
+          unchangedKeys.push(key);
+        } else {
+          updateKeys.push(key);
+        }
+      } else {
+        newKeys.push(key);
+      }
+    });
+
+    let html = '';
+    if (errors.length > 0) {
+      html += `<div style="color: #f44336; margin-bottom: 8px; font-size: 11px;">
+        <strong>Errors:</strong><br>${errors.map(e => `• ${e}`).join('<br>')}
+      </div>`;
+    }
+
+    if (Object.keys(mappings).length > 0) {
+      html += Object.entries(mappings).map(([key, value]) => {
+        let badge = '';
+        let style = '';
+        if (newKeys.includes(key)) {
+          badge = '<span style="color: #4caf50; font-size: 10px; margin-left: 4px;">(new)</span>';
+          style = 'border-left: 3px solid #4caf50;';
+        } else if (updateKeys.includes(key)) {
+          badge = `<span style="color: #ff9800; font-size: 10px; margin-left: 4px;">(update: "${instance.escapeHtml(existingMappings[key])}")</span>`;
+          style = 'border-left: 3px solid #ff9800;';
+        } else if (unchangedKeys.includes(key)) {
+          badge = '<span style="color: #888; font-size: 10px; margin-left: 4px;">(unchanged)</span>';
+          style = 'border-left: 3px solid #444;';
+        }
+        return `
+          <div class="gut-variable-item" style="${style}">
+            <span class="gut-variable-name">${instance.escapeHtml(key)}${badge}</span>
+            <span class="gut-variable-value">${instance.escapeHtml(value)}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    previewContent.innerHTML = html;
+
+    const summaryParts = [];
+    if (newKeys.length > 0) summaryParts.push(`${newKeys.length} new`);
+    if (updateKeys.length > 0) summaryParts.push(`${updateKeys.length} updates`);
+    if (unchangedKeys.length > 0) summaryParts.push(`${unchangedKeys.length} unchanged`);
+    if (errors.length > 0) summaryParts.push(`${errors.length} errors`);
+
+    previewSummary.textContent = summaryParts.join(', ');
+    
+    confirmBtn.disabled = Object.keys(mappings).length === 0 || errors.length > 0;
+  }
+
+  function applyImport() {
+    const text = textarea.value.trim();
+    if (!text) return;
+
+    const separator = getSeparator();
+    const { mappings } = parseMappings(text, separator);
+
+    if (Object.keys(mappings).length === 0) {
+      alert('No valid mappings to import.');
+      return;
+    }
+
+    const overwrite = mode === 'mass-edit' || (overwriteCheckbox && overwriteCheckbox.checked);
+    
+    let finalMappings;
+    if (mode === 'mass-edit') {
+      finalMappings = mappings;
+    } else if (overwrite) {
+      finalMappings = { ...existingMappings, ...mappings };
+    } else {
+      finalMappings = { ...mappings, ...existingMappings };
+    }
+
+    if (onComplete) {
+      onComplete(finalMappings);
+      ModalStack.pop();
+    } else {
+      const hintData = instance.hints[hintName] || {};
+      instance.hints[hintName] = {
+        ...hintData,
+        mappings: finalMappings
+      };
+
+      saveHints(instance.hints);
+
+      ModalStack.pop();
+      ModalStack.pop();
+      showTemplateAndSettingsManager(instance);
+      const hintsTab = document.querySelector('.gut-tab-btn[data-tab="hints"]');
+      if (hintsTab) hintsTab.click();
+    }
+  }
+
+  confirmBtn.addEventListener('click', applyImport);
+  cancelBtn.addEventListener('click', () => ModalStack.pop());
+  closeBtn.addEventListener('click', () => ModalStack.pop());
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      ModalStack.pop();
+    }
+  });
+
+  updatePreview();
 }
