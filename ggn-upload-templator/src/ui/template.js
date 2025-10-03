@@ -5,9 +5,9 @@ export const MODAL_HTML = (instance) => `
       <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
       <div class="gut-modal-tabs">
         <button class="gut-tab-btn active" data-tab="templates">Templates</button>
-        <button class="gut-tab-btn" data-tab="settings">Settings</button>
         <button class="gut-tab-btn" data-tab="hints">Variable Hints</button>
         <button class="gut-tab-btn" data-tab="sandbox">Mask Sandbox</button>
+        <button class="gut-tab-btn" data-tab="settings">Settings</button>
       </div>
     </div>
 
@@ -661,18 +661,25 @@ export const HINT_EDITOR_MODAL_HTML = (
   `;
 };
 
-export const MAP_IMPORT_MODAL_HTML = (instance, hintName, existingMappings = {}, mode = 'import') => {
-  const isMassEdit = mode === 'mass-edit';
-  const prefilledText = isMassEdit 
-    ? Object.entries(existingMappings).map(([k, v]) => `${k},${v}`).join('\n')
-    : '';
-  
+export const MAP_IMPORT_MODAL_HTML = (
+  instance,
+  hintName,
+  existingMappings = {},
+  mode = "import",
+) => {
+  const isMassEdit = mode === "mass-edit";
+  const prefilledText = isMassEdit
+    ? Object.entries(existingMappings)
+        .map(([k, v]) => `${k},${v}`)
+        .join("\n")
+    : "";
+
   return `
     <div class="gut-modal">
       <div class="gut-modal-content">
         <div class="gut-modal-header">
           <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
-          <h2>${isMassEdit ? 'Mass Edit' : 'Import'} Mappings for "${instance.escapeHtml(hintName)}"</h2>
+          <h2>${isMassEdit ? "Mass Edit" : "Import"} Mappings for "${instance.escapeHtml(hintName)}"</h2>
         </div>
 
         <div class="gut-modal-body">
@@ -688,11 +695,11 @@ export const MAP_IMPORT_MODAL_HTML = (instance, hintName, existingMappings = {},
                 <option value="=">Equals (=)</option>
                 <option value="custom">Custom...</option>
               </select>
-              <input 
-                type="text" 
-                id="import-custom-separator" 
-                class="gut-input" 
-                placeholder="Enter separator" 
+              <input
+                type="text"
+                id="import-custom-separator"
+                class="gut-input"
+                placeholder="Enter separator"
                 maxlength="3"
                 style="display: none; width: 100px;"
               >
@@ -701,18 +708,20 @@ export const MAP_IMPORT_MODAL_HTML = (instance, hintName, existingMappings = {},
 
           <div class="gut-form-group">
             <label for="import-mappings-textarea">Mappings (one per line):</label>
-            <textarea 
-              id="import-mappings-textarea" 
-              class="gut-input" 
+            <textarea
+              id="import-mappings-textarea"
+              class="gut-input"
               placeholder="en,English\nfr,French\nde,German"
               style="font-family: 'Fira Code', monospace; font-size: 13px; resize: vertical; width: 100%; line-height: 1.4;"
             >${prefilledText}</textarea>
             <div style="font-size: 11px; color: #888; margin-top: 4px;">
-              Format: key${isMassEdit ? '' : '<separator>'}value (one mapping per line)
+              Format: key${isMassEdit ? "" : "<separator>"}value (one mapping per line)
             </div>
           </div>
 
-          ${!isMassEdit ? `
+          ${
+            !isMassEdit
+              ? `
           <div class="gut-form-group">
             <label class="gut-checkbox-label">
               <input type="checkbox" id="import-overwrite-checkbox">
@@ -722,7 +731,9 @@ export const MAP_IMPORT_MODAL_HTML = (instance, hintName, existingMappings = {},
               If unchecked, only new keys will be added (existing keys will be kept)
             </div>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
 
           <div class="gut-form-group" id="import-preview-group" style="display: none;">
             <label>Preview:</label>
@@ -734,7 +745,7 @@ export const MAP_IMPORT_MODAL_HTML = (instance, hintName, existingMappings = {},
 
         <div class="gut-modal-footer">
           <button class="gut-btn" id="import-cancel-btn">Cancel</button>
-          <button class="gut-btn gut-btn-primary" id="import-confirm-btn">${isMassEdit ? 'Apply Changes' : 'Import'}</button>
+          <button class="gut-btn gut-btn-primary" id="import-confirm-btn">${isMassEdit ? "Apply Changes" : "Import"}</button>
         </div>
       </div>
     </div>
@@ -762,7 +773,9 @@ export const MAIN_UI_HTML = (instance) => `
     </div>
     <button type="button" id="apply-template-btn" class="gut-btn gut-btn-primary">Apply Template</button>
     <button type="button" id="create-template-btn" class="gut-btn gut-btn-primary">+ Create Template</button>
-    <button id="manage-templates-btn" type="button" class="gut-btn gut-btn-secondary" title="Manage Templates & Settings">Settings</button>
+    <button id="manage-templates-btn" type="button" class="gut-btn gut-btn-secondary" title="Manage Templates & Settings">
+      Manage
+    </button>
   </div>
   <div id="variables-row" style="display: none; padding: 10px 0; font-size: 12px; cursor: pointer; user-select: none;"></div>
 `;
