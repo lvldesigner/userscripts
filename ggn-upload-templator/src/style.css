@@ -790,7 +790,7 @@
     border: 1px solid transparent;
     border-radius: 4px;
     font-size: 14px;
-    font-family: "Fira Code", monospace;
+    font-family: "Fira Code", monospace !important;
     color: transparent;
     background: #2a2a2a;
     pointer-events: none;
@@ -809,7 +809,7 @@
     z-index: 1;
     background: transparent !important;
     caret-color: #e0e0e0;
-    font-family: "Fira Code", monospace;
+    font-family: "Fira Code", monospace !important;
     font-variant-ligatures: none;
     letter-spacing: normal;
     word-spacing: normal;
