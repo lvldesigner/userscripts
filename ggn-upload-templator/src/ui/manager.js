@@ -17,6 +17,7 @@ import {
   MAIN_UI_HTML,
   VARIABLES_MODAL_HTML,
 } from "./template.js";
+import { ModalStack } from "../modal-stack.js";
 
 // Reusable mask validation and cursor info setup
 export function setupMaskValidation(maskInput, cursorInfoElement, statusContainer, overlayElement, onValidationChange = null, availableHints = {}) {
@@ -30,6 +31,8 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
       autocompleteDropdown = null;
       selectedIndex = -1;
       filteredHints = [];
+      // Pop the escape handler when closing autocomplete
+      ModalStack.popEscapeHandler();
     }
   };
   
@@ -80,6 +83,12 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
     
     inputContainer.style.position = "relative";
     inputContainer.appendChild(autocompleteDropdown);
+    
+    // Push escape handler to prevent closing the modal when autocomplete is visible
+    ModalStack.pushEscapeHandler(() => {
+      closeAutocomplete();
+      return true; // Handled the escape
+    });
   };
   
   const insertHint = (hintName) => {
@@ -145,8 +154,8 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
         closeAutocomplete();
       }
     } else if (e.key === "Escape") {
-      e.preventDefault();
-      closeAutocomplete();
+      // Escape handling is now managed by the escape handler stack
+      return;
     } else if (e.key === "Tab") {
       if (selectedIndex >= 0 && selectedIndex < filteredHints.length) {
         e.preventDefault();
@@ -379,7 +388,14 @@ export async function showTemplateCreator(
     selectedTorrentName,
   );
 
-  document.body.appendChild(modal);
+  const canGoBack = editTemplateName !== null;
+  
+  ModalStack.replace(modal, {
+    type: 'replace',
+    canGoBack: canGoBack,
+    backFactory: canGoBack ? () => instance.showTemplateAndSettingsManager() : null,
+    metadata: { instance, editTemplateName, editTemplate }
+  });
 
   // Setup live preview
   const maskInput = modal.querySelector("#torrent-mask");
@@ -632,8 +648,23 @@ export async function showTemplateCreator(
 
   // Event handlers
   modal.querySelector("#cancel-template").addEventListener("click", () => {
-    document.body.removeChild(modal);
+    if (canGoBack) {
+      ModalStack.back();
+    } else {
+      ModalStack.pop();
+    }
   });
+
+  const closeX = modal.querySelector("#modal-close-x");
+  if (closeX) {
+    closeX.addEventListener("click", () => {
+      if (canGoBack) {
+        ModalStack.back();
+      } else {
+        ModalStack.pop();
+      }
+    });
+  }
 
   modal.querySelector("#save-template").addEventListener("click", () => {
     instance.saveTemplate(modal, editTemplateName);
@@ -642,18 +673,13 @@ export async function showTemplateCreator(
   // Close on background click
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
-      document.body.removeChild(modal);
+      if (canGoBack) {
+        ModalStack.back();
+      } else {
+        ModalStack.pop();
+      }
     }
   });
-
-  // Close on Esc key
-  const handleEscKey = (e) => {
-    if (e.key === "Escape" && document.body.contains(modal)) {
-      document.body.removeChild(modal);
-      document.removeEventListener("keydown", handleEscKey);
-    }
-  };
-  document.addEventListener("keydown", handleEscKey);
 
   // Variable toggle event handlers
   modal.addEventListener("click", (e) => {
@@ -701,8 +727,7 @@ export async function showTemplateCreator(
   const backBtn = modal.querySelector("#back-to-manager");
   if (backBtn) {
     backBtn.addEventListener("click", () => {
-      document.body.removeChild(modal);
-      instance.showTemplateAndSettingsManager();
+      ModalStack.back();
     });
   }
 
@@ -713,7 +738,7 @@ export async function showTemplateCreator(
       e.preventDefault();
       const mask = maskInput.value;
       const sample = sampleInput.value;
-      document.body.removeChild(modal);
+      ModalStack.pop();
       instance.showSandboxWithMask(mask, sample);
     });
   }
@@ -724,27 +749,29 @@ export function showVariablesModal(instance, variables) {
   modal.className = "gut-modal";
   modal.innerHTML = VARIABLES_MODAL_HTML(variables);
 
-  document.body.appendChild(modal);
+  ModalStack.push(modal, {
+    type: 'stack',
+    metadata: { instance, variables }
+  });
 
   modal
     .querySelector("#close-variables-modal")
     .addEventListener("click", () => {
-      document.body.removeChild(modal);
+      ModalStack.pop();
     });
+
+  const closeX = modal.querySelector("#modal-close-x");
+  if (closeX) {
+    closeX.addEventListener("click", () => {
+      ModalStack.pop();
+    });
+  }
 
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
-      document.body.removeChild(modal);
+      ModalStack.pop();
     }
   });
-
-  const handleEscKey = (e) => {
-    if (e.key === "Escape" && document.body.contains(modal)) {
-      document.body.removeChild(modal);
-      document.removeEventListener("keydown", handleEscKey);
-    }
-  };
-  document.addEventListener("keydown", handleEscKey);
 }
 
 export function escapeHtml(text) {

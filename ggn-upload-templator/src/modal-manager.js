@@ -6,17 +6,13 @@ import {
   saveSandboxSets,
   saveCurrentSandboxSet,
 } from "./storage.js";
-import { 
-  saveHints, 
-  resetHintToDefault, 
-  loadHints 
-} from "./hint-storage.js";
+import { saveHints, resetHintToDefault, loadHints } from "./hint-storage.js";
 import { MODAL_HTML, HINT_EDITOR_MODAL_HTML } from "./ui/template.js";
+import { renderSandboxResults, setupMaskValidation } from "./ui/manager.js";
 import {
-  renderSandboxResults,
-  setupMaskValidation,
-} from "./ui/manager.js";
-import { testMaskAgainstSamples, compileUserMaskToRegex } from "./utils/template.js";
+  testMaskAgainstSamples,
+  compileUserMaskToRegex,
+} from "./utils/template.js";
 import { getFieldLabel } from "./utils/form.js";
 import { updateMaskHighlighting } from "./utils/highlighting.js";
 import { buildKeybindingFromEvent } from "./utils/keyboard.js";
@@ -26,13 +22,20 @@ import {
   editTemplate,
   refreshTemplateManager,
 } from "./template-operations.js";
+import { ModalStack } from "./modal-stack.js";
 
 export function showTemplateAndSettingsManager(instance) {
   const modal = document.createElement("div");
   modal.className = "gut-modal";
   modal.innerHTML = MODAL_HTML(instance);
 
-  document.body.appendChild(modal);
+  ModalStack.push(modal, {
+    type: "replace",
+    canGoBack: false,
+    metadata: { instance },
+  });
+
+  // Log computed styles after it's in the DOM
 
   modal.querySelectorAll(".gut-tab-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
@@ -116,9 +119,7 @@ export function showTemplateAndSettingsManager(instance) {
       }
     });
 
-    const matchedElementsLabel = modal.querySelector(
-      "#matched-elements-label",
-    );
+    const matchedElementsLabel = modal.querySelector("#matched-elements-label");
     if (matchedElements.length === 0) {
       matchedElementsLabel.textContent = "Matched Elements:";
       matchedContainer.innerHTML =
@@ -216,12 +217,15 @@ export function showTemplateAndSettingsManager(instance) {
   const sandboxCursorInfo = modal.querySelector("#sandbox-mask-cursor-info");
   const sandboxStatusContainer = modal.querySelector("#sandbox-mask-status");
   const toggleCompiledRegexLink = modal.querySelector("#toggle-compiled-regex");
-  const sandboxCompiledRegexDisplay = modal.querySelector("#sandbox-compiled-regex");
+  const sandboxCompiledRegexDisplay = modal.querySelector(
+    "#sandbox-compiled-regex",
+  );
 
   let sandboxDebounceTimeout = null;
   let currentLoadedSet = instance.currentSandboxSet || "";
-  let showingCompiledRegex = localStorage.getItem("ggn-upload-templator-show-compiled-regex") === "true";
-  
+  let showingCompiledRegex =
+    localStorage.getItem("ggn-upload-templator-show-compiled-regex") === "true";
+
   const updateButtonStates = () => {
     if (currentLoadedSet && currentLoadedSet !== "") {
       saveBtn.textContent = "Update";
@@ -233,7 +237,7 @@ export function showTemplateAndSettingsManager(instance) {
       deleteBtn.style.display = "none";
     }
   };
-  
+
   updateButtonStates();
 
   const updateSandboxTest = () => {
@@ -288,7 +292,7 @@ export function showTemplateAndSettingsManager(instance) {
     () => {
       debouncedUpdateSandboxTest();
     },
-    instance.hints
+    instance.hints,
   );
 
   sandboxMaskInput?.addEventListener("scroll", () => {
@@ -300,7 +304,7 @@ export function showTemplateAndSettingsManager(instance) {
 
   sandboxSetSelect?.addEventListener("change", () => {
     const value = sandboxSetSelect.value;
-    
+
     if (!value || value === "") {
       currentLoadedSet = "";
       instance.currentSandboxSet = "";
@@ -322,7 +326,7 @@ export function showTemplateAndSettingsManager(instance) {
       instance.currentSandboxSet = value;
       localStorage.setItem("ggn-upload-templator-sandbox-current", value);
       updateButtonStates();
-      
+
       if (showingCompiledRegex) {
         updateCompiledRegex();
         sandboxCompiledRegexDisplay.classList.add("visible");
@@ -337,9 +341,11 @@ export function showTemplateAndSettingsManager(instance) {
         mask: sandboxMaskInput.value,
         samples: sandboxSampleInput.value,
       };
-      
+
       saveSandboxSet(instance, currentLoadedSet, data);
-      instance.showStatus(`Test set "${currentLoadedSet}" updated successfully!`);
+      instance.showStatus(
+        `Test set "${currentLoadedSet}" updated successfully!`,
+      );
     } else {
       const name = prompt("Enter a name for this test set:");
       if (name && name.trim()) {
@@ -348,13 +354,18 @@ export function showTemplateAndSettingsManager(instance) {
           mask: sandboxMaskInput.value,
           samples: sandboxSampleInput.value,
         };
-        
+
         saveSandboxSet(instance, trimmedName, data);
         instance.currentSandboxSet = trimmedName;
         currentLoadedSet = trimmedName;
-        localStorage.setItem("ggn-upload-templator-sandbox-current", trimmedName);
-        
-        const existingOption = sandboxSetSelect.querySelector(`option[value="${trimmedName}"]`);
+        localStorage.setItem(
+          "ggn-upload-templator-sandbox-current",
+          trimmedName,
+        );
+
+        const existingOption = sandboxSetSelect.querySelector(
+          `option[value="${trimmedName}"]`,
+        );
         if (existingOption) {
           existingOption.selected = true;
         } else {
@@ -364,7 +375,7 @@ export function showTemplateAndSettingsManager(instance) {
           sandboxSetSelect.appendChild(newOption);
           newOption.selected = true;
         }
-        
+
         updateButtonStates();
         instance.showStatus(`Test set "${trimmedName}" saved successfully!`);
       }
@@ -394,7 +405,7 @@ export function showTemplateAndSettingsManager(instance) {
       sandboxSampleInput.value = "";
       sandboxResultsContainer.innerHTML =
         '<div class="gut-no-variables">Enter a mask and sample torrent names to test.</div>';
-      
+
       updateButtonStates();
       instance.showStatus(`Test set deleted successfully!`);
     }
@@ -405,7 +416,10 @@ export function showTemplateAndSettingsManager(instance) {
       return;
     }
 
-    const newName = prompt(`Rename test set "${currentLoadedSet}" to:`, currentLoadedSet);
+    const newName = prompt(
+      `Rename test set "${currentLoadedSet}" to:`,
+      currentLoadedSet,
+    );
     if (!newName || !newName.trim() || newName.trim() === currentLoadedSet) {
       return;
     }
@@ -444,17 +458,23 @@ export function showTemplateAndSettingsManager(instance) {
   toggleCompiledRegexLink?.addEventListener("click", (e) => {
     e.preventDefault();
     showingCompiledRegex = !showingCompiledRegex;
-    localStorage.setItem("ggn-upload-templator-show-compiled-regex", showingCompiledRegex);
-    
+    localStorage.setItem(
+      "ggn-upload-templator-show-compiled-regex",
+      showingCompiledRegex,
+    );
+
     if (showingCompiledRegex) {
       const mask = sandboxMaskInput.value;
       if (!mask) {
         instance.showStatus("Enter a mask first", "error");
         showingCompiledRegex = false;
-        localStorage.setItem("ggn-upload-templator-show-compiled-regex", "false");
+        localStorage.setItem(
+          "ggn-upload-templator-show-compiled-regex",
+          "false",
+        );
         return;
       }
-      
+
       updateCompiledRegex();
       sandboxCompiledRegexDisplay.classList.add("visible");
       toggleCompiledRegexLink.textContent = "Hide compiled regex";
@@ -476,7 +496,7 @@ export function showTemplateAndSettingsManager(instance) {
       resultsLabel.textContent = "Match Results:";
     }
     updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
-    
+
     if (showingCompiledRegex) {
       updateCompiledRegex();
     }
@@ -487,13 +507,13 @@ export function showTemplateAndSettingsManager(instance) {
       localStorage.getItem("ggn-upload-templator-sandbox-sets") || "{}",
     );
     const data = sets[currentLoadedSet];
-    
+
     if (data) {
       sandboxMaskInput.value = data.mask || "";
       sandboxSampleInput.value = data.samples || "";
       updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
       updateSandboxTest();
-      
+
       if (showingCompiledRegex) {
         updateCompiledRegex();
         sandboxCompiledRegexDisplay.classList.add("visible");
@@ -505,7 +525,7 @@ export function showTemplateAndSettingsManager(instance) {
     if (sandboxMaskInput.value && sandboxSampleInput.value) {
       updateSandboxTest();
     }
-    
+
     if (showingCompiledRegex) {
       updateCompiledRegex();
       sandboxCompiledRegexDisplay.classList.add("visible");
@@ -526,9 +546,22 @@ export function showTemplateAndSettingsManager(instance) {
       const keybindingSpan = keybindingSpans[keybindingSpanIndex];
       const recordBtn = modal.querySelector(recordBtnSelector);
 
+      const escapeHandler = (e) => {
+        recordBtn.textContent = "Record";
+        recordBtn.disabled = false;
+        isRecording = false;
+        ModalStack.setKeybindingRecorderActive(false);
+        ModalStack.popEscapeHandler();
+        document.removeEventListener("keydown", handleKeydown);
+        return true; // Handled the escape
+      };
+
       recordBtn.textContent = "Press keys...";
       recordBtn.disabled = true;
       isRecording = true;
+      ModalStack.setKeybindingRecorderActive(true);
+
+      ModalStack.pushEscapeHandler(escapeHandler);
 
       const handleKeydown = (e) => {
         e.preventDefault();
@@ -537,10 +570,7 @@ export function showTemplateAndSettingsManager(instance) {
         );
 
         if (e.key === "Escape") {
-          recordBtn.textContent = "Record";
-          recordBtn.disabled = false;
-          isRecording = false;
-          document.removeEventListener("keydown", handleKeydown);
+          escapeHandler(e);
           return;
         }
 
@@ -554,6 +584,8 @@ export function showTemplateAndSettingsManager(instance) {
           recordBtn.textContent = "Record";
           recordBtn.disabled = false;
           isRecording = false;
+          ModalStack.setKeybindingRecorderActive(false);
+          ModalStack.popEscapeHandler();
 
           document.removeEventListener("keydown", handleKeydown);
         }
@@ -576,7 +608,7 @@ export function showTemplateAndSettingsManager(instance) {
 
   modal.addEventListener("click", (e) => {
     if (e.target === modal) {
-      document.body.removeChild(modal);
+      ModalStack.pop();
       return;
     }
 
@@ -586,7 +618,6 @@ export function showTemplateAndSettingsManager(instance) {
     if (action && templateName) {
       switch (action) {
         case "edit":
-          document.body.removeChild(modal);
           editTemplate(instance, templateName);
           break;
         case "clone":
@@ -612,21 +643,34 @@ export function showTemplateAndSettingsManager(instance) {
         delete instance.hints[hintName];
         saveHints(instance.hints);
         hintItem.remove();
-        
+
         const customHintsList = modal.querySelector("#custom-hints-list");
         const customHintsSection = modal.querySelector("#custom-hints-section");
-        if (customHintsList && customHintsList.children.length === 0 && customHintsSection) {
+        if (
+          customHintsList &&
+          customHintsList.children.length === 0 &&
+          customHintsSection
+        ) {
           customHintsSection.style.display = "none";
         }
       }
     });
   });
 
-  modal.querySelectorAll('[data-action="edit-hint"]').forEach((btn) => {
+  const editHintButtons = modal.querySelectorAll('[data-action="edit-hint"]');
+  console.log("Found edit-hint buttons:", editHintButtons.length);
+  editHintButtons.forEach((btn) => {
     btn.addEventListener("click", (e) => {
+      console.log("Edit hint button clicked", e.target);
       e.preventDefault();
       const hintItem = e.target.closest(".gut-hint-item");
       const hintName = hintItem?.dataset.hint;
+      console.log(
+        "Hint name:",
+        hintName,
+        "Has hint data:",
+        !!instance.hints[hintName],
+      );
       if (hintName && instance.hints[hintName]) {
         showHintEditor(instance, modal, hintName, instance.hints[hintName]);
       }
@@ -641,31 +685,35 @@ export function showTemplateAndSettingsManager(instance) {
       if (hintName && confirm(`Reset "${hintName}" to default?`)) {
         if (resetHintToDefault(hintName)) {
           instance.hints = loadHints();
-          
-          document.body.removeChild(modal);
+
+          ModalStack.pop();
           showTemplateAndSettingsManager(instance);
-          const hintsTab = document.querySelector('.gut-tab-btn[data-tab="hints"]');
+          const hintsTab = document.querySelector(
+            '.gut-tab-btn[data-tab="hints"]',
+          );
           if (hintsTab) hintsTab.click();
         }
       }
     });
   });
 
-  modal.querySelectorAll('.gut-hint-mappings-toggle').forEach((btn) => {
+  modal.querySelectorAll(".gut-hint-mappings-toggle").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       const hintName = e.target.dataset.hint;
-      const hintItem = modal.querySelector(`.gut-hint-item[data-hint="${hintName}"]`);
-      const content = hintItem?.querySelector('.gut-hint-mappings-content');
+      const hintItem = modal.querySelector(
+        `.gut-hint-item[data-hint="${hintName}"]`,
+      );
+      const content = hintItem?.querySelector(".gut-hint-mappings-content");
       const toggle = e.target;
-      
+
       if (content) {
-        if (content.style.display === 'none') {
-          content.style.display = 'block';
-          toggle.textContent = 'Hide';
+        if (content.style.display === "none") {
+          content.style.display = "block";
+          toggle.textContent = "Hide";
         } else {
-          content.style.display = 'none';
-          toggle.textContent = 'Show';
+          content.style.display = "none";
+          toggle.textContent = "Show";
         }
       }
     });
@@ -679,27 +727,37 @@ export function showTemplateAndSettingsManager(instance) {
       const customHintsList = modal.querySelector("#custom-hints-list");
       const customHintsSection = modal.querySelector("#custom-hints-section");
       const filterCount = modal.querySelector("#hint-filter-count");
-      
+
       let visibleCount = 0;
       let totalCount = 0;
-      
+
       const filterHints = (list) => {
         if (!list) return;
         const hintItems = list.querySelectorAll(".gut-hint-item");
-        
-        hintItems.forEach(item => {
+
+        hintItems.forEach((item) => {
           totalCount++;
           const hintName = item.dataset.hint?.toLowerCase() || "";
-          const description = item.querySelector(".gut-hint-description")?.textContent?.toLowerCase() || "";
-          const pattern = item.querySelector(".gut-hint-pattern")?.textContent?.toLowerCase() || "";
-          const type = item.querySelector(".gut-hint-type-badge")?.textContent?.toLowerCase() || "";
-          
-          const matches = !filterText || 
-            hintName.includes(filterText) || 
-            description.includes(filterText) || 
+          const description =
+            item
+              .querySelector(".gut-hint-description")
+              ?.textContent?.toLowerCase() || "";
+          const pattern =
+            item
+              .querySelector(".gut-hint-pattern")
+              ?.textContent?.toLowerCase() || "";
+          const type =
+            item
+              .querySelector(".gut-hint-type-badge")
+              ?.textContent?.toLowerCase() || "";
+
+          const matches =
+            !filterText ||
+            hintName.includes(filterText) ||
+            description.includes(filterText) ||
             pattern.includes(filterText) ||
             type.includes(filterText);
-          
+
           if (matches) {
             item.style.display = "";
             visibleCount++;
@@ -708,15 +766,18 @@ export function showTemplateAndSettingsManager(instance) {
           }
         });
       };
-      
+
       filterHints(defaultHintsList);
       filterHints(customHintsList);
-      
+
       if (customHintsSection) {
-        const customVisible = customHintsList?.querySelectorAll('.gut-hint-item:not([style*="display: none"])').length || 0;
+        const customVisible =
+          customHintsList?.querySelectorAll(
+            '.gut-hint-item:not([style*="display: none"])',
+          ).length || 0;
         customHintsSection.style.display = customVisible > 0 ? "" : "none";
       }
-      
+
       if (filterText) {
         filterCount.textContent = `Showing ${visibleCount} of ${totalCount} hints`;
         filterCount.style.display = "block";
@@ -734,16 +795,15 @@ export function showTemplateAndSettingsManager(instance) {
   }
 
   modal.querySelector("#close-manager").addEventListener("click", () => {
-    document.body.removeChild(modal);
+    ModalStack.pop();
   });
 
-  const handleEscKey = (e) => {
-    if (e.key === "Escape" && document.body.contains(modal) && !isRecording) {
-      document.body.removeChild(modal);
-      document.removeEventListener("keydown", handleEscKey);
-    }
-  };
-  document.addEventListener("keydown", handleEscKey);
+  const closeX = modal.querySelector("#modal-close-x");
+  if (closeX) {
+    closeX.addEventListener("click", () => {
+      ModalStack.pop();
+    });
+  }
 }
 
 export function saveSettingsFromModal(instance, modal) {
@@ -801,18 +861,36 @@ export function saveSettingsFromModal(instance, modal) {
   );
 }
 
-export function showHintEditor(instance, parentModal, hintName = null, hintData = null) {
+export function showHintEditor(
+  instance,
+  parentModal,
+  hintName = null,
+  hintData = null,
+) {
   const isDefaultHint = (name) => {
-    const defaultHints = ['number', 'alpha', 'alnum', 'version', 'date_dots', 'date_dashes', 'lang_codes', 'resolution'];
+    const defaultHints = [
+      "number",
+      "alpha",
+      "alnum",
+      "version",
+      "date_dots",
+      "date_dashes",
+      "lang_codes",
+      "resolution",
+    ];
     return defaultHints.includes(name);
   };
-  
+
   const editorModal = document.createElement("div");
   editorModal.innerHTML = HINT_EDITOR_MODAL_HTML(instance, hintName, hintData);
-  document.body.appendChild(editorModal.firstElementChild);
-  
-  const modal = document.querySelector(".gut-hint-editor-modal");
-  const closeBtn = modal.querySelector(".gut-hint-editor-close");
+  const modal = editorModal.firstElementChild;
+
+  ModalStack.push(modal, {
+    type: "stack",
+    onClose: null,
+    metadata: { instance, parentModal, hintName, hintData },
+  });
+  const closeBtn = modal.querySelector("#modal-close-x");
   const cancelBtn = modal.querySelector("#hint-editor-cancel");
   const saveBtn = modal.querySelector("#hint-editor-save");
   const nameInput = modal.querySelector("#hint-editor-name");
@@ -825,34 +903,40 @@ export function showHintEditor(instance, parentModal, hintName = null, hintData 
   const strictInput = modal.querySelector("#hint-editor-strict");
   const addMappingBtn = modal.querySelector("#hint-add-mapping");
   const mappingsRows = modal.querySelector("#hint-mappings-rows");
-  
+
   const closeModal = () => {
-    document.body.removeChild(modal);
+    ModalStack.pop();
   };
-  
+
   closeBtn.addEventListener("click", closeModal);
   cancelBtn.addEventListener("click", closeModal);
-  
-  typeInputs.forEach(input => {
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+
+  typeInputs.forEach((input) => {
     input.addEventListener("change", (e) => {
       const type = e.target.value;
-      if (type === 'pattern') {
-        patternGroup.style.display = 'block';
-        mappingsGroup.style.display = 'none';
-        patternLabel.textContent = 'Pattern *';
-        patternInput.placeholder = 'e.g., ##.##.####';
-      } else if (type === 'regex') {
-        patternGroup.style.display = 'block';
-        mappingsGroup.style.display = 'none';
-        patternLabel.textContent = 'Regex Pattern *';
-        patternInput.placeholder = 'e.g., v\\d+(?:\\.\\d+)*';
-      } else if (type === 'map') {
-        patternGroup.style.display = 'none';
-        mappingsGroup.style.display = 'block';
+      if (type === "pattern") {
+        patternGroup.style.display = "block";
+        mappingsGroup.style.display = "none";
+        patternLabel.textContent = "Pattern *";
+        patternInput.placeholder = "e.g., ##.##.####";
+      } else if (type === "regex") {
+        patternGroup.style.display = "block";
+        mappingsGroup.style.display = "none";
+        patternLabel.textContent = "Regex Pattern *";
+        patternInput.placeholder = "e.g., v\\d+(?:\\.\\d+)*";
+      } else if (type === "map") {
+        patternGroup.style.display = "none";
+        mappingsGroup.style.display = "block";
       }
     });
   });
-  
+
   addMappingBtn.addEventListener("click", () => {
     const newRow = document.createElement("div");
     newRow.className = "gut-mappings-row";
@@ -862,13 +946,15 @@ export function showHintEditor(instance, parentModal, hintName = null, hintData 
       <button class="gut-btn gut-btn-danger gut-btn-small gut-remove-mapping" title="Remove">−</button>
     `;
     mappingsRows.appendChild(newRow);
-    
-    newRow.querySelector(".gut-remove-mapping").addEventListener("click", () => {
-      newRow.remove();
-    });
+
+    newRow
+      .querySelector(".gut-remove-mapping")
+      .addEventListener("click", () => {
+        newRow.remove();
+      });
   });
-  
-  mappingsRows.querySelectorAll(".gut-remove-mapping").forEach(btn => {
+
+  mappingsRows.querySelectorAll(".gut-remove-mapping").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       const row = e.target.closest(".gut-mappings-row");
       if (mappingsRows.querySelectorAll(".gut-mappings-row").length > 1) {
@@ -878,32 +964,32 @@ export function showHintEditor(instance, parentModal, hintName = null, hintData 
       }
     });
   });
-  
+
   saveBtn.addEventListener("click", () => {
     const name = nameInput.value.trim();
     if (!name || !/^[a-zA-Z0-9_]+$/.test(name)) {
       alert("Invalid hint name. Use only letters, numbers, and underscores.");
       return;
     }
-    
+
     if (!hintName && instance.hints[name]) {
       alert(`Hint "${name}" already exists.`);
       return;
     }
-    
+
     const type = modal.querySelector('input[name="hint-type"]:checked').value;
     const description = descriptionInput.value.trim();
-    
+
     let hintDef = { type, description };
-    
-    if (type === 'pattern' || type === 'regex') {
+
+    if (type === "pattern" || type === "regex") {
       const pattern = patternInput.value.trim();
       if (!pattern) {
         alert("Pattern is required.");
         return;
       }
-      
-      if (type === 'regex') {
+
+      if (type === "regex") {
         try {
           new RegExp(pattern);
         } catch (e) {
@@ -911,14 +997,14 @@ export function showHintEditor(instance, parentModal, hintName = null, hintData 
           return;
         }
       }
-      
+
       hintDef.pattern = pattern;
-    } else if (type === 'map') {
+    } else if (type === "map") {
       const mappings = {};
       const rows = mappingsRows.querySelectorAll(".gut-mappings-row");
       let hasEmptyRow = false;
-      
-      rows.forEach(row => {
+
+      rows.forEach((row) => {
         const key = row.querySelector(".gut-mapping-key").value.trim();
         const value = row.querySelector(".gut-mapping-value").value.trim();
         if (key && value) {
@@ -927,53 +1013,49 @@ export function showHintEditor(instance, parentModal, hintName = null, hintData 
           hasEmptyRow = true;
         }
       });
-      
+
       if (Object.keys(mappings).length === 0) {
         alert("At least one complete mapping is required.");
         return;
       }
-      
+
       if (hasEmptyRow) {
-        if (!confirm("Some mapping rows are incomplete and will be ignored. Continue?")) {
+        if (
+          !confirm(
+            "Some mapping rows are incomplete and will be ignored. Continue?",
+          )
+        ) {
           return;
         }
       }
-      
+
       hintDef.mappings = mappings;
       hintDef.strict = strictInput.checked;
     }
-    
+
     const wasNewCustomHint = !hintName && !isDefaultHint(name);
-    
+
     instance.hints[name] = hintDef;
     saveHints(instance.hints);
-    
-    closeModal();
-    
-    document.body.removeChild(parentModal);
+
+    ModalStack.pop();
+    ModalStack.pop();
     showTemplateAndSettingsManager(instance);
     const hintsTab = document.querySelector('.gut-tab-btn[data-tab="hints"]');
     if (hintsTab) hintsTab.click();
-    
+
     if (wasNewCustomHint) {
       setTimeout(() => {
-        const newModal = document.querySelector('.gut-modal');
-        const customHintsSection = newModal?.querySelector("#custom-hints-section");
+        const newModal = document.querySelector(".gut-modal");
+        const customHintsSection = newModal?.querySelector(
+          "#custom-hints-section",
+        );
         if (customHintsSection) {
           customHintsSection.style.display = "";
         }
       }, 50);
     }
   });
-  
-  const handleEscKey = (e) => {
-    if (e.key === "Escape" && document.body.contains(modal)) {
-      e.stopImmediatePropagation();
-      closeModal();
-      document.removeEventListener("keydown", handleEscKey);
-    }
-  };
-  document.addEventListener("keydown", handleEscKey);
 }
 
 export function resetSettings(instance, modal) {
@@ -999,7 +1081,8 @@ export function resetSettings(instance, modal) {
   submitKeybindingSpan.textContent = instance.config.CUSTOM_SUBMIT_KEYBINDING;
   const applyKeybindingSpans = modal.querySelectorAll(".gut-keybinding-text");
   if (applyKeybindingSpans.length > 1) {
-    applyKeybindingSpans[1].textContent = instance.config.CUSTOM_APPLY_KEYBINDING;
+    applyKeybindingSpans[1].textContent =
+      instance.config.CUSTOM_APPLY_KEYBINDING;
   }
 
   instance.showStatus(

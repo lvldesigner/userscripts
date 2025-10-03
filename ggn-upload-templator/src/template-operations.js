@@ -4,6 +4,7 @@ import {
   removeSelectedTemplate,
 } from "./storage.js";
 import { TEMPLATE_SELECTOR_HTML, TEMPLATE_LIST_HTML } from "./ui/template.js";
+import { ModalStack } from "./modal-stack.js";
 
 export function saveTemplate(instance, modal, editingTemplateName = null) {
   const name = modal.querySelector("#template-name").value.trim();
@@ -121,7 +122,7 @@ export function saveTemplate(instance, modal, editingTemplateName = null) {
   const action = editingTemplateName ? "updated" : "saved";
   instance.showStatus(`Template "${name}" ${action} successfully!`);
 
-  document.body.removeChild(modal);
+  ModalStack.pop();
 }
 
 export function deleteTemplate(instance, templateName) {

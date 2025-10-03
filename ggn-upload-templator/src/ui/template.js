@@ -1,14 +1,18 @@
 // src/templates.js
 export const MODAL_HTML = (instance) => `
   <div class="gut-modal-content">
-    <div class="gut-modal-tabs">
-      <button class="gut-tab-btn active" data-tab="templates">Templates</button>
-      <button class="gut-tab-btn" data-tab="settings">Settings</button>
-      <button class="gut-tab-btn" data-tab="hints">Variable Hints</button>
-      <button class="gut-tab-btn" data-tab="sandbox">Mask Sandbox</button>
+    <div class="gut-modal-header">
+      <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
+      <div class="gut-modal-tabs">
+        <button class="gut-tab-btn active" data-tab="templates">Templates</button>
+        <button class="gut-tab-btn" data-tab="settings">Settings</button>
+        <button class="gut-tab-btn" data-tab="hints">Variable Hints</button>
+        <button class="gut-tab-btn" data-tab="sandbox">Mask Sandbox</button>
+      </div>
     </div>
 
-    <div class="gut-tab-content active" id="templates-tab">
+    <div class="gut-modal-body">
+      <div class="gut-tab-content active" id="templates-tab">
       ${
         Object.keys(instance.templates).length === 0
           ? '<div style="padding: 20px; text-align: center; color: #888;">No templates found. Create a template first.</div>'
@@ -93,8 +97,9 @@ export const MODAL_HTML = (instance) => `
     ${HINTS_TAB_HTML(instance)}
 
     ${SANDBOX_TAB_HTML(instance)}
+    </div>
 
-    <div class="gut-modal-actions">
+    <div class="gut-modal-footer">
       <button class="gut-btn" id="close-manager">Close</button>
     </div>
   </div>
@@ -102,10 +107,14 @@ export const MODAL_HTML = (instance) => `
 
 export const VARIABLES_MODAL_HTML = (variables) => `
   <div class="gut-modal-content">
-    <h2>Available Variables</h2>
+    <div class="gut-modal-header">
+      <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
+      <h2>Available Variables</h2>
+    </div>
 
-    <div class="gut-form-group">
-      <div class="gut-extracted-vars">
+    <div class="gut-modal-body">
+      <div class="gut-form-group">
+        <div class="gut-extracted-vars">
         ${
           Object.keys(variables).length === 0
             ? '<div class="gut-no-variables">No variables available. Select a template with a torrent name mask to see extracted variables.</div>'
@@ -122,8 +131,9 @@ export const VARIABLES_MODAL_HTML = (variables) => `
         }
       </div>
     </div>
+    </div>
 
-    <div class="gut-modal-actions">
+    <div class="gut-modal-footer">
       <button class="gut-btn" id="close-variables-modal">Close</button>
     </div>
   </div>
@@ -167,10 +177,15 @@ export const TEMPLATE_CREATOR_HTML = (
   selectedTorrentName,
 ) => `
   <div class="gut-modal-content">
-    <h2>
-      ${editTemplateName ? '<button class="gut-modal-back-btn" id="back-to-manager" title="Back to Template Manager">&lt;</button>' : ""}
-      ${editTemplateName ? "Edit Template" : "Create Template"}
-    </h2>
+    <div class="gut-modal-header">
+      <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
+      <h2>
+        ${editTemplateName ? '<button class="gut-modal-back-btn" id="back-to-manager" title="Back to Template Manager">&lt;</button>' : ""}
+        ${editTemplateName ? "Edit Template" : "Create Template"}
+      </h2>
+    </div>
+
+    <div class="gut-modal-body">
 
     <div class="gut-form-group">
       <label for="template-name">Template Name:</label>
@@ -319,11 +334,12 @@ export const TEMPLATE_CREATOR_HTML = (
                </div>
              `;
           })
-          .join("")}
+           .join("")}
       </div>
     </div>
+    </div>
 
-    <div class="gut-modal-actions">
+    <div class="gut-modal-footer">
       <button class="gut-btn" id="cancel-template">Cancel</button>
       <button class="gut-btn gut-btn-primary" id="save-template">${editTemplateName ? "Update Template" : "Save Template"}</button>
     </div>
@@ -497,110 +513,110 @@ export const HINT_EDITOR_MODAL_HTML = (instance, hintName = null, hintData = nul
     : [['', '']];
   
   return `
-    <div class="gut-hint-editor-modal">
-      <div class="gut-hint-editor-content">
-        <div class="gut-hint-editor-header">
-          <h3>${isEdit ? 'Edit Hint' : 'Create New Hint'}</h3>
-          <button class="gut-hint-editor-close" aria-label="Close">&times;</button>
+    <div class="gut-modal">
+      <div class="gut-modal-content gut-hint-editor-modal">
+        <div class="gut-modal-header">
+          <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
+          <h2>${isEdit ? 'Edit Hint' : 'Create New Hint'}</h2>
         </div>
-        
-        <div class="gut-hint-editor-body">
-          <div class="gut-form-group">
-            <label for="hint-editor-name">Hint Name *</label>
-            <input 
-              type="text" 
-              id="hint-editor-name" 
-              class="gut-input" 
-              placeholder="e.g., my_hint"
-              value="${isEdit ? instance.escapeHtml(hintName) : ''}"
-              ${isEdit ? 'readonly' : ''}
-              pattern="[a-zA-Z0-9_]+"
-            >
-            <div style="font-size: 11px; color: #888; margin-top: 4px;">
-              Letters, numbers, and underscores only
-            </div>
+      
+      <div class="gut-modal-body">
+        <div class="gut-form-group">
+          <label for="hint-editor-name">Hint Name *</label>
+          <input 
+            type="text" 
+            id="hint-editor-name" 
+            class="gut-input" 
+            placeholder="e.g., my_hint"
+            value="${isEdit ? instance.escapeHtml(hintName) : ''}"
+            ${isEdit ? 'readonly' : ''}
+            pattern="[a-zA-Z0-9_]+"
+          >
+          <div style="font-size: 11px; color: #888; margin-top: 4px;">
+            Letters, numbers, and underscores only
           </div>
+        </div>
 
-          <div class="gut-form-group">
-            <label>Hint Type *</label>
-            <div class="gut-hint-type-selector">
-              <label class="gut-radio-label">
-                <input type="radio" name="hint-type" value="pattern" ${hint.type === 'pattern' ? 'checked' : ''}>
-                <span>Pattern</span>
-                <span style="font-size: 11px; color: #888; display: block; margin-top: 2px;">
-                  Use # for digits, @ for letters, * for alphanumeric
-                </span>
-              </label>
-              <label class="gut-radio-label">
-                <input type="radio" name="hint-type" value="regex" ${hint.type === 'regex' ? 'checked' : ''}>
-                <span>Regex</span>
-                <span style="font-size: 11px; color: #888; display: block; margin-top: 2px;">
-                  Regular expression pattern
-                </span>
-              </label>
-              <label class="gut-radio-label">
-                <input type="radio" name="hint-type" value="map" ${hint.type === 'map' ? 'checked' : ''}>
-                <span>Value Map</span>
-                <span style="font-size: 11px; color: #888; display: block; margin-top: 2px;">
-                  Map input values to output values
-                </span>
-              </label>
-            </div>
-          </div>
-
-          <div class="gut-form-group" id="hint-pattern-group" style="display: ${hint.type === 'pattern' || hint.type === 'regex' ? 'block' : 'none'};">
-            <label for="hint-editor-pattern">
-              <span id="hint-pattern-label">${hint.type === 'regex' ? 'Regex Pattern' : 'Pattern'} *</span>
+        <div class="gut-form-group">
+          <label>Hint Type *</label>
+          <div class="gut-hint-type-selector">
+            <label class="gut-radio-label">
+              <input type="radio" name="hint-type" value="pattern" ${hint.type === 'pattern' ? 'checked' : ''}>
+              <span>Pattern</span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 2px;">
+                Use # for digits, @ for letters, * for alphanumeric
+              </span>
             </label>
-            <input 
-              type="text" 
-              id="hint-editor-pattern" 
-              class="gut-input" 
-              placeholder="${hint.type === 'regex' ? 'e.g., v\\d+(?:\\.\\d+)*' : 'e.g., ##.##.####'}"
-              value="${hint.type !== 'map' ? instance.escapeHtml(hint.pattern || '') : ''}"
-            >
-          </div>
-
-          <div class="gut-form-group" id="hint-mappings-group" style="display: ${hint.type === 'map' ? 'block' : 'none'};">
-            <label>Value Mappings *</label>
-            <div id="hint-mappings-table">
-              <div class="gut-mappings-table-header">
-                <span style="flex: 1;">Input Value</span>
-                <span style="flex: 1;">Output Value</span>
-                <span style="width: 40px;"></span>
-              </div>
-              <div id="hint-mappings-rows">
-                ${mappingsArray.map(([key, value], idx) => `
-                  <div class="gut-mappings-row" data-row-index="${idx}">
-                    <input type="text" class="gut-input gut-mapping-key" placeholder="e.g., en" value="${instance.escapeHtml(key)}">
-                    <input type="text" class="gut-input gut-mapping-value" placeholder="e.g., English" value="${instance.escapeHtml(value)}">
-                    <button class="gut-btn gut-btn-danger gut-btn-small gut-remove-mapping" title="Remove">−</button>
-                  </div>
-                `).join('')}
-              </div>
-              <button class="gut-btn gut-btn-secondary gut-btn-small" id="hint-add-mapping">+ Add Mapping</button>
-            </div>
-            <label class="gut-checkbox-label" style="margin-top: 10px;">
-              <input type="checkbox" id="hint-editor-strict" ${hint.strict === false ? '' : 'checked'}>
-              <span class="gut-checkbox-text">Strict mode (reject values not in map)</span>
+            <label class="gut-radio-label">
+              <input type="radio" name="hint-type" value="regex" ${hint.type === 'regex' ? 'checked' : ''}>
+              <span>Regex</span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 2px;">
+                Regular expression pattern
+              </span>
+            </label>
+            <label class="gut-radio-label">
+              <input type="radio" name="hint-type" value="map" ${hint.type === 'map' ? 'checked' : ''}>
+              <span>Value Map</span>
+              <span style="font-size: 11px; color: #888; display: block; margin-top: 2px;">
+                Map input values to output values
+              </span>
             </label>
           </div>
+        </div>
 
-          <div class="gut-form-group">
-            <label for="hint-editor-description">Description</label>
-            <textarea 
-              id="hint-editor-description" 
-              class="gut-input" 
-              rows="2"
-              placeholder="Describe what this hint matches"
-            >${instance.escapeHtml(hint.description || '')}</textarea>
+        <div class="gut-form-group" id="hint-pattern-group" style="display: ${hint.type === 'pattern' || hint.type === 'regex' ? 'block' : 'none'};">
+          <label for="hint-editor-pattern">
+            <span id="hint-pattern-label">${hint.type === 'regex' ? 'Regex Pattern' : 'Pattern'} *</span>
+          </label>
+          <input 
+            type="text" 
+            id="hint-editor-pattern" 
+            class="gut-input" 
+            placeholder="${hint.type === 'regex' ? 'e.g., v\\d+(?:\\.\\d+)*' : 'e.g., ##.##.####'}"
+            value="${hint.type !== 'map' ? instance.escapeHtml(hint.pattern || '') : ''}"
+          >
+        </div>
+
+        <div class="gut-form-group" id="hint-mappings-group" style="display: ${hint.type === 'map' ? 'block' : 'none'};">
+          <label>Value Mappings *</label>
+          <div id="hint-mappings-table">
+            <div class="gut-mappings-table-header">
+              <span style="flex: 1;">Input Value</span>
+              <span style="flex: 1;">Output Value</span>
+              <span style="width: 40px;"></span>
+            </div>
+            <div id="hint-mappings-rows">
+              ${mappingsArray.map(([key, value], idx) => `
+                <div class="gut-mappings-row" data-row-index="${idx}">
+                  <input type="text" class="gut-input gut-mapping-key" placeholder="e.g., en" value="${instance.escapeHtml(key)}">
+                  <input type="text" class="gut-input gut-mapping-value" placeholder="e.g., English" value="${instance.escapeHtml(value)}">
+                  <button class="gut-btn gut-btn-danger gut-btn-small gut-remove-mapping" title="Remove">−</button>
+                </div>
+              `).join('')}
+            </div>
+            <button class="gut-btn gut-btn-secondary gut-btn-small" id="hint-add-mapping">+ Add Mapping</button>
           </div>
+          <label class="gut-checkbox-label" style="margin-top: 10px;">
+            <input type="checkbox" id="hint-editor-strict" ${hint.strict === false ? '' : 'checked'}>
+            <span class="gut-checkbox-text">Strict mode (reject values not in map)</span>
+          </label>
         </div>
 
-        <div class="gut-hint-editor-footer">
-          <button class="gut-btn gut-btn-secondary" id="hint-editor-cancel">Cancel</button>
-          <button class="gut-btn gut-btn-primary" id="hint-editor-save">${isEdit ? 'Save Changes' : 'Create Hint'}</button>
+        <div class="gut-form-group">
+          <label for="hint-editor-description">Description</label>
+          <textarea 
+            id="hint-editor-description" 
+            class="gut-input" 
+            rows="2"
+            placeholder="Describe what this hint matches"
+          >${instance.escapeHtml(hint.description || '')}</textarea>
         </div>
+      </div>
+
+      <div class="gut-modal-footer">
+        <button class="gut-btn" id="hint-editor-cancel">Cancel</button>
+        <button class="gut-btn gut-btn-primary" id="hint-editor-save">${isEdit ? 'Save Changes' : 'Create Hint'}</button>
+      </div>
       </div>
     </div>
   `;
