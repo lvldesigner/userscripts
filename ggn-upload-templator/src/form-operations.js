@@ -5,6 +5,7 @@ import { TorrentUtils } from "./utils/torrent.js";
 export async function getCurrentVariables(instance) {
   const commentVariables = {};
   const maskVariables = {};
+  let hasBothConditions = false;
 
   if (instance.selectedTemplate && instance.selectedTemplate !== "none") {
     const template = instance.templates[instance.selectedTemplate];
@@ -21,6 +22,7 @@ export async function getCurrentVariables(instance) {
           input.files[0] &&
           input.files[0].name.toLowerCase().endsWith(".torrent")
         ) {
+          hasBothConditions = true;
           try {
             const torrentData = await TorrentUtils.parseTorrentFile(
               input.files[0],
@@ -53,6 +55,7 @@ export async function getCurrentVariables(instance) {
     all: { ...commentVariables, ...maskVariables },
     comment: commentVariables,
     mask: maskVariables,
+    hasBothConditions,
   };
 }
 
@@ -65,20 +68,28 @@ export async function updateVariableCount(instance) {
   const variablesRow = document.getElementById("variables-row");
 
   if (variablesRow) {
-    if (totalCount === 0) {
+    if (!variables.hasBothConditions) {
       variablesRow.style.display = "none";
     } else {
       variablesRow.style.display = "";
 
-      const parts = [];
-      if (commentCount > 0) {
-        parts.push(`Comment [${commentCount}]`);
-      }
-      if (maskCount > 0) {
-        parts.push(`Mask [${maskCount}]`);
-      }
+      if (totalCount === 0) {
+        variablesRow.innerHTML = `Available variables: 0`;
+        variablesRow.style.cursor = "default";
+        variablesRow.style.opacity = "0.6";
+      } else {
+        const parts = [];
+        if (commentCount > 0) {
+          parts.push(`Comment [${commentCount}]`);
+        }
+        if (maskCount > 0) {
+          parts.push(`Mask [${maskCount}]`);
+        }
 
-      variablesRow.innerHTML = `Available variables: ${parts.join(", ")}`;
+        variablesRow.innerHTML = `Available variables: ${parts.join(", ")}`;
+        variablesRow.style.cursor = "pointer";
+        variablesRow.style.opacity = "1";
+      }
     }
   }
 }

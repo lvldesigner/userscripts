@@ -105,7 +105,7 @@ export const MODAL_HTML = (instance) => `
   </div>
 `;
 
-export const VARIABLES_MODAL_HTML = (variables) => `
+export const VARIABLES_MODAL_HTML = (instance) => `
   <div class="gut-modal-content">
     <div class="gut-modal-header">
       <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
@@ -114,23 +114,10 @@ export const VARIABLES_MODAL_HTML = (variables) => `
 
     <div class="gut-modal-body">
       <div class="gut-form-group">
-        <div class="gut-extracted-vars">
-        ${
-          Object.keys(variables).length === 0
-            ? '<div class="gut-no-variables">No variables available. Select a template with a torrent name mask to see extracted variables.</div>'
-            : Object.entries(variables)
-                .map(
-                  ([name, value]) => `
-                  <div class="gut-variable-item">
-                    <span class="gut-variable-name">\${${name}}</span>
-                    <span class="gut-variable-value">${value || '<em style="color: #666;">empty</em>'}</span>
-                  </div>
-                `,
-                )
-                .join("")
-        }
+        <div id="variables-results-container" class="gut-extracted-vars">
+          <div class="gut-no-variables">No variables available. Select a template with a torrent name mask to see extracted variables.</div>
+        </div>
       </div>
-    </div>
     </div>
 
     <div class="gut-modal-footer">

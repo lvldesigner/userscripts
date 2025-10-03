@@ -20,11 +20,18 @@ import {
 import { ModalStack } from "../modal-stack.js";
 
 // Reusable mask validation and cursor info setup
-export function setupMaskValidation(maskInput, cursorInfoElement, statusContainer, overlayElement, onValidationChange = null, availableHints = {}) {
+export function setupMaskValidation(
+  maskInput,
+  cursorInfoElement,
+  statusContainer,
+  overlayElement,
+  onValidationChange = null,
+  availableHints = {},
+) {
   let autocompleteDropdown = null;
   let selectedIndex = -1;
   let filteredHints = [];
-  
+
   const closeAutocomplete = () => {
     if (autocompleteDropdown) {
       autocompleteDropdown.remove();
@@ -35,97 +42,105 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
       ModalStack.popEscapeHandler();
     }
   };
-  
+
   const showAutocomplete = (hints, cursorPos) => {
     closeAutocomplete();
-    
+
     if (hints.length === 0) return;
-    
+
     filteredHints = hints;
     selectedIndex = 0;
-    
+
     autocompleteDropdown = document.createElement("div");
     autocompleteDropdown.className = "gut-hint-autocomplete";
-    
+
     const rect = maskInput.getBoundingClientRect();
     const inputContainer = maskInput.parentElement;
     const containerRect = inputContainer.getBoundingClientRect();
-    
+
     autocompleteDropdown.style.position = "absolute";
     autocompleteDropdown.style.top = `${rect.bottom - containerRect.top + 2}px`;
     autocompleteDropdown.style.left = `${rect.left - containerRect.left}px`;
     autocompleteDropdown.style.minWidth = `${rect.width}px`;
-    
+
     hints.forEach((hint, index) => {
       const item = document.createElement("div");
       item.className = "gut-hint-autocomplete-item";
       if (index === 0) item.classList.add("selected");
-      
+
       item.innerHTML = `
         <div class="gut-hint-autocomplete-name">${escapeHtml(hint.name)}</div>
         <div class="gut-hint-autocomplete-type">${hint.type}</div>
-        <div class="gut-hint-autocomplete-desc">${escapeHtml(hint.description || '')}</div>
+        <div class="gut-hint-autocomplete-desc">${escapeHtml(hint.description || "")}</div>
       `;
-      
+
       item.addEventListener("mouseenter", () => {
-        autocompleteDropdown.querySelectorAll(".gut-hint-autocomplete-item").forEach(i => i.classList.remove("selected"));
+        autocompleteDropdown
+          .querySelectorAll(".gut-hint-autocomplete-item")
+          .forEach((i) => i.classList.remove("selected"));
         item.classList.add("selected");
         selectedIndex = index;
       });
-      
+
       item.addEventListener("click", () => {
         insertHint(hint.name);
         closeAutocomplete();
       });
-      
+
       autocompleteDropdown.appendChild(item);
     });
-    
+
     inputContainer.style.position = "relative";
     inputContainer.appendChild(autocompleteDropdown);
-    
+
     // Push escape handler to prevent closing the modal when autocomplete is visible
     ModalStack.pushEscapeHandler(() => {
       closeAutocomplete();
       return true; // Handled the escape
     });
   };
-  
+
   const insertHint = (hintName) => {
     const value = maskInput.value;
     const cursorPos = maskInput.selectionStart;
     const beforeCursor = value.substring(0, cursorPos);
     const afterCursor = value.substring(cursorPos);
-    
+
     const match = beforeCursor.match(/\$\{([a-zA-Z0-9_]+):([a-zA-Z0-9_]*)$/);
     if (match) {
       const [fullMatch, varName, partialHint] = match;
-      const newValue = beforeCursor.substring(0, beforeCursor.length - partialHint.length) + hintName + afterCursor;
+      const newValue =
+        beforeCursor.substring(0, beforeCursor.length - partialHint.length) +
+        hintName +
+        afterCursor;
       maskInput.value = newValue;
-      maskInput.selectionStart = maskInput.selectionEnd = cursorPos - partialHint.length + hintName.length;
-      maskInput.dispatchEvent(new Event('input'));
+      maskInput.selectionStart = maskInput.selectionEnd =
+        cursorPos - partialHint.length + hintName.length;
+      maskInput.dispatchEvent(new Event("input"));
     }
   };
-  
+
   const updateAutocomplete = () => {
     const cursorPos = maskInput.selectionStart;
     const value = maskInput.value;
     const beforeCursor = value.substring(0, cursorPos);
-    
+
     const match = beforeCursor.match(/\$\{([a-zA-Z0-9_]+):([a-zA-Z0-9_]*)$/);
-    
+
     if (match) {
       const [, varName, partialHint] = match;
-      
+
       const hints = Object.entries(availableHints)
-        .filter(([name]) => name.toLowerCase().startsWith(partialHint.toLowerCase()))
+        .filter(([name]) =>
+          name.toLowerCase().startsWith(partialHint.toLowerCase()),
+        )
         .map(([name, hint]) => ({
           name,
           type: hint.type,
-          description: hint.description || ''
+          description: hint.description || "",
         }))
         .slice(0, 10);
-      
+
       if (hints.length > 0) {
         showAutocomplete(hints, cursorPos);
       } else {
@@ -135,10 +150,10 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
       closeAutocomplete();
     }
   };
-  
+
   const handleKeyDown = (e) => {
     if (!autocompleteDropdown) return;
-    
+
     if (e.key === "ArrowDown") {
       e.preventDefault();
       selectedIndex = Math.min(selectedIndex + 1, filteredHints.length - 1);
@@ -164,11 +179,13 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
       }
     }
   };
-  
+
   const updateSelection = () => {
     if (!autocompleteDropdown) return;
-    
-    const items = autocompleteDropdown.querySelectorAll(".gut-hint-autocomplete-item");
+
+    const items = autocompleteDropdown.querySelectorAll(
+      ".gut-hint-autocomplete-item",
+    );
     items.forEach((item, index) => {
       if (index === selectedIndex) {
         item.classList.add("selected");
@@ -178,7 +195,7 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
       }
     });
   };
-  
+
   const updateCursorInfo = (validation) => {
     if (!validation || validation.errors.length === 0) {
       cursorInfoElement.textContent = "";
@@ -223,11 +240,11 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
     renderStatusMessages(statusContainer, validation);
     updateCursorInfo(validation);
     updateAutocomplete();
-    
+
     if (onValidationChange) {
       onValidationChange(validation);
     }
-    
+
     return validation;
   };
 
@@ -240,7 +257,10 @@ export function setupMaskValidation(maskInput, cursorInfoElement, statusContaine
   });
   maskInput.addEventListener("keyup", (e) => {
     if (!["ArrowDown", "ArrowUp", "Enter", "Escape", "Tab"].includes(e.key)) {
-      const validation = validateMaskWithDetails(maskInput.value, availableHints);
+      const validation = validateMaskWithDetails(
+        maskInput.value,
+        availableHints,
+      );
       updateCursorInfo(validation);
       updateAutocomplete();
     }
@@ -328,8 +348,12 @@ export function injectUI(instance) {
 
     const variablesRow = document.getElementById("variables-row");
     if (variablesRow) {
-      variablesRow.addEventListener("click", () => {
-        instance.showVariablesModal();
+      variablesRow.addEventListener("click", async () => {
+        const variables = await instance.getCurrentVariables();
+        const totalCount = Object.keys(variables.all).length;
+        if (totalCount > 0) {
+          instance.showVariablesModal();
+        }
       });
     }
   } catch (error) {
@@ -389,12 +413,14 @@ export async function showTemplateCreator(
   );
 
   const canGoBack = editTemplateName !== null;
-  
+
   ModalStack.replace(modal, {
-    type: 'replace',
+    type: "replace",
     canGoBack: canGoBack,
-    backFactory: canGoBack ? () => instance.showTemplateAndSettingsManager() : null,
-    metadata: { instance, editTemplateName, editTemplate }
+    backFactory: canGoBack
+      ? () => instance.showTemplateAndSettingsManager()
+      : null,
+    metadata: { instance, editTemplateName, editTemplate },
   });
 
   // Setup live preview
@@ -486,7 +512,7 @@ export async function showTemplateCreator(
   const overlayDiv = modal.querySelector("#mask-highlight-overlay");
   const statusContainer = modal.querySelector("#mask-status-container");
   const saveButton = modal.querySelector("#save-template");
-  
+
   const performValidation = setupMaskValidation(
     maskInput,
     cursorInfo,
@@ -496,7 +522,7 @@ export async function showTemplateCreator(
       saveButton.disabled = !validation.valid;
       updatePreviews();
     },
-    instance.hints
+    instance.hints,
   );
 
   const updatePreviews = () => {
@@ -505,7 +531,11 @@ export async function showTemplateCreator(
 
     const validation = validateMaskWithDetails(mask, instance.hints);
 
-    const parseResult = parseTemplateWithOptionals(mask, sample, instance.hints);
+    const parseResult = parseTemplateWithOptionals(
+      mask,
+      sample,
+      instance.hints,
+    );
     const maskExtracted = { ...parseResult };
     delete maskExtracted._matchedOptionals;
     delete maskExtracted._optionalCount;
@@ -744,15 +774,49 @@ export async function showTemplateCreator(
   }
 }
 
-export function showVariablesModal(instance, variables) {
+export function showVariablesModal(
+  instance,
+  variables,
+  torrentName = "",
+  mask = "",
+) {
   const modal = document.createElement("div");
   modal.className = "gut-modal";
-  modal.innerHTML = VARIABLES_MODAL_HTML(variables);
+  modal.innerHTML = VARIABLES_MODAL_HTML(instance);
 
   ModalStack.push(modal, {
-    type: 'stack',
-    metadata: { instance, variables }
+    type: "stack",
+    metadata: { instance, variables, torrentName, mask },
   });
+
+  const resultsContainer = modal.querySelector("#variables-results-container");
+
+  if (torrentName && mask) {
+    const testResults = testMaskAgainstSamples(
+      mask,
+      [torrentName],
+      instance.hints,
+    );
+
+    renderMatchResults(resultsContainer, testResults, {
+      showLabel: false,
+    });
+  } else if (Object.keys(variables).length > 0) {
+    const testResults = {
+      results: [
+        {
+          name: torrentName || "Unknown",
+          matched: true,
+          variables: variables,
+          positions: {},
+        },
+      ],
+    };
+
+    renderMatchResults(resultsContainer, testResults, {
+      showLabel: false,
+    });
+  }
 
   modal
     .querySelector("#close-variables-modal")
@@ -780,20 +844,51 @@ export function escapeHtml(text) {
   return div.innerHTML;
 }
 
-export function renderSandboxResults(modal, testResults) {
-  const resultsContainer = modal.querySelector("#sandbox-results");
-  const resultsLabel = modal.querySelector("#sandbox-results-label");
+export function truncateValue(value, threshold = 20) {
+  if (!value || value.length <= threshold) {
+    return value;
+  }
+  const words = value.split(/\s+/);
+  if (words.length <= 2) {
+    return value;
+  }
+  let firstWord = words[0];
+  let lastWord = words[words.length - 1];
 
-  if (!resultsContainer || !testResults || testResults.results.length === 0) {
-    resultsContainer.innerHTML =
+  if (firstWord.length > 10) {
+    firstWord = firstWord.substring(0, 10);
+  }
+  if (lastWord.length > 10) {
+    lastWord = lastWord.substring(lastWord.length - 10);
+  }
+
+  return `${firstWord}<span class="gut-truncate-ellipsis">...</span>${lastWord}`;
+}
+
+function wrapWordsInSpans(text) {
+  const chars = text.split('');
+  return chars.map((char, i) => 
+    `<span class="gut-char-span" data-char-index="${i}">${escapeHtml(char)}</span>`
+  ).join('');
+}
+
+export function renderMatchResults(container, testResults, options = {}) {
+  const { showLabel = true, labelElement = null } = options;
+
+  if (!container || !testResults || testResults.results.length === 0) {
+    container.innerHTML =
       '<div class="gut-no-variables">Enter a mask and sample names to see match results.</div>';
-    resultsLabel.textContent = "Match Results:";
+    if (showLabel && labelElement) {
+      labelElement.textContent = "Match Results:";
+    }
     return;
   }
 
   const matchCount = testResults.results.filter((r) => r.matched).length;
   const totalCount = testResults.results.length;
-  resultsLabel.textContent = `Match Results (${matchCount}/${totalCount} matched):`;
+  if (showLabel && labelElement) {
+    labelElement.textContent = `Match Results (${matchCount}/${totalCount} matched):`;
+  }
 
   const html = testResults.results
     .map((result, resultIndex) => {
@@ -804,30 +899,35 @@ export function renderSandboxResults(modal, testResults) {
       let variablesHtml = "";
       if (isMatch && Object.keys(result.variables).length > 0) {
         variablesHtml =
-          '<div class="gut-sandbox-variables" style="display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px;">' +
+          '<div class="gut-match-variables-container">' +
           Object.entries(result.variables)
-            .filter(([key]) => key !== '_matchedOptionals' && key !== '_optionalCount')
-            .map(
-              ([key, value]) =>
-                `<div class="gut-variable-item" style="margin: 0; flex: 0 0 auto; cursor: pointer;" data-result-index="${resultIndex}" data-var-name="${escapeHtml(key)}">
-            <span class="gut-variable-name">\${${escapeHtml(key)}}</span><span style="display: inline-block; color: #898989; margin: 0 8px;"> = </span><span class="gut-variable-value">${value ? escapeHtml(value) : "(empty)"}</span>
-          </div>`,
+            .filter(
+              ([key]) =>
+                key !== "_matchedOptionals" && key !== "_optionalCount",
             )
+            .map(([key, value]) => {
+              const displayValue = value
+                ? truncateValue(escapeHtml(value))
+                : "(empty)";
+              return `<div class="gut-variable-item gut-match-variable-item" data-result-index="${resultIndex}" data-var-name="${escapeHtml(key)}" title="${value ? escapeHtml(value) : ""}">
+            <span class="gut-variable-name">\${${escapeHtml(key)}}</span><span class="gut-match-separator"> = </span><span class="gut-variable-value">${displayValue}</span>
+          </div>`;
+            })
             .join("") +
           "</div>";
 
         if (result.optionalInfo) {
-          variablesHtml += `<div style="margin-top: 8px; font-size: 11px; color: #4caf50;">
+          variablesHtml += `<div class="gut-match-optional-info">
           Optional blocks: ${result.optionalInfo.matched}/${result.optionalInfo.total} matched
         </div>`;
         }
       }
 
       return `
-      <div class="${className}" style="margin-bottom: 12px; padding: 8px; background: #1e1e1e; border-left: 3px solid ${isMatch ? "#4caf50" : "#f44336"}; border-radius: 4px;" data-result-index="${resultIndex}">
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 16px; color: ${isMatch ? "#4caf50" : "#f44336"};">${icon}</span>
-          <span class="gut-sandbox-sample-name" style="flex: 1; font-family: 'Fira Code', monospace; font-size: 13px;" data-result-index="${resultIndex}">${escapeHtml(result.name)}</span>
+      <div class="${className} gut-match-result-item" data-result-index="${resultIndex}">
+        <div class="gut-match-result-header">
+          <span class="gut-match-icon gut-match-icon-${isMatch ? 'success' : 'error'}">${icon}</span>
+          <div class="gut-sandbox-sample-name" data-result-index="${resultIndex}">${wrapWordsInSpans(result.name)}</div>
         </div>
         ${variablesHtml}
       </div>
@@ -835,63 +935,77 @@ export function renderSandboxResults(modal, testResults) {
     })
     .join("");
 
-  resultsContainer.innerHTML = html;
-  
-  resultsContainer._testResults = testResults;
+  container.innerHTML = html;
 
-  if (!resultsContainer._hasEventListeners) {
-    resultsContainer.addEventListener(
+  container._testResults = testResults;
+
+  if (!container._hasEventListeners) {
+    container.addEventListener(
       "mouseenter",
       (e) => {
         if (e.target.classList.contains("gut-variable-item")) {
           const resultIndex = parseInt(e.target.dataset.resultIndex);
           const varName = e.target.dataset.varName;
-          const currentResults = resultsContainer._testResults;
-          
+          const currentResults = container._testResults;
+
           if (!currentResults || !currentResults.results[resultIndex]) {
             return;
           }
-          
+
           const result = currentResults.results[resultIndex];
 
           if (result.positions && result.positions[varName]) {
-            const sampleNameEl = resultsContainer.querySelector(
+            const sampleNameEl = container.querySelector(
               `.gut-sandbox-sample-name[data-result-index="${resultIndex}"]`,
             );
             const pos = result.positions[varName];
-            const name = result.name;
-            const before = escapeHtml(name.substring(0, pos.start));
-            const highlight = escapeHtml(name.substring(pos.start, pos.end));
-            const after = escapeHtml(name.substring(pos.end));
-
-            sampleNameEl.innerHTML = `${before}<span style="background: #bb86fc; color: #000; padding: 2px 4px; border-radius: 2px;">${highlight}</span>${after}`;
+            
+            const charSpans = sampleNameEl.querySelectorAll('.gut-char-span');
+            charSpans.forEach((span) => {
+              const charIndex = parseInt(span.dataset.charIndex);
+              if (charIndex >= pos.start && charIndex < pos.end) {
+                span.classList.add('gut-match-highlight');
+              }
+            });
           }
         }
       },
       true,
     );
 
-    resultsContainer.addEventListener(
+    container.addEventListener(
       "mouseleave",
       (e) => {
         if (e.target.classList.contains("gut-variable-item")) {
           const resultIndex = parseInt(e.target.dataset.resultIndex);
-          const currentResults = resultsContainer._testResults;
-          
+          const currentResults = container._testResults;
+
           if (!currentResults || !currentResults.results[resultIndex]) {
             return;
           }
-          
+
           const result = currentResults.results[resultIndex];
-          const sampleNameEl = resultsContainer.querySelector(
+          const sampleNameEl = container.querySelector(
             `.gut-sandbox-sample-name[data-result-index="${resultIndex}"]`,
           );
-          sampleNameEl.textContent = result.name;
+          
+          const charSpans = sampleNameEl.querySelectorAll('.gut-char-span');
+          charSpans.forEach(span => span.classList.remove('gut-match-highlight'));
         }
       },
       true,
     );
-    
-    resultsContainer._hasEventListeners = true;
+
+    container._hasEventListeners = true;
   }
+}
+
+export function renderSandboxResults(modal, testResults) {
+  const resultsContainer = modal.querySelector("#sandbox-results");
+  const resultsLabel = modal.querySelector("#sandbox-results-label");
+
+  renderMatchResults(resultsContainer, testResults, {
+    showLabel: true,
+    labelElement: resultsLabel,
+  });
 }

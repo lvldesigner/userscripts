@@ -184,8 +184,6 @@ export function selectTemplate(instance, templateName) {
     instance.showStatus("No template selected - auto-fill disabled");
   } else if (templateName) {
     instance.showStatus(`Template "${templateName}" selected`);
-
-    instance.checkAndApplyToExistingTorrent(templateName);
   }
 }
 

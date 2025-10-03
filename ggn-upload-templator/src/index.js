@@ -114,7 +114,36 @@ class GGnUploadTemplator {
 
   async showVariablesModal() {
     const variables = await this.getCurrentVariables();
-    showVariablesModal(this, variables.all);
+    
+    const fileInputs = this.config.TARGET_FORM_SELECTOR
+      ? document.querySelectorAll(
+          `${this.config.TARGET_FORM_SELECTOR} input[type="file"]`,
+        )
+      : document.querySelectorAll('input[type="file"]');
+    
+    let torrentName = "";
+    for (const input of fileInputs) {
+      if (
+        input.files &&
+        input.files[0] &&
+        input.files[0].name.toLowerCase().endsWith(".torrent")
+      ) {
+        try {
+          const { TorrentUtils } = await import("./utils/torrent.js");
+          const torrentData = await TorrentUtils.parseTorrentFile(input.files[0]);
+          torrentName = torrentData.name || "";
+          break;
+        } catch (error) {
+          console.warn("Could not parse torrent file:", error);
+        }
+      }
+    }
+    
+    const mask = this.selectedTemplate && this.templates[this.selectedTemplate] 
+      ? this.templates[this.selectedTemplate].mask 
+      : "";
+    
+    showVariablesModal(this, variables.all, torrentName, mask);
   }
 
   async updateVariableCount() {
