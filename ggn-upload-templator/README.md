@@ -8,6 +8,20 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.11
+
+This is mostly a UX/UI fixes and improvements release.
+
+![](https://files.catbox.moe/mum36l.png)
+
+- All variable hints are now treated equally, there's no more default/custom hints, this allows editing/deleting any hint, including previously default ones. You can reset to default using the new button.
+- Matched variable values are now truncated to sane lengths, hover over them to see full match highlighted in the torrent name.
+- Fix match highlights not working properly when the matched value is too long
+- Modals get scaled down the further up the stack you go, i.e: if you have one modal open then you open another on top of it, that gets scaled down so you visually distinguish there are two modals
+- Modal width can be resized to your liking by dragging on the left/right edge
+- Show number of extracted variables under the template selector, even if the number is 0
+- Fix regression: Changing selected template MUST NOT automatically apply the template.
+
 ### v0.10
 
 ![](https://files.catbox.moe/qtnzfw.png)
