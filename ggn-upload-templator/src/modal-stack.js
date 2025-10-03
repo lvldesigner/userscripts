@@ -34,12 +34,17 @@ class ModalStackManager {
       canGoBack: options.canGoBack || false,
       backFactory: options.backFactory || null,
       metadata: options.metadata || {},
+      originalDimensions: null,
     };
 
     this.stack.push(entry);
 
     if (!document.body.contains(element)) {
       document.body.appendChild(element);
+    }
+
+    if (this.stack.length === 1) {
+      document.body.style.overflow = 'hidden';
     }
 
     this.updateZIndices();
@@ -64,9 +69,9 @@ class ModalStackManager {
       document.body.removeChild(entry.element);
     }
 
-    // Clear escape handlers when closing a modal
     if (this.stack.length === 0) {
       this.clearEscapeHandlers();
+      document.body.style.overflow = '';
     }
 
     this.updateZIndices();
@@ -141,17 +146,106 @@ class ModalStackManager {
   }
 
   updateZIndices() {
+    console.log('[ModalStack] updateZIndices called, stack length:', this.stack.length);
+    
+    let previousWidth = null;
+    let previousMaxWidth = null;
+    let previousHeight = null;
+    let previousMaxHeight = null;
+    
     this.stack.forEach((entry, index) => {
+      console.log(`[ModalStack] Modal ${index}: type="${entry.type}", hasElement=${!!entry.element}`);
+      
       if (entry.element) {
         entry.element.style.zIndex = this.baseZIndex + index * 10;
+        const modalContent = entry.element.querySelector('.gut-modal-content');
+        console.log(`[ModalStack] Modal ${index}: found modalContent=${!!modalContent}`);
 
-        if (index > 0) {
+        if (index > 0 && modalContent) {
           entry.element.classList.add("gut-modal-stacked");
+          
+          if (!entry.originalDimensions) {
+            const computedStyle = window.getComputedStyle(modalContent);
+            entry.originalDimensions = {
+              width: computedStyle.width,
+              maxWidth: computedStyle.maxWidth,
+              height: computedStyle.height,
+              maxHeight: computedStyle.maxHeight,
+            };
+            console.log(`[ModalStack] Modal ${index}: Stored original dimensions:`, entry.originalDimensions);
+          }
+          
+          const offsetAmount = index * 20;
+          
+          let targetWidth = previousWidth;
+          let targetMaxWidth = previousMaxWidth;
+          let targetHeight = previousHeight;
+          let targetMaxHeight = previousMaxHeight;
+          
+          if (targetWidth === null) {
+            targetWidth = parseFloat(entry.originalDimensions.width);
+          }
+          if (targetMaxWidth === null) {
+            targetMaxWidth = parseFloat(entry.originalDimensions.maxWidth);
+          }
+          if (targetHeight === null) {
+            targetHeight = parseFloat(entry.originalDimensions.height);
+          }
+          if (targetMaxHeight === null) {
+            targetMaxHeight = parseFloat(entry.originalDimensions.maxHeight);
+          }
+          
+          const scaledWidth = targetWidth * 0.95;
+          const scaledMaxWidth = targetMaxWidth * 0.95;
+          const scaledHeight = targetHeight * 0.95;
+          const scaledMaxHeight = targetMaxHeight * 0.95;
+          
+          console.log(`[ModalStack] Modal ${index}: Previous width=${targetWidth}px, scaling to ${scaledWidth}px (95%)`);
+          console.log(`[ModalStack] Modal ${index}: Previous height=${targetHeight}px, scaling to ${scaledHeight}px (95%)`);
+          
+          if (entry.originalDimensions.width && entry.originalDimensions.width !== 'auto') {
+            modalContent.style.width = `${scaledWidth}px`;
+            previousWidth = scaledWidth;
+          }
+          
+          if (entry.originalDimensions.maxWidth && entry.originalDimensions.maxWidth !== 'none') {
+            modalContent.style.maxWidth = `${scaledMaxWidth}px`;
+            previousMaxWidth = scaledMaxWidth;
+          }
+          
+          if (entry.originalDimensions.height && entry.originalDimensions.height !== 'auto') {
+            modalContent.style.height = `${scaledHeight}px`;
+            previousHeight = scaledHeight;
+          }
+          
+          if (entry.originalDimensions.maxHeight && entry.originalDimensions.maxHeight !== 'none') {
+            modalContent.style.maxHeight = `${scaledMaxHeight}px`;
+            previousMaxHeight = scaledMaxHeight;
+          }
+          
+          modalContent.style.marginTop = `${offsetAmount}px`;
+          console.log(`[ModalStack] Modal ${index}: Applied width="${modalContent.style.width}", maxWidth="${modalContent.style.maxWidth}", height="${modalContent.style.height}", maxHeight="${modalContent.style.maxHeight}"`);
         } else {
+          console.log(`[ModalStack] Modal ${index}: NO SCALING (base modal)`);
           entry.element.classList.remove("gut-modal-stacked");
+          if (modalContent) {
+            modalContent.style.width = '';
+            modalContent.style.maxWidth = '';
+            modalContent.style.height = '';
+            modalContent.style.maxHeight = '';
+            modalContent.style.marginTop = '';
+            
+            const computedStyle = window.getComputedStyle(modalContent);
+            previousWidth = parseFloat(computedStyle.width);
+            previousMaxWidth = parseFloat(computedStyle.maxWidth);
+            previousHeight = parseFloat(computedStyle.height);
+            previousMaxHeight = parseFloat(computedStyle.maxHeight);
+            console.log(`[ModalStack] Modal ${index}: Base dimensions: width=${previousWidth}px, maxWidth=${previousMaxWidth}px, height=${previousHeight}px, maxHeight=${previousMaxHeight}px`);
+          }
         }
       }
     });
+    console.log('[ModalStack] updateZIndices complete');
   }
 
   setupGlobalHandlers() {

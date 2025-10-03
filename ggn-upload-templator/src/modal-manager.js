@@ -7,7 +7,11 @@ import {
   saveCurrentSandboxSet,
 } from "./storage.js";
 import { saveHints, resetHintToDefault, loadHints } from "./hint-storage.js";
-import { MODAL_HTML, HINT_EDITOR_MODAL_HTML, MAP_IMPORT_MODAL_HTML } from "./ui/template.js";
+import {
+  MODAL_HTML,
+  HINT_EDITOR_MODAL_HTML,
+  MAP_IMPORT_MODAL_HTML,
+} from "./ui/template.js";
 import { setupAutoResize } from "./utils/textarea.js";
 import { renderSandboxResults, setupMaskValidation } from "./ui/manager.js";
 import {
@@ -321,11 +325,11 @@ export function showTemplateAndSettingsManager(instance) {
     if (data) {
       sandboxMaskInput.value = data.mask || "";
       sandboxSampleInput.value = data.samples || "";
-      
+
       // Dispatch change events to trigger auto-resize and other listeners
-      sandboxMaskInput.dispatchEvent(new Event('change'));
-      sandboxSampleInput.dispatchEvent(new Event('change'));
-      
+      sandboxMaskInput.dispatchEvent(new Event("change"));
+      sandboxSampleInput.dispatchEvent(new Event("change"));
+
       updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
       updateSandboxTest();
       currentLoadedSet = value;
@@ -346,7 +350,7 @@ export function showTemplateAndSettingsManager(instance) {
     setupAutoResize(sandboxSampleInput, {
       minLines: 3,
       maxLines: 7,
-      initialResize: true
+      initialResize: true,
     });
   }
 
@@ -526,11 +530,11 @@ export function showTemplateAndSettingsManager(instance) {
     if (data) {
       sandboxMaskInput.value = data.mask || "";
       sandboxSampleInput.value = data.samples || "";
-      
+
       // Dispatch change events to trigger auto-resize and other listeners
-      sandboxMaskInput.dispatchEvent(new Event('change'));
-      sandboxSampleInput.dispatchEvent(new Event('change'));
-      
+      sandboxMaskInput.dispatchEvent(new Event("change"));
+      sandboxSampleInput.dispatchEvent(new Event("change"));
+
       updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
       updateSandboxTest();
 
@@ -678,19 +682,11 @@ export function showTemplateAndSettingsManager(instance) {
   });
 
   const editHintButtons = modal.querySelectorAll('[data-action="edit-hint"]');
-  console.log("Found edit-hint buttons:", editHintButtons.length);
   editHintButtons.forEach((btn) => {
     btn.addEventListener("click", (e) => {
-      console.log("Edit hint button clicked", e.target);
       e.preventDefault();
       const hintItem = e.target.closest(".gut-hint-item");
       const hintName = hintItem?.dataset.hint;
-      console.log(
-        "Hint name:",
-        hintName,
-        "Has hint data:",
-        !!instance.hints[hintName],
-      );
       if (hintName && instance.hints[hintName]) {
         showHintEditor(instance, modal, hintName, instance.hints[hintName]);
       }
@@ -723,32 +719,44 @@ export function showTemplateAndSettingsManager(instance) {
       const hintName = e.target.dataset.hint;
       if (hintName && instance.hints[hintName]) {
         const hintData = instance.hints[hintName];
-        showMapImportModal(instance, hintName, hintData.mappings || {}, 'import');
+        showMapImportModal(
+          instance,
+          hintName,
+          hintData.mappings || {},
+          "import",
+        );
       }
     });
   });
 
-  modal.querySelectorAll('[data-action="mass-edit-mappings"]').forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      const hintName = e.target.dataset.hint;
-      if (hintName && instance.hints[hintName]) {
-        const hintData = instance.hints[hintName];
-        showMapImportModal(instance, hintName, hintData.mappings || {}, 'mass-edit');
-      }
+  modal
+    .querySelectorAll('[data-action="mass-edit-mappings"]')
+    .forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const hintName = e.target.dataset.hint;
+        if (hintName && instance.hints[hintName]) {
+          const hintData = instance.hints[hintName];
+          showMapImportModal(
+            instance,
+            hintName,
+            hintData.mappings || {},
+            "mass-edit",
+          );
+        }
+      });
     });
-  });
 
   modal.querySelectorAll(".gut-hint-mappings-toggle").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
-      const target = e.target.closest('.gut-hint-mappings-toggle');
+      const target = e.target.closest(".gut-hint-mappings-toggle");
       const hintName = target.dataset.hint;
       const hintItem = modal.querySelector(
         `.gut-hint-item[data-hint="${hintName}"]`,
       );
       const content = hintItem?.querySelector(".gut-hint-mappings-content");
-      const caret = target.querySelector('.gut-hint-caret');
+      const caret = target.querySelector(".gut-hint-caret");
 
       if (content) {
         if (content.style.display === "none") {
@@ -952,16 +960,18 @@ export function showHintEditor(
   const mappingsRows = modal.querySelector("#hint-mappings-rows");
 
   // Add selected class to radio labels when checked
-  typeInputs.forEach(input => {
-    input.addEventListener('change', () => {
+  typeInputs.forEach((input) => {
+    input.addEventListener("change", () => {
       // Remove selected class from all labels
-      modal.querySelectorAll('.gut-radio-label').forEach(label => {
-        label.classList.remove('selected');
+      modal.querySelectorAll(".gut-radio-label").forEach((label) => {
+        label.classList.remove("selected");
       });
       // Add selected class to the checked input's parent label
-      const checkedInput = modal.querySelector('input[name="hint-type"]:checked');
+      const checkedInput = modal.querySelector(
+        'input[name="hint-type"]:checked',
+      );
       if (checkedInput) {
-        checkedInput.closest('.gut-radio-label').classList.add('selected');
+        checkedInput.closest(".gut-radio-label").classList.add("selected");
       }
     });
   });
@@ -969,7 +979,7 @@ export function showHintEditor(
   // Set initial selected state
   const initialChecked = modal.querySelector('input[name="hint-type"]:checked');
   if (initialChecked) {
-    initialChecked.closest('.gut-radio-label').classList.add('selected');
+    initialChecked.closest(".gut-radio-label").classList.add("selected");
   }
 
   setupAutoResize(descriptionInput, { minLines: 1, maxLines: 5 });
@@ -1041,13 +1051,27 @@ export function showHintEditor(
   importBtn?.addEventListener("click", (e) => {
     e.preventDefault();
     const currentMappings = getCurrentMappingsFromEditor();
-    showMapImportModal(instance, hintName || "new_hint", currentMappings, "import", modal, updateEditorMappingsFromImport);
+    showMapImportModal(
+      instance,
+      hintName || "new_hint",
+      currentMappings,
+      "import",
+      modal,
+      updateEditorMappingsFromImport,
+    );
   });
 
   massEditBtn?.addEventListener("click", (e) => {
     e.preventDefault();
     const currentMappings = getCurrentMappingsFromEditor();
-    showMapImportModal(instance, hintName || "new_hint", currentMappings, "mass-edit", modal, updateEditorMappingsFromImport);
+    showMapImportModal(
+      instance,
+      hintName || "new_hint",
+      currentMappings,
+      "mass-edit",
+      modal,
+      updateEditorMappingsFromImport,
+    );
   });
 
   function getCurrentMappingsFromEditor() {
@@ -1064,7 +1088,7 @@ export function showHintEditor(
 
   function updateEditorMappingsFromImport(newMappings) {
     mappingsRows.innerHTML = "";
-    
+
     const entries = Object.entries(newMappings);
     if (entries.length === 0) {
       entries.push(["", ""]);
@@ -1272,61 +1296,85 @@ export function showSandboxWithMask(instance, mask, sample) {
 
         // Dispatch events to trigger auto-resize and other listeners
         sandboxMaskInput.dispatchEvent(new Event("input", { bubbles: true }));
-        sandboxSampleInput.dispatchEvent(new Event("change", { bubbles: true }));
+        sandboxSampleInput.dispatchEvent(
+          new Event("change", { bubbles: true }),
+        );
       }
     }, 50);
   }, 50);
 }
 
-export function showMapImportModal(instance, hintName, existingMappings, mode = 'import', editorModal = null, onComplete = null) {
-  const importModalContainer = document.createElement('div');
-  importModalContainer.innerHTML = MAP_IMPORT_MODAL_HTML(instance, hintName, existingMappings, mode);
+export function showMapImportModal(
+  instance,
+  hintName,
+  existingMappings,
+  mode = "import",
+  editorModal = null,
+  onComplete = null,
+) {
+  const importModalContainer = document.createElement("div");
+  importModalContainer.innerHTML = MAP_IMPORT_MODAL_HTML(
+    instance,
+    hintName,
+    existingMappings,
+    mode,
+  );
   const modal = importModalContainer.firstElementChild;
 
   ModalStack.push(modal, {
-    type: 'stack',
-    metadata: { instance, hintName, existingMappings, mode, editorModal, onComplete }
+    type: "stack",
+    metadata: {
+      instance,
+      hintName,
+      existingMappings,
+      mode,
+      editorModal,
+      onComplete,
+    },
   });
 
-  const textarea = modal.querySelector('#import-mappings-textarea');
-  const separatorSelect = modal.querySelector('#import-separator-select');
-  const customSeparatorInput = modal.querySelector('#import-custom-separator');
-  const overwriteCheckbox = modal.querySelector('#import-overwrite-checkbox');
-  const previewGroup = modal.querySelector('#import-preview-group');
-  const previewContent = modal.querySelector('#import-preview-content');
-  const previewSummary = modal.querySelector('#import-preview-summary');
-  const confirmBtn = modal.querySelector('#import-confirm-btn');
-  const cancelBtn = modal.querySelector('#import-cancel-btn');
-  const closeBtn = modal.querySelector('#modal-close-x');
+  const textarea = modal.querySelector("#import-mappings-textarea");
+  const separatorSelect = modal.querySelector("#import-separator-select");
+  const customSeparatorInput = modal.querySelector("#import-custom-separator");
+  const overwriteCheckbox = modal.querySelector("#import-overwrite-checkbox");
+  const previewGroup = modal.querySelector("#import-preview-group");
+  const previewContent = modal.querySelector("#import-preview-content");
+  const previewSummary = modal.querySelector("#import-preview-summary");
+  const confirmBtn = modal.querySelector("#import-confirm-btn");
+  const cancelBtn = modal.querySelector("#import-cancel-btn");
+  const closeBtn = modal.querySelector("#modal-close-x");
 
   setupAutoResize(textarea, { minLines: 5, maxLines: 15 });
 
-  separatorSelect.addEventListener('change', () => {
-    if (separatorSelect.value === 'custom') {
-      customSeparatorInput.style.display = 'block';
+  separatorSelect.addEventListener("change", () => {
+    if (separatorSelect.value === "custom") {
+      customSeparatorInput.style.display = "block";
     } else {
-      customSeparatorInput.style.display = 'none';
+      customSeparatorInput.style.display = "none";
     }
     updatePreview();
   });
 
-  customSeparatorInput.addEventListener('input', updatePreview);
-  textarea.addEventListener('input', updatePreview);
+  customSeparatorInput.addEventListener("input", updatePreview);
+  textarea.addEventListener("input", updatePreview);
 
   function getSeparator() {
-    if (separatorSelect.value === 'custom') {
-      return customSeparatorInput.value || ',';
+    if (separatorSelect.value === "custom") {
+      return customSeparatorInput.value || ",";
     }
-    return separatorSelect.value === '\t' ? '\t' : separatorSelect.value;
+    return separatorSelect.value === "\t" ? "\t" : separatorSelect.value;
   }
 
   function parseMappings(text, separator) {
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+    const lines = text
+      .split("\n")
+      .map((l) => l.trim())
+      .filter((l) => l);
     const mappings = {};
     const errors = [];
 
     lines.forEach((line, idx) => {
-      const parts = line.split(separator).map(p => p.trim());
+      const parts = line.split(separator).map((p) => p.trim());
       if (parts.length >= 2) {
         const key = parts[0];
         const value = parts.slice(1).join(separator).trim();
@@ -1346,7 +1394,7 @@ export function showMapImportModal(instance, hintName, existingMappings, mode = 
   function updatePreview() {
     const text = textarea.value.trim();
     if (!text) {
-      previewGroup.style.display = 'none';
+      previewGroup.style.display = "none";
       confirmBtn.disabled = true;
       return;
     }
@@ -1355,19 +1403,20 @@ export function showMapImportModal(instance, hintName, existingMappings, mode = 
     const { mappings, errors } = parseMappings(text, separator);
 
     if (Object.keys(mappings).length === 0 && errors.length === 0) {
-      previewGroup.style.display = 'none';
+      previewGroup.style.display = "none";
       confirmBtn.disabled = true;
       return;
     }
 
-    previewGroup.style.display = 'block';
+    previewGroup.style.display = "block";
 
-    const overwrite = mode === 'mass-edit' || (overwriteCheckbox && overwriteCheckbox.checked);
+    const overwrite =
+      mode === "mass-edit" || (overwriteCheckbox && overwriteCheckbox.checked);
     const newKeys = [];
     const updateKeys = [];
     const unchangedKeys = [];
 
-    Object.keys(mappings).forEach(key => {
+    Object.keys(mappings).forEach((key) => {
       if (existingMappings[key]) {
         if (existingMappings[key] === mappings[key]) {
           unchangedKeys.push(key);
@@ -1379,47 +1428,54 @@ export function showMapImportModal(instance, hintName, existingMappings, mode = 
       }
     });
 
-    let html = '';
+    let html = "";
     if (errors.length > 0) {
       html += `<div style="color: #f44336; margin-bottom: 8px; font-size: 11px;">
-        <strong>Errors:</strong><br>${errors.map(e => `• ${e}`).join('<br>')}
+        <strong>Errors:</strong><br>${errors.map((e) => `• ${e}`).join("<br>")}
       </div>`;
     }
 
     if (Object.keys(mappings).length > 0) {
-      html += Object.entries(mappings).map(([key, value]) => {
-        let badge = '';
-        let style = '';
-        if (newKeys.includes(key)) {
-          badge = '<span style="color: #4caf50; font-size: 10px; margin-left: 4px;">(new)</span>';
-          style = 'border-left: 3px solid #4caf50;';
-        } else if (updateKeys.includes(key)) {
-          badge = `<span style="color: #ff9800; font-size: 10px; margin-left: 4px;">(update: "${instance.escapeHtml(existingMappings[key])}")</span>`;
-          style = 'border-left: 3px solid #ff9800;';
-        } else if (unchangedKeys.includes(key)) {
-          badge = '<span style="color: #888; font-size: 10px; margin-left: 4px;">(unchanged)</span>';
-          style = 'border-left: 3px solid #444;';
-        }
-        return `
+      html += Object.entries(mappings)
+        .map(([key, value]) => {
+          let badge = "";
+          let style = "";
+          if (newKeys.includes(key)) {
+            badge =
+              '<span style="color: #4caf50; font-size: 10px; margin-left: 4px;">(new)</span>';
+            style = "border-left: 3px solid #4caf50;";
+          } else if (updateKeys.includes(key)) {
+            badge = `<span style="color: #ff9800; font-size: 10px; margin-left: 4px;">(update: "${instance.escapeHtml(existingMappings[key])}")</span>`;
+            style = "border-left: 3px solid #ff9800;";
+          } else if (unchangedKeys.includes(key)) {
+            badge =
+              '<span style="color: #888; font-size: 10px; margin-left: 4px;">(unchanged)</span>';
+            style = "border-left: 3px solid #444;";
+          }
+          return `
           <div class="gut-variable-item" style="${style}">
             <span class="gut-variable-name">${instance.escapeHtml(key)}${badge}</span>
             <span class="gut-variable-value">${instance.escapeHtml(value)}</span>
           </div>
         `;
-      }).join('');
+        })
+        .join("");
     }
 
     previewContent.innerHTML = html;
 
     const summaryParts = [];
     if (newKeys.length > 0) summaryParts.push(`${newKeys.length} new`);
-    if (updateKeys.length > 0) summaryParts.push(`${updateKeys.length} updates`);
-    if (unchangedKeys.length > 0) summaryParts.push(`${unchangedKeys.length} unchanged`);
+    if (updateKeys.length > 0)
+      summaryParts.push(`${updateKeys.length} updates`);
+    if (unchangedKeys.length > 0)
+      summaryParts.push(`${unchangedKeys.length} unchanged`);
     if (errors.length > 0) summaryParts.push(`${errors.length} errors`);
 
-    previewSummary.textContent = summaryParts.join(', ');
-    
-    confirmBtn.disabled = Object.keys(mappings).length === 0 || errors.length > 0;
+    previewSummary.textContent = summaryParts.join(", ");
+
+    confirmBtn.disabled =
+      Object.keys(mappings).length === 0 || errors.length > 0;
   }
 
   function applyImport() {
@@ -1430,14 +1486,15 @@ export function showMapImportModal(instance, hintName, existingMappings, mode = 
     const { mappings } = parseMappings(text, separator);
 
     if (Object.keys(mappings).length === 0) {
-      alert('No valid mappings to import.');
+      alert("No valid mappings to import.");
       return;
     }
 
-    const overwrite = mode === 'mass-edit' || (overwriteCheckbox && overwriteCheckbox.checked);
-    
+    const overwrite =
+      mode === "mass-edit" || (overwriteCheckbox && overwriteCheckbox.checked);
+
     let finalMappings;
-    if (mode === 'mass-edit') {
+    if (mode === "mass-edit") {
       finalMappings = mappings;
     } else if (overwrite) {
       finalMappings = { ...existingMappings, ...mappings };
@@ -1452,7 +1509,7 @@ export function showMapImportModal(instance, hintName, existingMappings, mode = 
       const hintData = instance.hints[hintName] || {};
       instance.hints[hintName] = {
         ...hintData,
-        mappings: finalMappings
+        mappings: finalMappings,
       };
 
       saveHints(instance.hints);
@@ -1465,11 +1522,11 @@ export function showMapImportModal(instance, hintName, existingMappings, mode = 
     }
   }
 
-  confirmBtn.addEventListener('click', applyImport);
-  cancelBtn.addEventListener('click', () => ModalStack.pop());
-  closeBtn.addEventListener('click', () => ModalStack.pop());
+  confirmBtn.addEventListener("click", applyImport);
+  cancelBtn.addEventListener("click", () => ModalStack.pop());
+  closeBtn.addEventListener("click", () => ModalStack.pop());
 
-  modal.addEventListener('click', (e) => {
+  modal.addEventListener("click", (e) => {
     if (e.target === modal) {
       ModalStack.pop();
     }

@@ -386,16 +386,18 @@ export const HINTS_TAB_HTML = (instance) => {
           </div>
         </div>
         <div class="gut-hint-mappings-content" style="display: none; max-height: 0; overflow: hidden; transition: max-height 0.2s ease;">
-          ${Object.entries(hint.mappings)
-            .map(
-              ([key, value]) => `
-              <div class="gut-variable-item">
-                <span class="gut-variable-name">${instance.escapeHtml(key)}</span>
-                <span class="gut-variable-value">${instance.escapeHtml(value)}</span>
-              </div>
-            `,
-            )
-            .join("")}
+          <div style="max-height: 200px; overflow-y: auto;">
+            ${Object.entries(hint.mappings)
+              .map(
+                ([key, value]) => `
+                <div class="gut-variable-item">
+                  <span class="gut-variable-name">${instance.escapeHtml(key)}</span>
+                  <span class="gut-variable-value">${instance.escapeHtml(value)}</span>
+                </div>
+              `,
+              )
+              .join("")}
+          </div>
         </div>
       </div>
     `
