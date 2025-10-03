@@ -491,7 +491,7 @@ export const SANDBOX_TAB_HTML = (instance) => {
 
       <div class="gut-form-group">
         <label for="sandbox-sample-input">Sample Torrent Names (one per line):</label>
-        <textarea id="sandbox-sample-input" rows="8" style="font-family: 'Fira Code', monospace; font-size: 13px; resize: vertical; width: 100%;" placeholder="Artist Name - Album Title [2024]\nAnother Artist - Some Album\nThird Example - Test [2023]"></textarea>
+        <textarea id="sandbox-sample-input" style="font-family: 'Fira Code', monospace; font-size: 13px; resize: vertical; width: 100%; line-height: 1.4; overflow-y: auto; box-sizing: border-box;" placeholder="Artist Name - Album Title [2024]\nAnother Artist - Some Album\nThird Example - Test [2023]"></textarea>
       </div>
 
       <div class="gut-form-group">

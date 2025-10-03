@@ -8,6 +8,7 @@ import {
 } from "./storage.js";
 import { saveHints, resetHintToDefault, loadHints } from "./hint-storage.js";
 import { MODAL_HTML, HINT_EDITOR_MODAL_HTML } from "./ui/template.js";
+import { setupAutoResize } from "./utils/textarea.js";
 import { renderSandboxResults, setupMaskValidation } from "./ui/manager.js";
 import {
   testMaskAgainstSamples,
@@ -320,6 +321,11 @@ export function showTemplateAndSettingsManager(instance) {
     if (data) {
       sandboxMaskInput.value = data.mask || "";
       sandboxSampleInput.value = data.samples || "";
+      
+      // Dispatch change events to trigger auto-resize and other listeners
+      sandboxMaskInput.dispatchEvent(new Event('change'));
+      sandboxSampleInput.dispatchEvent(new Event('change'));
+      
       updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
       updateSandboxTest();
       currentLoadedSet = value;
@@ -334,6 +340,15 @@ export function showTemplateAndSettingsManager(instance) {
       }
     }
   });
+
+  // Set up auto-resize for sandbox sample input after current set is loaded
+  if (sandboxSampleInput) {
+    setupAutoResize(sandboxSampleInput, {
+      minLines: 3,
+      maxLines: 7,
+      initialResize: true
+    });
+  }
 
   saveBtn?.addEventListener("click", () => {
     if (currentLoadedSet && currentLoadedSet !== "") {
@@ -511,6 +526,11 @@ export function showTemplateAndSettingsManager(instance) {
     if (data) {
       sandboxMaskInput.value = data.mask || "";
       sandboxSampleInput.value = data.samples || "";
+      
+      // Dispatch change events to trigger auto-resize and other listeners
+      sandboxMaskInput.dispatchEvent(new Event('change'));
+      sandboxSampleInput.dispatchEvent(new Event('change'));
+      
       updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
       updateSandboxTest();
 
@@ -1143,7 +1163,9 @@ export function showSandboxWithMask(instance, mask, sample) {
 
         updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
 
+        // Dispatch events to trigger auto-resize and other listeners
         sandboxMaskInput.dispatchEvent(new Event("input", { bubbles: true }));
+        sandboxSampleInput.dispatchEvent(new Event("change", { bubbles: true }));
       }
     }, 50);
   }, 50);
