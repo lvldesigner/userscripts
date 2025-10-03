@@ -8,6 +8,16 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.10
+
+![](https://files.catbox.moe/qtnzfw.png)
+
+- Add variable hints that allows for viarble disambiguation and advanced pattern matching.
+- Toggle to show compiled regex in Mask Sandbox
+- Fix: Allow optionals to consist of white space
+- UX: Modals have fixed headers and footers now
+
+
 ### v0.9
 
 ![](https://files.catbox.moe/g4mclk.png)
