@@ -334,7 +334,7 @@ export const TEMPLATE_CREATOR_HTML = (
                </div>
              `;
           })
-           .join("")}
+          .join("")}
       </div>
     </div>
     </div>
@@ -348,37 +348,51 @@ export const TEMPLATE_CREATOR_HTML = (
 
 export const HINTS_TAB_HTML = (instance) => {
   const hints = instance.hints || {};
-  
+
   const isDefaultHint = (name) => {
-    const defaultHints = ['number', 'alpha', 'alnum', 'version', 'date_dots', 'date_dashes', 'lang_codes', 'resolution'];
+    const defaultHints = [
+      "number",
+      "alpha",
+      "alnum",
+      "version",
+      "date_dots",
+      "date_dashes",
+      "lang_codes",
+      "resolution",
+    ];
     return defaultHints.includes(name);
   };
-  
+
   const isOverridden = (name) => {
     return instance.isHintOverridden ? instance.isHintOverridden(name) : false;
   };
-  
+
   const renderHintRow = (name, hint, isDefault) => {
     const overridden = isOverridden(name);
-    
-    const mappingsHtml = hint.type === 'map' && hint.mappings ? `
+
+    const mappingsHtml =
+      hint.type === "map" && hint.mappings
+        ? `
       <div class="gut-hint-mappings-inline">
         <div class="gut-hint-mappings-header">
-          <span>${Object.keys(hint.mappings).length} mappings${hint.strict === false ? ' (non-strict)' : ''}</span>
+          <span>${Object.keys(hint.mappings).length} mappings${hint.strict === false ? " (non-strict)" : ""}</span>
           <button class="gut-hint-mappings-toggle" data-hint="${instance.escapeHtml(name)}">Show</button>
         </div>
         <div class="gut-hint-mappings-content" style="display: none;">
           ${Object.entries(hint.mappings)
-            .map(([key, value]) => `
+            .map(
+              ([key, value]) => `
               <div class="gut-variable-item">
                 <span class="gut-variable-name">${instance.escapeHtml(key)}</span>
                 <span class="gut-variable-value">${instance.escapeHtml(value)}</span>
               </div>
-            `)
-            .join('')}
+            `,
+            )
+            .join("")}
         </div>
       </div>
-    ` : '';
+    `
+        : "";
 
     return `
       <div class="gut-hint-item" data-hint="${instance.escapeHtml(name)}">
@@ -386,33 +400,33 @@ export const HINTS_TAB_HTML = (instance) => {
           <div class="gut-hint-name-group">
             <span class="gut-hint-name">${instance.escapeHtml(name)}</span>
             <span class="gut-hint-type-badge">${hint.type}</span>
-            ${isDefault ? '<span class="gut-hint-default-badge">default</span>' : ''}
-            ${overridden ? '<span class="gut-hint-override-indicator" title="This default hint has been customized">modified</span>' : ''}
+            ${isDefault ? '<span class="gut-hint-default-badge">default</span>' : ""}
+            ${overridden ? '<span class="gut-hint-override-indicator" title="This default hint has been customized">modified</span>' : ""}
           </div>
           <div class="gut-hint-actions">
-            ${isDefault && !overridden ? '<a href="#" class="gut-link" data-action="edit-hint">Edit</a>' : ''}
-            ${overridden ? '<a href="#" class="gut-link" data-action="edit-hint">Edit</a> | <a href="#" class="gut-link" data-action="reset-hint">Reset to Default</a>' : ''}
-            ${!isDefault ? '<a href="#" class="gut-link" data-action="edit-hint">Edit</a> | <a href="#" class="gut-link gut-link-danger" data-action="delete-hint">Delete</a>' : ''}
+            ${isDefault && !overridden ? '<a href="#" class="gut-link" data-action="edit-hint">Edit</a>' : ""}
+            ${overridden ? '<a href="#" class="gut-link" data-action="edit-hint">Edit</a> | <a href="#" class="gut-link" data-action="reset-hint">Reset to Default</a>' : ""}
+            ${!isDefault ? '<a href="#" class="gut-link" data-action="edit-hint">Edit</a> | <a href="#" class="gut-link gut-link-danger" data-action="delete-hint">Delete</a>' : ""}
           </div>
         </div>
-        ${hint.description ? `<div class="gut-hint-description">${instance.escapeHtml(hint.description)}</div>` : ''}
-        ${hint.type === 'pattern' ? `<div class="gut-hint-pattern"><code>${instance.escapeHtml(hint.pattern)}</code></div>` : ''}
-        ${hint.type === 'regex' ? `<div class="gut-hint-pattern"><code>/${instance.escapeHtml(hint.pattern)}/</code></div>` : ''}
+        ${hint.description ? `<div class="gut-hint-description">${instance.escapeHtml(hint.description)}</div>` : ""}
+        ${hint.type === "pattern" ? `<div class="gut-hint-pattern"><code>${instance.escapeHtml(hint.pattern)}</code></div>` : ""}
+        ${hint.type === "regex" ? `<div class="gut-hint-pattern"><code>/${instance.escapeHtml(hint.pattern)}/</code></div>` : ""}
         ${mappingsHtml}
       </div>
     `;
   };
-  
+
   const defaultHintRows = Object.entries(hints)
     .filter(([name]) => isDefaultHint(name))
     .map(([name, hint]) => renderHintRow(name, hint, true))
-    .join('');
-  
+    .join("");
+
   const customHintRows = Object.entries(hints)
     .filter(([name]) => !isDefaultHint(name))
     .map(([name, hint]) => renderHintRow(name, hint, false))
-    .join('');
-  
+    .join("");
+
   return `
     <div class="gut-tab-content" id="hints-tab">
       <div class="gut-form-group">
@@ -429,16 +443,20 @@ export const HINTS_TAB_HTML = (instance) => {
         <input type="text" id="hint-filter-input" class="gut-input" placeholder="Filter hints by name, description, pattern..." style="width: 100%;">
         <div id="hint-filter-count" style="font-size: 11px; color: #888; margin-top: 5px;"></div>
       </div>
-      
-      ${customHintRows ? `
+
+      ${
+        customHintRows
+          ? `
         <div class="gut-form-group" id="custom-hints-section">
           <label>Custom Hints</label>
           <div class="gut-hints-list" id="custom-hints-list">
             ${customHintRows}
           </div>
         </div>
-      ` : ''}
-      
+      `
+          : ""
+      }
+
       <div class="gut-form-group">
         <label>Default Hints</label>
         <div class="gut-hints-list" id="default-hints-list">
@@ -504,32 +522,43 @@ export const SANDBOX_TAB_HTML = (instance) => {
   `;
 };
 
-export const HINT_EDITOR_MODAL_HTML = (instance, hintName = null, hintData = null) => {
+export const HINT_EDITOR_MODAL_HTML = (
+  instance,
+  hintName = null,
+  hintData = null,
+) => {
   const isEdit = !!hintName;
-  const hint = hintData || { type: 'pattern', pattern: '', description: '', mappings: {}, strict: true };
-  
-  const mappingsArray = hint.type === 'map' && hint.mappings 
-    ? Object.entries(hint.mappings) 
-    : [['', '']];
-  
+  const hint = hintData || {
+    type: "pattern",
+    pattern: "",
+    description: "",
+    mappings: {},
+    strict: true,
+  };
+
+  const mappingsArray =
+    hint.type === "map" && hint.mappings
+      ? Object.entries(hint.mappings)
+      : [["", ""]];
+
   return `
     <div class="gut-modal">
       <div class="gut-modal-content gut-hint-editor-modal">
         <div class="gut-modal-header">
           <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
-          <h2>${isEdit ? 'Edit Hint' : 'Create New Hint'}</h2>
+          <h2>${isEdit ? "Edit Hint" : "Create New Hint"}</h2>
         </div>
-      
+
       <div class="gut-modal-body">
         <div class="gut-form-group">
           <label for="hint-editor-name">Hint Name *</label>
-          <input 
-            type="text" 
-            id="hint-editor-name" 
-            class="gut-input" 
+          <input
+            type="text"
+            id="hint-editor-name"
+            class="gut-input"
             placeholder="e.g., my_hint"
-            value="${isEdit ? instance.escapeHtml(hintName) : ''}"
-            ${isEdit ? 'readonly' : ''}
+            value="${isEdit ? instance.escapeHtml(hintName) : ""}"
+            ${isEdit ? "readonly" : ""}
             pattern="[a-zA-Z0-9_]+"
           >
           <div style="font-size: 11px; color: #888; margin-top: 4px;">
@@ -538,47 +567,52 @@ export const HINT_EDITOR_MODAL_HTML = (instance, hintName = null, hintData = nul
         </div>
 
         <div class="gut-form-group">
+          <label for="hint-editor-description">Description</label>
+          <textarea
+            id="hint-editor-description"
+            class="gut-input"
+            rows="1"
+            placeholder="Describe what this hint matches"
+          >${instance.escapeHtml(hint.description || "")}</textarea>
+        </div>
+
+        <div class="gut-form-group">
           <label>Hint Type *</label>
           <div class="gut-hint-type-selector">
-            <label class="gut-radio-label">
-              <input type="radio" name="hint-type" value="pattern" ${hint.type === 'pattern' ? 'checked' : ''}>
+            <label class="gut-radio-label" title="Use # for digits, @ for letters, * for alphanumeric">
+              <input type="radio" name="hint-type" value="pattern" ${hint.type === "pattern" ? "checked" : ""}>
               <span>Pattern</span>
-              <span style="font-size: 11px; color: #888; display: block; margin-top: 2px;">
-                Use # for digits, @ for letters, * for alphanumeric
-              </span>
             </label>
-            <label class="gut-radio-label">
-              <input type="radio" name="hint-type" value="regex" ${hint.type === 'regex' ? 'checked' : ''}>
+            <label class="gut-radio-label" title="Regular expression pattern">
+              <input type="radio" name="hint-type" value="regex" ${hint.type === "regex" ? "checked" : ""}>
               <span>Regex</span>
-              <span style="font-size: 11px; color: #888; display: block; margin-top: 2px;">
-                Regular expression pattern
-              </span>
             </label>
-            <label class="gut-radio-label">
-              <input type="radio" name="hint-type" value="map" ${hint.type === 'map' ? 'checked' : ''}>
+            <label class="gut-radio-label" title="Map input values to output values">
+              <input type="radio" name="hint-type" value="map" ${hint.type === "map" ? "checked" : ""}>
               <span>Value Map</span>
-              <span style="font-size: 11px; color: #888; display: block; margin-top: 2px;">
-                Map input values to output values
-              </span>
             </label>
           </div>
         </div>
 
-        <div class="gut-form-group" id="hint-pattern-group" style="display: ${hint.type === 'pattern' || hint.type === 'regex' ? 'block' : 'none'};">
+        <div class="gut-form-group" id="hint-pattern-group" style="display: ${hint.type === "pattern" || hint.type === "regex" ? "block" : "none"};">
           <label for="hint-editor-pattern">
-            <span id="hint-pattern-label">${hint.type === 'regex' ? 'Regex Pattern' : 'Pattern'} *</span>
+            <span id="hint-pattern-label">${hint.type === "regex" ? "Regex Pattern" : "Pattern"} *</span>
           </label>
-          <input 
-            type="text" 
-            id="hint-editor-pattern" 
-            class="gut-input" 
-            placeholder="${hint.type === 'regex' ? 'e.g., v\\d+(?:\\.\\d+)*' : 'e.g., ##.##.####'}"
-            value="${hint.type !== 'map' ? instance.escapeHtml(hint.pattern || '') : ''}"
+          <input
+            type="text"
+            id="hint-editor-pattern"
+            class="gut-input"
+            placeholder="${hint.type === "regex" ? "e.g., v\\d+(?:\\.\\d+)*" : "e.g., ##.##.####"}"
+            value="${hint.type !== "map" ? instance.escapeHtml(hint.pattern || "") : ""}"
           >
         </div>
 
-        <div class="gut-form-group" id="hint-mappings-group" style="display: ${hint.type === 'map' ? 'block' : 'none'};">
+        <div class="gut-form-group" id="hint-mappings-group" style="display: ${hint.type === "map" ? "block" : "none"};">
           <label>Value Mappings *</label>
+          <label class="gut-checkbox-label" style="margin-top: 10px;">
+            <input type="checkbox" id="hint-editor-strict" ${hint.strict === false ? "" : "checked"}>
+            <span class="gut-checkbox-text">Strict mode (reject values not in map)</span>
+          </label>
           <div id="hint-mappings-table">
             <div class="gut-mappings-table-header">
               <span style="flex: 1;">Input Value</span>
@@ -586,36 +620,26 @@ export const HINT_EDITOR_MODAL_HTML = (instance, hintName = null, hintData = nul
               <span style="width: 40px;"></span>
             </div>
             <div id="hint-mappings-rows">
-              ${mappingsArray.map(([key, value], idx) => `
+              ${mappingsArray
+                .map(
+                  ([key, value], idx) => `
                 <div class="gut-mappings-row" data-row-index="${idx}">
                   <input type="text" class="gut-input gut-mapping-key" placeholder="e.g., en" value="${instance.escapeHtml(key)}">
                   <input type="text" class="gut-input gut-mapping-value" placeholder="e.g., English" value="${instance.escapeHtml(value)}">
                   <button class="gut-btn gut-btn-danger gut-btn-small gut-remove-mapping" title="Remove">−</button>
                 </div>
-              `).join('')}
+              `,
+                )
+                .join("")}
             </div>
             <button class="gut-btn gut-btn-secondary gut-btn-small" id="hint-add-mapping">+ Add Mapping</button>
           </div>
-          <label class="gut-checkbox-label" style="margin-top: 10px;">
-            <input type="checkbox" id="hint-editor-strict" ${hint.strict === false ? '' : 'checked'}>
-            <span class="gut-checkbox-text">Strict mode (reject values not in map)</span>
-          </label>
-        </div>
-
-        <div class="gut-form-group">
-          <label for="hint-editor-description">Description</label>
-          <textarea 
-            id="hint-editor-description" 
-            class="gut-input" 
-            rows="2"
-            placeholder="Describe what this hint matches"
-          >${instance.escapeHtml(hint.description || '')}</textarea>
         </div>
       </div>
 
       <div class="gut-modal-footer">
         <button class="gut-btn" id="hint-editor-cancel">Cancel</button>
-        <button class="gut-btn gut-btn-primary" id="hint-editor-save">${isEdit ? 'Save Changes' : 'Create Hint'}</button>
+        <button class="gut-btn gut-btn-primary" id="hint-editor-save">${isEdit ? "Save Changes" : "Create Hint"}</button>
       </div>
       </div>
     </div>

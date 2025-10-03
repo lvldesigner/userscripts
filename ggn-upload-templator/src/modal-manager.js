@@ -924,6 +924,29 @@ export function showHintEditor(
   const addMappingBtn = modal.querySelector("#hint-add-mapping");
   const mappingsRows = modal.querySelector("#hint-mappings-rows");
 
+  // Add selected class to radio labels when checked
+  typeInputs.forEach(input => {
+    input.addEventListener('change', () => {
+      // Remove selected class from all labels
+      modal.querySelectorAll('.gut-radio-label').forEach(label => {
+        label.classList.remove('selected');
+      });
+      // Add selected class to the checked input's parent label
+      const checkedInput = modal.querySelector('input[name="hint-type"]:checked');
+      if (checkedInput) {
+        checkedInput.closest('.gut-radio-label').classList.add('selected');
+      }
+    });
+  });
+
+  // Set initial selected state
+  const initialChecked = modal.querySelector('input[name="hint-type"]:checked');
+  if (initialChecked) {
+    initialChecked.closest('.gut-radio-label').classList.add('selected');
+  }
+
+  setupAutoResize(descriptionInput, { minLines: 1, maxLines: 5 });
+
   const closeModal = () => {
     ModalStack.pop();
   };
