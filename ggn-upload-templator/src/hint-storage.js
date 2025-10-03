@@ -6,7 +6,7 @@ export const DEFAULT_HINTS = {
   },
   alpha: {
     type: "pattern",
-    pattern: "@@+",
+    pattern: "@+",
     description: "Letters only",
   },
   alnum: {
@@ -29,11 +29,6 @@ export const DEFAULT_HINTS = {
     pattern: "####-##-##",
     description: "Date in YYYY-MM-DD format",
   },
-  date_ymd_slashes: {
-    type: "pattern",
-    pattern: "####/##/##",
-    description: "Date in YYYY/MM/DD format",
-  },
   date_dmy_dots: {
     type: "pattern",
     pattern: "##.##.####",
@@ -44,11 +39,6 @@ export const DEFAULT_HINTS = {
     pattern: "##-##-####",
     description: "Date in DD-MM-YYYY format",
   },
-  date_dmy_slashes: {
-    type: "pattern",
-    pattern: "##/##/####",
-    description: "Date in DD/MM/YYYY format",
-  },
   date_mdy_dots: {
     type: "pattern",
     pattern: "##.##.####",
@@ -58,11 +48,6 @@ export const DEFAULT_HINTS = {
     type: "pattern",
     pattern: "##-##-####",
     description: "Date in MM-DD-YYYY format",
-  },
-  date_mdy_slashes: {
-    type: "pattern",
-    pattern: "##/##/####",
-    description: "Date in MM/DD/YYYY format",
   },
   lang_codes: {
     type: "map",
