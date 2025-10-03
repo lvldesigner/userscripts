@@ -6,11 +6,30 @@ import {
   saveSandboxSets,
   saveCurrentSandboxSet,
 } from "./storage.js";
-import { saveHints, resetAllHints, loadHints } from "./hint-storage.js";
+import {
+  saveHints,
+  resetAllHints,
+  loadHints,
+  loadIgnoredHints,
+  saveIgnoredHints,
+  addToIgnoredHints,
+  removeFromIgnoredHints,
+  isHintIgnored,
+  getNewDefaultHints,
+  getEditedDefaultHints,
+  DEFAULT_HINTS,
+  isDefaultHint,
+  addToDeletedDefaultHints,
+  removeFromDeletedDefaultHints,
+  loadDeletedDefaultHints,
+} from "./hint-storage.js";
 import {
   MODAL_HTML,
   HINT_EDITOR_MODAL_HTML,
   MAP_IMPORT_MODAL_HTML,
+  IMPORT_NEW_HINTS_MODAL_HTML,
+  RESET_DEFAULTS_MODAL_HTML,
+  DELETE_ALL_HINTS_MODAL_HTML,
 } from "./ui/template.js";
 import { setupAutoResize } from "./utils/textarea.js";
 import { renderSandboxResults, setupMaskValidation } from "./ui/manager.js";
@@ -631,9 +650,7 @@ export function showTemplateAndSettingsManager(instance) {
   );
 
   modal.addEventListener("click", (e) => {
-    console.log('[ModalManager] modal click - target:', e.target, 'modal:', modal, 'isResizing:', ModalStack.isResizingModal());
     if (e.target === modal && !ModalStack.isResizingModal()) {
-      console.log('[ModalManager] Closing modal via overlay click');
       ModalStack.pop();
       return;
     }
@@ -666,6 +683,9 @@ export function showTemplateAndSettingsManager(instance) {
       const hintItem = e.target.closest(".gut-hint-item");
       const hintName = hintItem?.dataset.hint;
       if (hintName && confirm(`Delete hint "${hintName}"?`)) {
+        if (isDefaultHint(hintName)) {
+          addToDeletedDefaultHints(hintName);
+        }
         delete instance.hints[hintName];
         saveHints(instance.hints);
         hintItem.remove();
@@ -695,21 +715,41 @@ export function showTemplateAndSettingsManager(instance) {
     });
   });
 
-  const resetAllHintsBtn = modal.querySelector("#reset-all-hints-btn");
-  if (resetAllHintsBtn) {
-    resetAllHintsBtn.addEventListener("click", (e) => {
+  const importNewHintsBtn = modal.querySelector("#import-new-hints-btn");
+  if (importNewHintsBtn) {
+    importNewHintsBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      if (confirm("Reset all hints to defaults? This will delete all custom hints and revert any changes. This action cannot be undone.")) {
-        if (resetAllHints()) {
-          instance.hints = loadHints();
+      try {
+        showImportNewHintsModal(instance);
+      } catch (error) {
+        console.error("Error showing import new hints modal:", error);
+        instance.showStatus("Error showing modal: " + error.message, "error");
+      }
+    });
+  }
 
-          ModalStack.pop();
-          showTemplateAndSettingsManager(instance);
-          const hintsTab = document.querySelector(
-            '.gut-tab-btn[data-tab="hints"]',
-          );
-          if (hintsTab) hintsTab.click();
-        }
+  const resetDefaultsBtn = modal.querySelector("#reset-defaults-btn");
+  if (resetDefaultsBtn) {
+    resetDefaultsBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      try {
+        showResetDefaultsModal(instance);
+      } catch (error) {
+        console.error("Error showing reset defaults modal:", error);
+        instance.showStatus("Error showing modal: " + error.message, "error");
+      }
+    });
+  }
+
+  const deleteAllHintsBtn = modal.querySelector("#delete-all-hints-btn");
+  if (deleteAllHintsBtn) {
+    deleteAllHintsBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      try {
+        showDeleteAllHintsModal(instance);
+      } catch (error) {
+        console.error("Error showing delete all modal:", error);
+        instance.showStatus("Error showing modal: " + error.message, "error");
       }
     });
   }
@@ -968,9 +1008,7 @@ export function showHintEditor(
   cancelBtn.addEventListener("click", closeModal);
 
   modal.addEventListener("click", (e) => {
-    console.log('[ModalManager] modal click - target:', e.target, 'modal:', modal, 'isResizing:', ModalStack.isResizingModal());
     if (e.target === modal && !ModalStack.isResizingModal()) {
-      console.log('[ModalManager] Closing modal via overlay click (closeModal)');
       closeModal();
     }
   });
@@ -1491,12 +1529,296 @@ export function showMapImportModal(
   closeBtn.addEventListener("click", () => ModalStack.pop());
 
   modal.addEventListener("click", (e) => {
-    console.log('[ModalManager] modal click - target:', e.target, 'modal:', modal, 'isResizing:', ModalStack.isResizingModal());
     if (e.target === modal && !ModalStack.isResizingModal()) {
-      console.log('[ModalManager] Closing modal via overlay click (pop)');
       ModalStack.pop();
     }
   });
 
   updatePreview();
+}
+
+export function showImportNewHintsModal(instance) {
+  const userHints = instance.hints;
+  const newHints = getNewDefaultHints(userHints);
+  const ignoredHints = loadIgnoredHints();
+
+  if (Object.keys(newHints).length === 0) {
+    instance.showStatus("No new hints available to import!", "info");
+    return;
+  }
+
+  const modal = document.createElement("div");
+  modal.innerHTML = IMPORT_NEW_HINTS_MODAL_HTML(
+    newHints,
+    ignoredHints,
+    instance,
+  );
+  const modalElement = modal.firstElementChild;
+
+  ModalStack.push(modalElement, {
+    type: "stack",
+    metadata: { instance, newHints, ignoredHints },
+  });
+
+  const checkboxes = modalElement.querySelectorAll(".hint-select-checkbox");
+  const importBtn = modalElement.querySelector("#import-hints-confirm-btn");
+  const cancelBtn = modalElement.querySelector("#import-hints-cancel-btn");
+  const closeBtn = modalElement.querySelector("#modal-close-x");
+  const selectAllBtn = modalElement.querySelector("#import-select-all-btn");
+  const selectNoneBtn = modalElement.querySelector("#import-select-none-btn");
+
+  function updateSelectedCount() {
+    const checkedCount = Array.from(checkboxes).filter(
+      (cb) => cb.checked,
+    ).length;
+    const totalCount = checkboxes.length;
+    
+    if (checkedCount === 0) {
+      importBtn.textContent = "Import Selected";
+      importBtn.disabled = true;
+    } else if (checkedCount === totalCount) {
+      importBtn.textContent = "Import All";
+      importBtn.disabled = false;
+    } else {
+      importBtn.textContent = `Import ${checkedCount}/${totalCount} Selected`;
+      importBtn.disabled = false;
+    }
+  }
+
+  checkboxes.forEach((checkbox) => {
+    checkbox.addEventListener("change", updateSelectedCount);
+  });
+
+  selectAllBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    checkboxes.forEach((cb) => (cb.checked = true));
+    updateSelectedCount();
+  });
+
+  selectNoneBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    checkboxes.forEach((cb) => (cb.checked = false));
+    updateSelectedCount();
+  });
+
+  modalElement.querySelectorAll(".hint-ignore-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const hintName = e.target.dataset.hintName;
+      const row = e.target.closest(".gut-hint-import-item");
+      const checkbox = row.querySelector(".hint-select-checkbox");
+
+      if (isHintIgnored(hintName)) {
+        removeFromIgnoredHints(hintName);
+        e.target.textContent = "Ignore";
+        checkbox.checked = true;
+      } else {
+        addToIgnoredHints(hintName);
+        e.target.textContent = "Unignore";
+        checkbox.checked = false;
+      }
+      updateSelectedCount();
+    });
+  });
+
+  importBtn.addEventListener("click", () => {
+    const selectedHints = Array.from(checkboxes)
+      .filter((cb) => cb.checked)
+      .map((cb) => cb.dataset.hintName);
+
+    if (selectedHints.length === 0) {
+      instance.showStatus("No hints selected for import!", "error");
+      return;
+    }
+
+    selectedHints.forEach((hintName) => {
+      instance.hints[hintName] = newHints[hintName];
+      removeFromDeletedDefaultHints(hintName);
+    });
+
+    saveHints(instance.hints);
+    ModalStack.pop();
+    ModalStack.pop();
+    showTemplateAndSettingsManager(instance);
+    const hintsTab = document.querySelector('.gut-tab-btn[data-tab="hints"]');
+    if (hintsTab) hintsTab.click();
+
+    instance.showStatus(
+      `Successfully imported ${selectedHints.length} hint(s)!`,
+      "success",
+    );
+  });
+
+  cancelBtn.addEventListener("click", () => ModalStack.pop());
+  closeBtn.addEventListener("click", () => ModalStack.pop());
+
+  modalElement.addEventListener("click", (e) => {
+    if (e.target === modalElement && !ModalStack.isResizingModal()) {
+      ModalStack.pop();
+    }
+  });
+
+  updateSelectedCount();
+}
+
+export function showResetDefaultsModal(instance) {
+  const userHints = instance.hints;
+  const ignoredHints = loadIgnoredHints();
+  const deletedHints = loadDeletedDefaultHints();
+
+  const modal = document.createElement("div");
+  modal.innerHTML = RESET_DEFAULTS_MODAL_HTML(
+    userHints,
+    ignoredHints,
+    deletedHints,
+    instance,
+  );
+  const modalElement = modal.firstElementChild;
+
+  ModalStack.push(modalElement, {
+    type: "stack",
+    metadata: { instance, ignoredHints },
+  });
+
+  const checkboxes = modalElement.querySelectorAll(".hint-select-checkbox");
+  const resetBtn = modalElement.querySelector("#reset-hints-confirm-btn");
+  const cancelBtn = modalElement.querySelector("#reset-hints-cancel-btn");
+  const closeBtn = modalElement.querySelector("#modal-close-x");
+  const selectAllBtn = modalElement.querySelector("#reset-select-all-btn");
+  const selectNoneBtn = modalElement.querySelector("#reset-select-none-btn");
+
+  function updateSelectedCount() {
+    const checkedCount = Array.from(checkboxes).filter(
+      (cb) => cb.checked,
+    ).length;
+    const totalCount = checkboxes.length;
+    
+    if (checkedCount === 0) {
+      resetBtn.textContent = "Reset Selected";
+      resetBtn.disabled = true;
+    } else if (checkedCount === totalCount) {
+      resetBtn.textContent = "Reset All";
+      resetBtn.disabled = false;
+    } else {
+      resetBtn.textContent = `Reset ${checkedCount}/${totalCount} Selected`;
+      resetBtn.disabled = false;
+    }
+  }
+
+  checkboxes.forEach((checkbox) => {
+    checkbox.addEventListener("change", updateSelectedCount);
+  });
+
+  selectAllBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    checkboxes.forEach((cb) => (cb.checked = true));
+    updateSelectedCount();
+  });
+
+  selectNoneBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    checkboxes.forEach((cb) => (cb.checked = false));
+    updateSelectedCount();
+  });
+
+  modalElement.querySelectorAll(".hint-ignore-btn").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const hintName = e.target.dataset.hintName;
+      const row = e.target.closest(".gut-hint-import-item");
+      const checkbox = row.querySelector(".hint-select-checkbox");
+
+      if (isHintIgnored(hintName)) {
+        removeFromIgnoredHints(hintName);
+        e.target.textContent = "Ignore";
+        checkbox.checked = true;
+      } else {
+        addToIgnoredHints(hintName);
+        e.target.textContent = "Unignore";
+        checkbox.checked = false;
+      }
+      updateSelectedCount();
+    });
+  });
+
+  resetBtn.addEventListener("click", () => {
+    const selectedHints = Array.from(checkboxes)
+      .filter((cb) => cb.checked)
+      .map((cb) => cb.dataset.hintName);
+
+    if (selectedHints.length === 0) {
+      instance.showStatus("No hints selected for reset!", "error");
+      return;
+    }
+
+    selectedHints.forEach((hintName) => {
+      instance.hints[hintName] = DEFAULT_HINTS[hintName];
+      removeFromDeletedDefaultHints(hintName);
+    });
+
+    saveHints(instance.hints);
+    ModalStack.pop();
+    ModalStack.pop();
+    showTemplateAndSettingsManager(instance);
+    const hintsTab = document.querySelector('.gut-tab-btn[data-tab="hints"]');
+    if (hintsTab) hintsTab.click();
+
+    instance.showStatus(
+      `Successfully reset ${selectedHints.length} hint(s) to defaults!`,
+      "success",
+    );
+  });
+
+  cancelBtn.addEventListener("click", () => ModalStack.pop());
+  closeBtn.addEventListener("click", () => ModalStack.pop());
+
+  modalElement.addEventListener("click", (e) => {
+    if (e.target === modalElement && !ModalStack.isResizingModal()) {
+      ModalStack.pop();
+    }
+  });
+
+  updateSelectedCount();
+}
+
+export function showDeleteAllHintsModal(instance) {
+  const modal = document.createElement("div");
+  modal.innerHTML = DELETE_ALL_HINTS_MODAL_HTML(instance);
+  const modalElement = modal.firstElementChild;
+
+  ModalStack.push(modalElement, {
+    type: "stack",
+    metadata: { instance },
+  });
+
+  const deleteBtn = modalElement.querySelector("#delete-all-hints-confirm-btn");
+  const cancelBtn = modalElement.querySelector("#delete-all-hints-cancel-btn");
+  const closeBtn = modalElement.querySelector("#modal-close-x");
+
+  deleteBtn.addEventListener("click", () => {
+    if (resetAllHints()) {
+      instance.hints = loadHints();
+      ModalStack.pop();
+      ModalStack.pop();
+      showTemplateAndSettingsManager(instance);
+      const hintsTab = document.querySelector('.gut-tab-btn[data-tab="hints"]');
+      if (hintsTab) hintsTab.click();
+
+      instance.showStatus(
+        "All hints deleted and reset to defaults!",
+        "success",
+      );
+    } else {
+      instance.showStatus("Failed to delete hints!", "error");
+    }
+  });
+
+  cancelBtn.addEventListener("click", () => ModalStack.pop());
+  closeBtn.addEventListener("click", () => ModalStack.pop());
+
+  modalElement.addEventListener("click", (e) => {
+    if (e.target === modalElement && !ModalStack.isResizingModal()) {
+      ModalStack.pop();
+    }
+  });
 }

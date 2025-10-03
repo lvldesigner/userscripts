@@ -1,4 +1,5 @@
-// src/templates.js
+import { DEFAULT_HINTS, getNewDefaultHints } from '../hint-storage.js';
+
 export const MODAL_HTML = (instance) => `
   <div class="gut-modal-content">
     <div class="gut-modal-header">
@@ -406,9 +407,19 @@ export const HINTS_TAB_HTML = (instance) => {
       </div>
 
       <div class="gut-form-group">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <label>Hints</label>
-          <a href="#" class="gut-link" id="reset-all-hints-btn">Reset All to Defaults</a>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            ${(() => {
+              const newHints = getNewDefaultHints(instance.hints);
+              const newHintCount = Object.keys(newHints).length;
+              return newHintCount > 0
+                ? `<a href="#" class="gut-link" id="import-new-hints-btn">Import New Hints (${newHintCount})</a>`
+                : '';
+            })()}
+            <a href="#" class="gut-link" id="reset-defaults-btn">Reset Defaults</a>
+            <a href="#" class="gut-link" id="delete-all-hints-btn" style="color: #f44336;">Delete All</a>
+          </div>
         </div>
         <div class="gut-hints-list" id="hints-list">
           ${hintRows}
@@ -721,3 +732,281 @@ export const MAIN_UI_HTML = (instance) => `
   </div>
   <div id="variables-row" style="display: none; padding: 10px 0; font-size: 12px; cursor: pointer; user-select: none;"></div>
 `;
+
+export const IMPORT_NEW_HINTS_MODAL_HTML = (newHints, ignoredHints, instance) => {
+  const hintEntries = Object.entries(newHints);
+  const selectedCount = hintEntries.filter(([name]) => !ignoredHints.includes(name)).length;
+  
+  const renderHintRow = (name, hint, isIgnored) => {
+    const mappingsHtml =
+      hint.type === "map" && hint.mappings
+        ? `
+      <div class="gut-hint-mappings-inline">
+        <div class="gut-hint-mappings-header">
+          <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" class="gut-hint-mappings-toggle" data-hint="${instance.escapeHtml(name)}">
+            <svg class="gut-hint-caret" width="12" height="12" viewBox="0 0 12 12" style="transition: transform 0.2s ease;">
+              <path d="M4 3 L8 6 L4 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>${Object.keys(hint.mappings).length} mappings${hint.strict === false ? " (non-strict)" : ""}</span>
+          </div>
+        </div>
+        <div class="gut-hint-mappings-content" style="display: none; max-height: 0; overflow: hidden; transition: max-height 0.2s ease;">
+          <div style="max-height: 200px; overflow-y: auto;">
+            ${Object.entries(hint.mappings)
+              .map(
+                ([key, value]) => `
+                <div class="gut-variable-item">
+                  <span class="gut-variable-name">${instance.escapeHtml(key)}</span>
+                  <span class="gut-variable-value">${instance.escapeHtml(value)}</span>
+                </div>
+              `,
+              )
+              .join("")}
+          </div>
+        </div>
+      </div>
+    `
+        : "";
+
+    return `
+      <div class="gut-hint-item gut-hint-import-item" data-hint-name="${instance.escapeHtml(name)}">
+        <div class="gut-hint-header">
+          <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+            <input 
+              type="checkbox" 
+              class="hint-select-checkbox" 
+              data-hint-name="${instance.escapeHtml(name)}"
+              ${isIgnored ? '' : 'checked'}
+            >
+            <div class="gut-hint-name-group">
+              <span class="gut-hint-name">${instance.escapeHtml(name)}</span>
+              <span class="gut-hint-type-badge">${hint.type}</span>
+            </div>
+          </div>
+          <div class="gut-hint-actions">
+            <a 
+              href="#" 
+              class="gut-link hint-ignore-btn" 
+              data-hint-name="${instance.escapeHtml(name)}"
+            >
+              ${isIgnored ? 'Unignore' : 'Ignore'}
+            </a>
+          </div>
+        </div>
+        ${hint.description ? `<div class="gut-hint-description">${instance.escapeHtml(hint.description)}</div>` : ""}
+        ${hint.type === "pattern" ? `<div class="gut-hint-pattern"><code>${instance.escapeHtml(hint.pattern)}</code></div>` : ""}
+        ${hint.type === "regex" ? `<div class="gut-hint-pattern"><code>/${instance.escapeHtml(hint.pattern)}/</code></div>` : ""}
+        ${mappingsHtml}
+      </div>
+    `;
+  };
+  
+  const buttonText = selectedCount === 0 ? 'Import Selected' : selectedCount === hintEntries.length ? 'Import All' : `Import ${selectedCount}/${hintEntries.length} Selected`;
+  
+  return `
+    <div class="gut-modal">
+      <div class="gut-modal-content" style="max-width: 700px;">
+        <div class="gut-modal-header">
+          <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
+          <h2>Import New Default Hints</h2>
+        </div>
+
+        <div class="gut-modal-body">
+          <div style="padding: 12px; background: #2a3a4a; border-left: 3px solid #4caf50; margin-bottom: 16px; border-radius: 4px;">
+            <strong style="color: #4caf50;">New default hints are available!</strong>
+            <p style="margin: 8px 0 0 0; color: #b0b0b0; font-size: 13px;">
+              Select which hints you'd like to import. You can ignore hints you don't need.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 12px; font-size: 12px;">
+            <a href="#" class="gut-link" id="import-select-all-btn">Select All</a>
+            <span style="color: #666;">•</span>
+            <a href="#" class="gut-link" id="import-select-none-btn">Select None</a>
+          </div>
+
+          <div class="gut-hints-list">
+            ${hintEntries.map(([name, hint]) => {
+              const isIgnored = ignoredHints.includes(name);
+              return renderHintRow(name, hint, isIgnored);
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="gut-modal-footer">
+          <button class="gut-btn" id="import-hints-cancel-btn">Cancel</button>
+          <button class="gut-btn gut-btn-primary" id="import-hints-confirm-btn" ${selectedCount === 0 ? 'disabled' : ''}>${buttonText}</button>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+export const RESET_DEFAULTS_MODAL_HTML = (userHints, ignoredHints, deletedHints, instance) => {
+  const defaultEntries = Object.entries(DEFAULT_HINTS);
+  
+  const hintsWithStatus = defaultEntries.map(([name, def]) => {
+    const userHint = userHints[name];
+    const isDeleted = deletedHints.includes(name);
+    const isEdited = userHint && !isDeleted && JSON.stringify(userHint) !== JSON.stringify(def);
+    const isMissing = !userHint && !isDeleted;
+    const isIgnored = ignoredHints.includes(name);
+    
+    return { name, def, isEdited, isMissing, isDeleted, isIgnored };
+  });
+  
+  const selectedCount = hintsWithStatus.filter(h => !h.isIgnored).length;
+  const buttonText = selectedCount === 0 ? 'Reset Selected' : selectedCount === defaultEntries.length ? 'Reset All' : `Reset ${selectedCount}/${defaultEntries.length} Selected`;
+  
+  const renderHintRow = (name, hint, isIgnored, statusBadge) => {
+    const mappingsHtml =
+      hint.type === "map" && hint.mappings
+        ? `
+      <div class="gut-hint-mappings-inline">
+        <div class="gut-hint-mappings-header">
+          <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" class="gut-hint-mappings-toggle" data-hint="${instance.escapeHtml(name)}">
+            <svg class="gut-hint-caret" width="12" height="12" viewBox="0 0 12 12" style="transition: transform 0.2s ease;">
+              <path d="M4 3 L8 6 L4 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>${Object.keys(hint.mappings).length} mappings${hint.strict === false ? " (non-strict)" : ""}</span>
+          </div>
+        </div>
+        <div class="gut-hint-mappings-content" style="display: none; max-height: 0; overflow: hidden; transition: max-height 0.2s ease;">
+          <div style="max-height: 200px; overflow-y: auto;">
+            ${Object.entries(hint.mappings)
+              .map(
+                ([key, value]) => `
+                <div class="gut-variable-item">
+                  <span class="gut-variable-name">${instance.escapeHtml(key)}</span>
+                  <span class="gut-variable-value">${instance.escapeHtml(value)}</span>
+                </div>
+              `,
+              )
+              .join("")}
+          </div>
+        </div>
+      </div>
+    `
+        : "";
+
+    return `
+      <div class="gut-hint-item gut-hint-import-item" data-hint-name="${instance.escapeHtml(name)}">
+        <div class="gut-hint-header">
+          <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
+            <input 
+              type="checkbox" 
+              class="hint-select-checkbox" 
+              data-hint-name="${instance.escapeHtml(name)}"
+              ${isIgnored ? '' : 'checked'}
+            >
+            <div class="gut-hint-name-group">
+              <span class="gut-hint-name">${instance.escapeHtml(name)}</span>
+              <span class="gut-hint-type-badge">${hint.type}</span>
+              ${statusBadge}
+            </div>
+          </div>
+          <div class="gut-hint-actions">
+            <a 
+              href="#" 
+              class="gut-link hint-ignore-btn" 
+              data-hint-name="${instance.escapeHtml(name)}"
+            >
+              ${isIgnored ? 'Unignore' : 'Ignore'}
+            </a>
+          </div>
+        </div>
+        ${hint.description ? `<div class="gut-hint-description">${instance.escapeHtml(hint.description)}</div>` : ""}
+        ${hint.type === "pattern" ? `<div class="gut-hint-pattern"><code>${instance.escapeHtml(hint.pattern)}</code></div>` : ""}
+        ${hint.type === "regex" ? `<div class="gut-hint-pattern"><code>/${instance.escapeHtml(hint.pattern)}/</code></div>` : ""}
+        ${mappingsHtml}
+      </div>
+    `;
+  };
+  
+  return `
+    <div class="gut-modal">
+      <div class="gut-modal-content" style="max-width: 700px;">
+        <div class="gut-modal-header">
+          <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
+          <h2>Reset Default Hints</h2>
+        </div>
+
+        <div class="gut-modal-body">
+          <div style="padding: 12px; background: #4a3a2a; border-left: 3px solid #ff9800; margin-bottom: 16px; border-radius: 4px;">
+            <strong style="color: #ff9800;">⚠ Warning</strong>
+            <p style="margin: 8px 0 0 0; color: #b0b0b0; font-size: 13px;">
+              Selected hints will be reset to their default values. This will overwrite any customizations you've made to these hints.
+            </p>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 12px; font-size: 12px;">
+            <a href="#" class="gut-link" id="reset-select-all-btn">Select All</a>
+            <span style="color: #666;">•</span>
+            <a href="#" class="gut-link" id="reset-select-none-btn">Select None</a>
+          </div>
+
+          <div class="gut-hints-list">
+            ${hintsWithStatus.map(({ name, def, isEdited, isMissing, isDeleted, isIgnored }) => {
+              let statusBadge = '';
+              if (isDeleted) {
+                statusBadge = '<span style="padding: 2px 6px; background: #4a2a2a; color: #f44336; border-radius: 3px; font-size: 11px; font-weight: 500;">Deleted</span>';
+              } else if (isMissing) {
+                statusBadge = '<span style="padding: 2px 6px; background: #3a2a4a; color: #9c27b0; border-radius: 3px; font-size: 11px; font-weight: 500;">Missing</span>';
+              } else if (isEdited) {
+                statusBadge = '<span style="padding: 2px 6px; background: #4a3a2a; color: #ff9800; border-radius: 3px; font-size: 11px; font-weight: 500;">Edited</span>';
+              }
+              
+              return renderHintRow(name, def, isIgnored, statusBadge);
+            }).join('')}
+          </div>
+        </div>
+
+        <div class="gut-modal-footer">
+          <button class="gut-btn" id="reset-hints-cancel-btn">Cancel</button>
+          <button class="gut-btn gut-btn-primary" id="reset-hints-confirm-btn" ${selectedCount === 0 ? 'disabled' : ''}>${buttonText}</button>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+export const DELETE_ALL_HINTS_MODAL_HTML = (instance) => {
+  return `
+    <div class="gut-modal">
+      <div class="gut-modal-content" style="max-width: 500px;">
+        <div class="gut-modal-header">
+          <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
+          <h2>Delete All Hints</h2>
+        </div>
+
+        <div class="gut-modal-body">
+          <div style="padding: 12px; background: #4a2a2a; border-left: 3px solid #f44336; margin-bottom: 16px; border-radius: 4px;">
+            <strong style="color: #f44336;">⚠ Critical Warning</strong>
+            <p style="margin: 8px 0 0 0; color: #b0b0b0; font-size: 13px;">
+              This will permanently delete <strong>ALL</strong> variable hints, including:
+            </p>
+            <ul style="margin: 8px 0 0 20px; color: #b0b0b0; font-size: 13px;">
+              <li>All default hints</li>
+              <li>All custom hints you've created</li>
+              <li>All edited hints</li>
+            </ul>
+            <p style="margin: 8px 0 0 0; color: #b0b0b0; font-size: 13px;">
+              <strong>This action cannot be undone.</strong> You can restore default hints later, but custom hints will be lost forever.
+            </p>
+          </div>
+
+          <div style="padding: 12px; background: #1a1a1a; border-radius: 4px;">
+            <p style="margin: 0; color: #b0b0b0; font-size: 13px;">
+              Are you absolutely sure you want to delete all hints?
+            </p>
+          </div>
+        </div>
+
+        <div class="gut-modal-footer">
+          <button class="gut-btn" id="delete-all-hints-cancel-btn">Cancel</button>
+          <button class="gut-btn gut-btn-danger" id="delete-all-hints-confirm-btn">Delete All Hints</button>
+        </div>
+      </div>
+    </div>
+  `;
+};

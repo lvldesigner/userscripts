@@ -1,4 +1,4 @@
-import { loadModalWidth, saveModalWidth } from './storage.js';
+import { loadModalWidth, saveModalWidth } from "./storage.js";
 
 class ModalStackManager {
   constructor() {
@@ -53,7 +53,7 @@ class ModalStackManager {
     }
 
     if (this.stack.length === 1) {
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     }
 
     this.updateZIndices();
@@ -82,7 +82,7 @@ class ModalStackManager {
 
     if (this.stack.length === 0) {
       this.clearEscapeHandlers();
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     }
 
     this.updateZIndices();
@@ -158,7 +158,6 @@ class ModalStackManager {
   }
 
   isResizingModal() {
-    console.log('[ModalStack] isResizingModal check:', this.isResizing);
     return this.isResizing;
   }
 
@@ -169,33 +168,33 @@ class ModalStackManager {
     let previousMaxHeight = null;
     let previousAlpha = 0.4;
     let stackDepth = 0;
-    
+
     this.stack.forEach((entry, index) => {
       if (entry.element) {
         entry.element.style.zIndex = this.baseZIndex + index * 10;
-        
-        if (entry.type === 'stack') {
+
+        if (entry.type === "stack") {
           stackDepth++;
         } else {
           stackDepth = 0;
         }
-        
+
         const isStacked = stackDepth > 0;
-        
+
         if (isStacked) {
           const alpha = Math.max(0.05, previousAlpha * 0.5);
           entry.element.style.background = `rgba(0, 0, 0, ${alpha})`;
           previousAlpha = alpha;
         } else {
-          entry.element.style.background = 'rgba(0, 0, 0, 0.4)';
+          entry.element.style.background = "rgba(0, 0, 0, 0.4)";
           previousAlpha = 0.4;
         }
-        
-        const modalContent = entry.element.querySelector('.gut-modal-content');
+
+        const modalContent = entry.element.querySelector(".gut-modal-content");
 
         if (isStacked && modalContent) {
           entry.element.classList.add("gut-modal-stacked");
-          
+
           if (!entry.originalDimensions) {
             const computedStyle = window.getComputedStyle(modalContent);
             entry.originalDimensions = {
@@ -205,14 +204,14 @@ class ModalStackManager {
               maxHeight: computedStyle.maxHeight,
             };
           }
-          
+
           const offsetAmount = stackDepth * 20;
-          
+
           let targetWidth = previousWidth;
           let targetMaxWidth = previousMaxWidth;
           let targetHeight = previousHeight;
           let targetMaxHeight = previousMaxHeight;
-          
+
           if (targetWidth === null) {
             targetWidth = parseFloat(entry.originalDimensions.width);
           }
@@ -225,48 +224,60 @@ class ModalStackManager {
           if (targetMaxHeight === null) {
             targetMaxHeight = parseFloat(entry.originalDimensions.maxHeight);
           }
-          
+
           const scaledWidth = targetWidth * 0.95;
           const scaledMaxWidth = targetMaxWidth * 0.95;
           const scaledHeight = targetHeight * 0.9;
           const scaledMaxHeight = targetMaxHeight * 0.9;
-          
-          if (entry.originalDimensions.width && entry.originalDimensions.width !== 'auto') {
+
+          if (
+            entry.originalDimensions.width &&
+            entry.originalDimensions.width !== "auto"
+          ) {
             modalContent.style.width = `${scaledWidth}px`;
             previousWidth = scaledWidth;
           }
-          
-          if (entry.originalDimensions.maxWidth && entry.originalDimensions.maxWidth !== 'none') {
+
+          if (
+            entry.originalDimensions.maxWidth &&
+            entry.originalDimensions.maxWidth !== "none"
+          ) {
             modalContent.style.maxWidth = `${scaledMaxWidth}px`;
             previousMaxWidth = scaledMaxWidth;
           }
-          
-          if (entry.originalDimensions.height && entry.originalDimensions.height !== 'auto') {
+
+          if (
+            entry.originalDimensions.height &&
+            entry.originalDimensions.height !== "auto"
+          ) {
             modalContent.style.height = `${scaledHeight}px`;
             previousHeight = scaledHeight;
           }
-          
-          if (entry.originalDimensions.maxHeight && entry.originalDimensions.maxHeight !== 'none') {
+
+          if (
+            entry.originalDimensions.maxHeight &&
+            entry.originalDimensions.maxHeight !== "none"
+          ) {
             modalContent.style.maxHeight = `${scaledMaxHeight}px`;
             previousMaxHeight = scaledMaxHeight;
           }
-          
+
           modalContent.style.marginTop = `${offsetAmount}px`;
         } else {
           entry.element.classList.remove("gut-modal-stacked");
           if (modalContent) {
             const savedWidth = loadModalWidth();
-            
-            modalContent.style.width = '';
-            modalContent.style.height = '';
-            modalContent.style.marginTop = '';
-            
+
+            modalContent.style.width = "";
+            modalContent.style.height = "";
+            modalContent.style.marginTop = "";
+
             if (savedWidth) {
               modalContent.style.maxWidth = `${savedWidth}px`;
             } else {
-              modalContent.style.maxWidth = '';
+              modalContent.style.maxWidth = "";
             }
-            
+
             const computedStyle = window.getComputedStyle(modalContent);
             previousWidth = parseFloat(computedStyle.width);
             previousMaxWidth = savedWidth || parseFloat(computedStyle.maxWidth);
@@ -281,7 +292,7 @@ class ModalStackManager {
   updateResizeHandles() {
     this.stack.forEach((entry, index) => {
       const isTopModal = index === this.stack.length - 1;
-      
+
       if (isTopModal) {
         this.addResizeHandles(entry.element);
       } else {
@@ -292,39 +303,39 @@ class ModalStackManager {
 
   addResizeHandles(modalElement) {
     if (!modalElement) return;
-    
-    const modalContent = modalElement.querySelector('.gut-modal-content');
+
+    const modalContent = modalElement.querySelector(".gut-modal-content");
     if (!modalContent) return;
-    
-    if (modalContent.querySelector('.gut-resize-handle')) {
+
+    if (modalContent.querySelector(".gut-resize-handle")) {
       return;
     }
-    
-    const leftHandle = document.createElement('div');
-    leftHandle.className = 'gut-resize-handle gut-resize-handle-left';
-    leftHandle.dataset.side = 'left';
-    
-    const rightHandle = document.createElement('div');
-    rightHandle.className = 'gut-resize-handle gut-resize-handle-right';
-    rightHandle.dataset.side = 'right';
-    
+
+    const leftHandle = document.createElement("div");
+    leftHandle.className = "gut-resize-handle gut-resize-handle-left";
+    leftHandle.dataset.side = "left";
+
+    const rightHandle = document.createElement("div");
+    rightHandle.className = "gut-resize-handle gut-resize-handle-right";
+    rightHandle.dataset.side = "right";
+
     modalContent.appendChild(leftHandle);
     modalContent.appendChild(rightHandle);
-    
-    [leftHandle, rightHandle].forEach(handle => {
-      handle.addEventListener('mouseenter', () => {
+
+    [leftHandle, rightHandle].forEach((handle) => {
+      handle.addEventListener("mouseenter", () => {
         if (!this.isResizing) {
-          handle.classList.add('gut-resize-handle-hover');
+          handle.classList.add("gut-resize-handle-hover");
         }
       });
-      
-      handle.addEventListener('mouseleave', () => {
+
+      handle.addEventListener("mouseleave", () => {
         if (!this.isResizing) {
-          handle.classList.remove('gut-resize-handle-hover');
+          handle.classList.remove("gut-resize-handle-hover");
         }
       });
-      
-      handle.addEventListener('mousedown', (e) => {
+
+      handle.addEventListener("mousedown", (e) => {
         e.preventDefault();
         e.stopPropagation();
         this.startResize(e, modalContent, handle.dataset.side);
@@ -334,64 +345,67 @@ class ModalStackManager {
 
   removeResizeHandles(modalElement) {
     if (!modalElement) return;
-    
-    const modalContent = modalElement.querySelector('.gut-modal-content');
+
+    const modalContent = modalElement.querySelector(".gut-modal-content");
     if (!modalContent) return;
-    
-    const handles = modalContent.querySelectorAll('.gut-resize-handle');
-    handles.forEach(handle => handle.remove());
+
+    const handles = modalContent.querySelectorAll(".gut-resize-handle");
+    handles.forEach((handle) => handle.remove());
   }
 
   startResize(e, modalContent, side) {
-    console.log('[ModalStack] startResize - setting isResizing = true');
     this.isResizing = true;
     this.currentResizeModal = modalContent;
     this.resizeStartX = e.clientX;
     this.resizeSide = side;
-    
+
     const computedStyle = window.getComputedStyle(modalContent);
     this.resizeStartWidth = parseFloat(computedStyle.width);
-    
-    document.body.style.cursor = 'ew-resize';
-    document.body.style.userSelect = 'none';
-    
-    const handles = modalContent.querySelectorAll('.gut-resize-handle');
-    handles.forEach(handle => handle.classList.add('gut-resize-handle-active'));
+
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+
+    const handles = modalContent.querySelectorAll(".gut-resize-handle");
+    handles.forEach((handle) =>
+      handle.classList.add("gut-resize-handle-active"),
+    );
   }
 
   handleResize(e) {
     if (!this.isResizing || !this.currentResizeModal) return;
-    
+
     const deltaX = e.clientX - this.resizeStartX;
-    const adjustedDelta = this.resizeSide === 'left' ? -deltaX : deltaX;
-    const newWidth = Math.max(400, Math.min(2000, this.resizeStartWidth + adjustedDelta));
-    
+    const adjustedDelta = this.resizeSide === "left" ? -deltaX : deltaX;
+    const newWidth = Math.max(
+      400,
+      Math.min(2000, this.resizeStartWidth + adjustedDelta),
+    );
+
     this.currentResizeModal.style.maxWidth = `${newWidth}px`;
   }
 
   endResize() {
-    console.log('[ModalStack] endResize - isResizing was:', this.isResizing);
     if (!this.isResizing || !this.currentResizeModal) return;
-    
+
     const computedStyle = window.getComputedStyle(this.currentResizeModal);
     const finalWidth = parseFloat(computedStyle.maxWidth);
-    
+
     saveModalWidth(Math.round(finalWidth));
-    
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
-    
-    const handles = this.currentResizeModal.querySelectorAll('.gut-resize-handle');
-    handles.forEach(handle => {
-      handle.classList.remove('gut-resize-handle-active');
-      handle.classList.remove('gut-resize-handle-hover');
+
+    document.body.style.cursor = "";
+    document.body.style.userSelect = "";
+
+    const handles =
+      this.currentResizeModal.querySelectorAll(".gut-resize-handle");
+    handles.forEach((handle) => {
+      handle.classList.remove("gut-resize-handle-active");
+      handle.classList.remove("gut-resize-handle-hover");
     });
-    
+
     setTimeout(() => {
       this.isResizing = false;
       this.currentResizeModal = null;
       this.resizeSide = null;
-      console.log('[ModalStack] endResize - set isResizing = false (after delay)');
     }, 50);
   }
 
@@ -423,12 +437,12 @@ class ModalStackManager {
         }
       }
     });
-    
-    document.addEventListener('mousemove', (e) => {
+
+    document.addEventListener("mousemove", (e) => {
       this.handleResize(e);
     });
-    
-    document.addEventListener('mouseup', () => {
+
+    document.addEventListener("mouseup", () => {
       this.endResize();
     });
   }
