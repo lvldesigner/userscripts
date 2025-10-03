@@ -742,20 +742,25 @@ export function showTemplateAndSettingsManager(instance) {
   modal.querySelectorAll(".gut-hint-mappings-toggle").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
-      const hintName = e.target.dataset.hint;
+      const target = e.target.closest('.gut-hint-mappings-toggle');
+      const hintName = target.dataset.hint;
       const hintItem = modal.querySelector(
         `.gut-hint-item[data-hint="${hintName}"]`,
       );
       const content = hintItem?.querySelector(".gut-hint-mappings-content");
-      const toggle = e.target;
+      const caret = target.querySelector('.gut-hint-caret');
 
       if (content) {
         if (content.style.display === "none") {
           content.style.display = "block";
-          toggle.textContent = "Hide";
+          content.style.maxHeight = content.scrollHeight + "px";
+          if (caret) caret.style.transform = "rotate(90deg)";
         } else {
-          content.style.display = "none";
-          toggle.textContent = "Show";
+          content.style.maxHeight = "0";
+          if (caret) caret.style.transform = "rotate(0deg)";
+          setTimeout(() => {
+            content.style.display = "none";
+          }, 200);
         }
       }
     });

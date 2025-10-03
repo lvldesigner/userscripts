@@ -375,13 +375,17 @@ export const HINTS_TAB_HTML = (instance) => {
         ? `
       <div class="gut-hint-mappings-inline">
         <div class="gut-hint-mappings-header">
-          <span>${Object.keys(hint.mappings).length} mappings${hint.strict === false ? " (non-strict)" : ""}</span>
+          <div style="display: flex; align-items: center; gap: 6px; cursor: pointer;" class="gut-hint-mappings-toggle" data-hint="${instance.escapeHtml(name)}">
+            <svg class="gut-hint-caret" width="12" height="12" viewBox="0 0 12 12" style="transition: transform 0.2s ease;">
+              <path d="M4 3 L8 6 L4 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span>${Object.keys(hint.mappings).length} mappings${hint.strict === false ? " (non-strict)" : ""}</span>
+          </div>
           <div style="display: flex; gap: 8px; align-items: center;">
             <a href="#" class="gut-link" data-action="mass-edit-mappings" data-hint="${instance.escapeHtml(name)}">Mass Edit</a>
-            <button class="gut-hint-mappings-toggle" data-hint="${instance.escapeHtml(name)}">Show</button>
           </div>
         </div>
-        <div class="gut-hint-mappings-content" style="display: none;">
+        <div class="gut-hint-mappings-content" style="display: none; max-height: 0; overflow: hidden; transition: max-height 0.2s ease;">
           ${Object.entries(hint.mappings)
             .map(
               ([key, value]) => `
