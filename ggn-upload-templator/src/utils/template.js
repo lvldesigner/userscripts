@@ -696,7 +696,7 @@ export function parseMaskStructure(mask) {
     }
     
     if (mask[i] === '?' && mask[i + 1] === '}' && inOptional) {
-      if (current.trim() === '') {
+      if (current.trim() === '' && current === '') {
         throw new Error(`Empty optional block at position ${optionalStart}`);
       }
       
