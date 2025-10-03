@@ -146,3 +146,21 @@ export function deleteAllConfig() {
     console.error("Failed to delete config:", error);
   }
 }
+
+export function loadModalWidth() {
+  try {
+    const width = localStorage.getItem("ggn-upload-templator-modal-width");
+    return width ? parseInt(width, 10) : null;
+  } catch (error) {
+    console.error("Failed to load modal width:", error);
+    return null;
+  }
+}
+
+export function saveModalWidth(width) {
+  try {
+    localStorage.setItem("ggn-upload-templator-modal-width", width.toString());
+  } catch (error) {
+    console.error("Failed to save modal width:", error);
+  }
+}

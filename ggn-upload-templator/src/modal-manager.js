@@ -631,7 +631,9 @@ export function showTemplateAndSettingsManager(instance) {
   );
 
   modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
+    console.log('[ModalManager] modal click - target:', e.target, 'modal:', modal, 'isResizing:', ModalStack.isResizingModal());
+    if (e.target === modal && !ModalStack.isResizingModal()) {
+      console.log('[ModalManager] Closing modal via overlay click');
       ModalStack.pop();
       return;
     }
@@ -992,7 +994,9 @@ export function showHintEditor(
   cancelBtn.addEventListener("click", closeModal);
 
   modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
+    console.log('[ModalManager] modal click - target:', e.target, 'modal:', modal, 'isResizing:', ModalStack.isResizingModal());
+    if (e.target === modal && !ModalStack.isResizingModal()) {
+      console.log('[ModalManager] Closing modal via overlay click (closeModal)');
       closeModal();
     }
   });
@@ -1527,7 +1531,9 @@ export function showMapImportModal(
   closeBtn.addEventListener("click", () => ModalStack.pop());
 
   modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
+    console.log('[ModalManager] modal click - target:', e.target, 'modal:', modal, 'isResizing:', ModalStack.isResizingModal());
+    if (e.target === modal && !ModalStack.isResizingModal()) {
+      console.log('[ModalManager] Closing modal via overlay click (pop)');
       ModalStack.pop();
     }
   });
