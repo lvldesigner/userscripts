@@ -539,7 +539,8 @@
 
 .gut-tab-btn.active {
     color: #ffffff;
-    border-bottom-color: #0d7377;
+    background: #2a2a2a;
+    border-bottom-color: transparent;
 }
 
 .gut-tab-content {

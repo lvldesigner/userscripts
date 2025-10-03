@@ -409,7 +409,6 @@ export const HINTS_TAB_HTML = (instance) => {
           <div class="gut-hint-name-group">
             <span class="gut-hint-name">${instance.escapeHtml(name)}</span>
             <span class="gut-hint-type-badge">${hint.type}</span>
-            ${isDefault ? '<span class="gut-hint-default-badge">default</span>' : ""}
             ${overridden ? '<span class="gut-hint-override-indicator" title="This default hint has been customized">modified</span>' : ""}
           </div>
           <div class="gut-hint-actions">
