@@ -8,6 +8,15 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.12
+
+![](https://files.catbox.moe/kkbd0a.png)
+
+- Other scripts can now use the API exposed via `window.GGnUploadTemplator`, see [docs/api.md](docs/api.md) for details.
+- Ask for confirmation before applying the template, show preview of value changes.
+- Show variable hint information when editing a mask
+- Managing variable hints is now more flexible: they can be reset to default / all deleted / only import new ones.
+
 ### v0.11
 
 This is mostly a UX/UI fixes and improvements release.
