@@ -38,6 +38,7 @@ import {
   showSandboxWithMask,
 } from "./modal-manager.js";
 import { loadHints, saveHints } from "./hint-storage.js";
+import { parseTemplateWithOptionals } from "./utils/template.js";
 import style from "./style.css?raw";
 
 const firaCodeFont = `
@@ -232,11 +233,13 @@ class GGnUploadTemplator {
 
 logDebug("Script loaded (readyState:", document.readyState, ")");
 
+let ggnInstance = null;
+
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
     logDebug("Initializing after DOMContentLoaded");
     try {
-      new GGnUploadTemplator();
+      ggnInstance = new GGnUploadTemplator();
     } catch (error) {
       console.error("Failed to initialize:", error);
     }
@@ -244,8 +247,69 @@ if (document.readyState === "loading") {
 } else {
   logDebug("Initializing immediately (DOM already ready)");
   try {
-    new GGnUploadTemplator();
+    ggnInstance = new GGnUploadTemplator();
   } catch (error) {
     console.error("Failed to initialize:", error);
   }
+}
+
+const GGnUploadTemplatorAPI = {
+  version: "0.11",
+  
+  getTemplates() {
+    if (!ggnInstance) {
+      console.warn("GGnUploadTemplator not initialized yet");
+      return [];
+    }
+    return Object.keys(ggnInstance.templates).map(name => ({
+      name,
+      mask: ggnInstance.templates[name].mask,
+      fieldMappings: ggnInstance.templates[name].fieldMappings,
+      variableMatching: ggnInstance.templates[name].variableMatching,
+      customUnselectedFields: ggnInstance.templates[name].customUnselectedFields,
+    }));
+  },
+  
+  getTemplate(templateName) {
+    if (!ggnInstance) {
+      console.warn("GGnUploadTemplator not initialized yet");
+      return null;
+    }
+    const template = ggnInstance.templates[templateName];
+    if (!template) {
+      return null;
+    }
+    return {
+      name: templateName,
+      mask: template.mask,
+      fieldMappings: template.fieldMappings,
+      variableMatching: template.variableMatching,
+      customUnselectedFields: template.customUnselectedFields,
+    };
+  },
+  
+  extractVariables(templateName, torrentName) {
+    if (!ggnInstance) {
+      console.warn("GGnUploadTemplator not initialized yet");
+      return {};
+    }
+    
+    const template = ggnInstance.templates[templateName];
+    if (!template) {
+      console.warn(`Template "${templateName}" not found`);
+      return {};
+    }
+    
+    return parseTemplateWithOptionals(template.mask, torrentName, ggnInstance.hints);
+  },
+  
+  getInstance() {
+    return ggnInstance;
+  }
+};
+
+if (typeof unsafeWindow !== "undefined") {
+  unsafeWindow.GGnUploadTemplator = GGnUploadTemplatorAPI;
+} else {
+  window.GGnUploadTemplator = GGnUploadTemplatorAPI;
 }
