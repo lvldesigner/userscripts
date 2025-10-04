@@ -350,7 +350,7 @@ export function showTemplateAndSettingsManager(instance) {
       sandboxMaskInput.dispatchEvent(new Event("change"));
       sandboxSampleInput.dispatchEvent(new Event("change"));
 
-      updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+      updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay, instance.hints);
       updateSandboxTest();
       currentLoadedSet = value;
       instance.currentSandboxSet = value;
@@ -534,7 +534,7 @@ export function showTemplateAndSettingsManager(instance) {
     if (resultsLabel) {
       resultsLabel.textContent = "Match Results:";
     }
-    updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+    updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay, instance.hints);
 
     if (showingCompiledRegex) {
       updateCompiledRegex();
@@ -555,7 +555,7 @@ export function showTemplateAndSettingsManager(instance) {
       sandboxMaskInput.dispatchEvent(new Event("change"));
       sandboxSampleInput.dispatchEvent(new Event("change"));
 
-      updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+      updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay, instance.hints);
       updateSandboxTest();
 
       if (showingCompiledRegex) {
@@ -565,7 +565,7 @@ export function showTemplateAndSettingsManager(instance) {
       }
     }
   } else if (sandboxMaskInput) {
-    updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+    updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay, instance.hints);
     if (sandboxMaskInput.value && sandboxSampleInput.value) {
       updateSandboxTest();
     }
@@ -1295,7 +1295,7 @@ export function showSandboxWithMask(instance, mask, sample) {
         sandboxMaskInput.value = mask;
         sandboxSampleInput.value = sample;
 
-        updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay);
+        updateMaskHighlighting(sandboxMaskInput, sandboxMaskDisplay, instance.hints);
 
         // Dispatch events to trigger auto-resize and other listeners
         sandboxMaskInput.dispatchEvent(new Event("input", { bubbles: true }));

@@ -1,4 +1,4 @@
-export function updateMaskHighlighting(maskInput, overlayDiv) {
+export function updateMaskHighlighting(maskInput, overlayDiv, availableHints = {}) {
   if (!maskInput || !overlayDiv) return;
 
   const text = maskInput.value;
@@ -13,14 +13,14 @@ export function updateMaskHighlighting(maskInput, overlayDiv) {
     varMatches.push({ match, index: match.index });
   }
   
-  let highlightedHTML = buildLayeredHighlighting(text, optionalBlocks, varMatches, nestedOptionalErrors);
+  let highlightedHTML = buildLayeredHighlighting(text, optionalBlocks, varMatches, nestedOptionalErrors, availableHints);
   overlayDiv.innerHTML = highlightedHTML;
 
   overlayDiv.scrollTop = maskInput.scrollTop;
   overlayDiv.scrollLeft = maskInput.scrollLeft;
 }
 
-function buildLayeredHighlighting(text, optionalBlocks, varMatches, nestedOptionalErrors) {
+function buildLayeredHighlighting(text, optionalBlocks, varMatches, nestedOptionalErrors, availableHints = {}) {
   let result = '';
   let pos = 0;
   
@@ -76,10 +76,12 @@ function buildLayeredHighlighting(text, optionalBlocks, varMatches, nestedOption
         varClass = 'gut-highlight-warning';
       }
       
+      const hintData = getHintDataAttributes(varName, availableHints);
+      
       if (segment.inOptional) {
-        html = `<span class="gut-highlight-optional"><span class="${varClass}">${html}</span></span>`;
+        html = `<span class="gut-highlight-optional"><span class="${varClass}"${hintData}>${html}</span></span>`;
       } else {
-        html = `<span class="${varClass}">${html}</span>`;
+        html = `<span class="${varClass}"${hintData}>${html}</span>`;
       }
     } else if (segment.inOptional) {
       html = `<span class="gut-highlight-optional">${html}</span>`;
@@ -257,6 +259,47 @@ export function renderStatusMessages(container, validation) {
   }
 
   container.classList.add('visible');
+}
+
+function getHintDataAttributes(varString, availableHints = {}) {
+  if (!varString || !varString.includes(':')) {
+    return '';
+  }
+  
+  const colonIndex = varString.indexOf(':');
+  const hint = varString.substring(colonIndex + 1);
+  
+  if (!hint) return '';
+  
+  let hintType = '';
+  let hintPattern = '';
+  
+  if (hint.startsWith('/')) {
+    hintType = 'regex';
+    hintPattern = hint.slice(1).replace(/\/$/, '');
+  } else if (/[*#@?]/.test(hint)) {
+    hintType = 'pattern';
+    hintPattern = hint;
+  } else if (availableHints[hint]) {
+    const namedHint = availableHints[hint];
+    hintType = namedHint.type;
+    
+    if (namedHint.type === 'pattern') {
+      hintPattern = namedHint.pattern;
+    } else if (namedHint.type === 'regex') {
+      hintPattern = namedHint.pattern;
+    } else if (namedHint.type === 'map' && namedHint.mappings) {
+      hintPattern = `${Object.keys(namedHint.mappings).length} values`;
+    }
+  }
+  
+  if (hintType && hintPattern) {
+    const escapedType = escapeHtml(hintType);
+    const escapedPattern = escapeHtml(hintPattern);
+    return ` data-hint-type="${escapedType}" data-hint-pattern="${escapedPattern}"`;
+  }
+  
+  return '';
 }
 
 function escapeHtml(text) {

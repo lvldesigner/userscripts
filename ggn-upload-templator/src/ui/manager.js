@@ -196,7 +196,78 @@ export function setupMaskValidation(
     });
   };
 
+  const findVariableAtCursor = (mask, cursorPos) => {
+    const varPattern = /\$\{([^}]+)\}/g;
+    let match;
+    
+    while ((match = varPattern.exec(mask)) !== null) {
+      const varStart = match.index;
+      const varEnd = varStart + match[0].length;
+      
+      if (cursorPos >= varStart && cursorPos <= varEnd) {
+        const content = match[1];
+        const colonIndex = content.indexOf(':');
+        
+        if (colonIndex === -1) {
+          return null;
+        }
+        
+        const hintName = content.substring(colonIndex + 1).trim();
+        const hintStartInVar = colonIndex + 1;
+        const hintStart = varStart + 2 + hintStartInVar;
+        const hintEnd = varEnd - 1;
+        
+        if (cursorPos >= hintStart && cursorPos <= hintEnd) {
+          return {
+            hintName,
+            varContent: content,
+            hintStart,
+            hintEnd
+          };
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  const formatHintInfo = (varName, hint) => {
+    if (!hint) {
+      return `<span style="color: #888;">No hint defined</span>`;
+    }
+
+    const parts = [];
+    
+    if (hint.type === 'pattern') {
+      parts.push(`<span style="color: #4dd0e1;">pattern:</span> <span style="color: #a5d6a7;">${escapeHtml(hint.pattern)}</span>`);
+    } else if (hint.type === 'regex') {
+      parts.push(`<span style="color: #4dd0e1;">regex:</span> <span style="color: #a5d6a7;">${escapeHtml(hint.pattern)}</span>`);
+    } else if (hint.type === 'map') {
+      const count = Object.keys(hint.mappings || {}).length;
+      const preview = Object.keys(hint.mappings || {}).slice(0, 3).join(', ');
+      parts.push(`<span style="color: #4dd0e1;">map:</span> <span style="color: #b39ddb;">${count} value${count !== 1 ? 's' : ''}</span> <span style="color: #888;">(${escapeHtml(preview)}${count > 3 ? '...' : ''})</span>`);
+    }
+    
+    if (hint.description) {
+      parts.push(`<span style="color: #999;">${escapeHtml(hint.description)}</span>`);
+    }
+    
+    return parts.join(' · ');
+  };
+
   const updateCursorInfo = (validation) => {
+    const pos = maskInput.selectionStart;
+    const maskValue = maskInput.value;
+    
+    const variable = findVariableAtCursor(maskValue, pos);
+    
+    if (variable) {
+      const hint = availableHints[variable.hintName];
+      cursorInfoElement.style.display = "block";
+      cursorInfoElement.innerHTML = `<span style="color: #64b5f6; font-weight: 500;">\${${escapeHtml(variable.varContent)}}</span> · ${formatHintInfo(variable.hintName, hint)}`;
+      return;
+    }
+    
     if (!validation || validation.errors.length === 0) {
       cursorInfoElement.textContent = "";
       cursorInfoElement.style.display = "none";
@@ -212,9 +283,6 @@ export function setupMaskValidation(
       cursorInfoElement.style.display = "none";
       return;
     }
-
-    const pos = maskInput.selectionStart;
-    const maskValue = maskInput.value;
 
     cursorInfoElement.style.display = "block";
 
@@ -236,7 +304,7 @@ export function setupMaskValidation(
 
   const performValidation = () => {
     const validation = validateMaskWithDetails(maskInput.value, availableHints);
-    updateMaskHighlighting(maskInput, overlayElement);
+    updateMaskHighlighting(maskInput, overlayElement, availableHints);
     renderStatusMessages(statusContainer, validation);
     updateCursorInfo(validation);
     updateAutocomplete();
@@ -253,16 +321,21 @@ export function setupMaskValidation(
   maskInput.addEventListener("click", () => {
     const validation = validateMaskWithDetails(maskInput.value, availableHints);
     updateCursorInfo(validation);
-    updateAutocomplete();
   });
   maskInput.addEventListener("keyup", (e) => {
-    if (!["ArrowDown", "ArrowUp", "Enter", "Escape", "Tab"].includes(e.key)) {
+    if (!["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Enter", "Escape", "Tab"].includes(e.key)) {
       const validation = validateMaskWithDetails(
         maskInput.value,
         availableHints,
       );
       updateCursorInfo(validation);
       updateAutocomplete();
+    } else if (["ArrowLeft", "ArrowRight"].includes(e.key)) {
+      const validation = validateMaskWithDetails(
+        maskInput.value,
+        availableHints,
+      );
+      updateCursorInfo(validation);
     }
   });
   maskInput.addEventListener("keydown", handleKeyDown);

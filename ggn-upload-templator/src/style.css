@@ -841,17 +841,35 @@
     border-radius: 2px;
 }
 
+.gut-tooltip {
+    position: fixed;
+    background: #2a2a2a;
+    border: 1px solid #505050;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: #e0e0e0;
+    font-family: 'Courier New', monospace;
+    z-index: 10000;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .gut-mask-cursor-info {
-    font-size: 11px;
-    color: #888888;
+    font-size: 12px;
+    color: #e0e0e0;
     margin-top: 4px;
     min-height: 16px;
     font-family: monospace;
-    display: none;
+    line-height: 1.5;
 }
 
 .gut-mask-cursor-info:empty {
-    display: none;
+    display: none !important;
 }
 
 .gut-mask-status-container {
