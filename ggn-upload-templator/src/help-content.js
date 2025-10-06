@@ -60,7 +60,10 @@ export const HELP_SECTIONS = {
       <ol>
         <li>Click "+ Create Template" button</li>
         <li>Enter a descriptive template name</li>
-        <li>Paste a sample torrent name</li>
+        <li>
+          Paste a sample torrent name (or select a torrent first and we'll use
+          the extracted filename)
+        </li>
         <li>Define your mask pattern (see Masks & Variables section)</li>
         <li>Select which form fields to fill and with what values</li>
         <li>Click "Save Template"</li>
@@ -105,8 +108,8 @@ export const HELP_SECTIONS = {
         </li>
         <li>
           <strong>Torrent comment field:</strong> Define variables in the
-          torrent file's comment using <code>variable=value</code> format (one
-          per line)
+          torrent file's comment using <code>variable=value</code> format
+          (separated by semicolons, e.g. <code>var1=value1;var2=value2</code>)
         </li>
       </ul>
 
@@ -117,7 +120,8 @@ export const HELP_SECTIONS = {
       </p>
       <p>
         <code>\${variable:pattern}</code> - Extracts characters matching a
-        specific pattern
+        specific pattern. The pattern can be defined inline or in a named
+        variable hint (see Variable Hints section for more details)
       </p>
 
       <h4>Pattern Types</h4>
@@ -159,67 +163,6 @@ export const HELP_SECTIONS = {
       "comment",
       "torrent",
     ],
-  },
-
-  "optional-variables": {
-    title: "Optional Variables",
-    content: html`
-      <h3>Optional Sections</h3>
-      <p>
-        Optional sections allow parts of your mask to be present or absent in
-        torrent names.
-      </p>
-
-      <h4>Syntax</h4>
-      <p>
-        <code>{?optional content?}</code> - Everything between
-        <code>{?</code> and <code>?}</code> is optional
-      </p>
-
-      <h4>Use Cases</h4>
-      <ul>
-        <li>
-          Optional year in brackets: <code>\${title} {?[\${year}]?}</code>
-        </li>
-        <li>Optional version: <code>\${software} {?v\${version}?}</code></li>
-        <li>
-          Optional episode info:
-          <code>\${series} {?S\${season}E\${episode}?}</code>
-        </li>
-      </ul>
-
-      <h4>Examples</h4>
-      <p>
-        <strong>Mask:</strong>
-        <code>\${artist} - \${album} {?[\${year}]?}</code>
-      </p>
-      <p><strong>Matches:</strong></p>
-      <ul>
-        <li>
-          "Artist - Album [2024]" → artist="Artist", album="Album", year="2024"
-        </li>
-        <li>
-          "Artist - Album" → artist="Artist", album="Album", year=undefined
-        </li>
-      </ul>
-
-      <h4>Nested Optionals</h4>
-      <p>
-        You can nest optional sections, but keep them simple for better
-        readability.
-      </p>
-
-      <h4>In Form Fields</h4>
-      <p>
-        When using optional variables in form field values, use the same syntax:
-        <code>Title {?\${year}?}</code>
-      </p>
-      <p>
-        If the variable is undefined, the optional section won't appear in the
-        output.
-      </p>
-    `,
-    keywords: ["optional", "{?", "?}", "conditional", "maybe"],
   },
 
   hints: {
@@ -283,6 +226,51 @@ export const HELP_SECTIONS = {
       "transform",
       "disambiguation",
     ],
+  },
+
+  "optional-variables": {
+    title: "Optional Variables",
+    content: html`
+      <h3>Optional Sections</h3>
+      <p>
+        Optional sections allow parts of your mask to be present or absent in
+        torrent names.
+      </p>
+
+      <h4>Syntax</h4>
+      <p>
+        <code>{?optional content?}</code> - Everything between
+        <code>{?</code> and <code>?}</code> is optional
+      </p>
+
+      <h4>Use Cases</h4>
+      <ul>
+        <li>
+          Optional year in brackets: <code>\${title} {?[\${year}]?}</code>
+        </li>
+        <li>Optional version: <code>\${software} {?v\${version}?}</code></li>
+        <li>
+          Optional episode info:
+          <code>\${series} {?S\${season}E\${episode}?}</code>
+        </li>
+      </ul>
+
+      <h4>Examples</h4>
+      <p>
+        <strong>Mask:</strong>
+        <code>\${artist} - \${album} {?[\${year}]?}</code>
+      </p>
+      <p><strong>Matches:</strong></p>
+      <ul>
+        <li>
+          "Artist - Album [2024]" → artist="Artist", album="Album", year="2024"
+        </li>
+        <li>
+          "Artist - Album" → artist="Artist", album="Album", year=undefined
+        </li>
+      </ul>
+    `,
+    keywords: ["optional", "{?", "?}", "conditional", "maybe"],
   },
 
   "form-operations": {
@@ -529,36 +517,43 @@ export const HELP_SECTIONS = {
 
       <h4>Accessing the API</h4>
       <p>
-        The main instance is available at:
-        <code>window.ggnUploadTemplator</code>
+        The API is available at:
+        <code>window.GGnUploadTemplator</code>
       </p>
 
       <h4>Key Methods</h4>
-      <p><strong>Apply a template:</strong></p>
-      <pre
-        class="gut-help-pre"
-      ><code>window.ggnUploadTemplator.applyTemplateByName('Template Name');</code></pre>
 
-      <p><strong>Get templates:</strong></p>
+      <p><strong>Get API version:</strong></p>
       <pre
         class="gut-help-pre"
-      ><code>const templates = window.ggnUploadTemplator.templates;</code></pre>
+      ><code>const version = window.GGnUploadTemplator.version;</code></pre>
 
-      <p><strong>Extract variables from a string:</strong></p>
+      <p><strong>Get all templates:</strong></p>
       <pre
         class="gut-help-pre"
-      ><code>const vars = window.ggnUploadTemplator.extractVariables(
-  'torrent-name.zip',
-  '\${title} - \${year}.\${ext}'
-);</code></pre>
+      ><code>const templates = window.GGnUploadTemplator.getTemplates();
+// Returns array of template objects with name, mask, fieldMappings, etc.</code></pre>
 
-      <h4>Events</h4>
-      <p>Listen for template application:</p>
+      <p><strong>Get specific template:</strong></p>
       <pre
         class="gut-help-pre"
-      ><code>window.addEventListener('gut:template-applied', (e) => {
-  console.log('Template applied:', e.detail);
-});</code></pre>
+      ><code>const template = window.GGnUploadTemplator.getTemplate('Template Name');
+// Returns template object or null if not found</code></pre>
+
+      <p><strong>Extract variables from torrent name:</strong></p>
+      <pre
+        class="gut-help-pre"
+      ><code>const vars = window.GGnUploadTemplator.extractVariables(
+  'Template Name',
+  'torrent-name.zip'
+);
+// Returns object with extracted variables</code></pre>
+
+      <p><strong>Get instance for advanced usage:</strong></p>
+      <pre
+        class="gut-help-pre"
+      ><code>const instance = window.GGnUploadTemplator.getInstance();
+// Returns the internal GGnUploadTemplator instance</code></pre>
 
       <h4>Full API Documentation</h4>
       <p>
@@ -583,11 +578,18 @@ export const HELP_SECTIONS = {
 };
 
 export function getChangelogContent() {
-  const changelogEntries = Object.entries(INTRO_CONTENT.changelog)
-    .sort(([versionA], [versionB]) => versionB.localeCompare(versionA));
-  
-  let content = '<div>';
-  
+  const changelogEntries = Object.entries(INTRO_CONTENT.changelog).sort(
+    ([versionA], [versionB]) => {
+      const parseVersion = (v) => {
+        const parts = v.replace("v", "").split(".").map(Number);
+        return parts[0] * 10000 + (parts[1] || 0) * 100 + (parts[2] || 0);
+      };
+      return parseVersion(versionB) - parseVersion(versionA);
+    },
+  );
+
+  let content = "<div>";
+
   for (const [version, entry] of changelogEntries) {
     content += `
       <div class="gut-changelog-entry">
@@ -598,9 +600,9 @@ export function getChangelogContent() {
       </div>
     `;
   }
-  
-  content += '</div>';
-  
+
+  content += "</div>";
+
   return content;
 }
 
@@ -722,12 +724,14 @@ export const INTRO_CONTENT = {
           templator easier.
         </p>
 
-        <div class="gut-help-section-highlight">
-          <h4 class="gut-help-section-highlight-title">New Features</h4>
+        <div class="gut-intro-section-box">
           <ul class="gut-intro-section-list">
             <li>
               <strong>Built-in Help System:</strong> Access contextual help via
-              ${raw(HELP_ICON_HTML('help-icon-example', 'gut-help-icon-no-margin'))} icons or press <kbd class="gut-kbd">?</kbd> anytime
+              ${raw(
+                HELP_ICON_HTML("help-icon-example", "gut-help-icon-no-margin"),
+              )}
+              icons or press <kbd class="gut-kbd">?</kbd> anytime
             </li>
             <li>
               <strong>Rich Tooltips:</strong> Hover over help icons for quick
@@ -741,6 +745,276 @@ export const INTRO_CONTENT = {
               <strong>First-Run Experience:</strong> Welcome modal for new users
               and version updates
             </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.12": {
+      title: "What's New in v0.12?",
+      content: html`
+        <img
+          src="https://files.catbox.moe/kkbd0a.png"
+          alt="v0.12 screenshot"
+          style="max-width: 100%; height: auto; margin-bottom: 1em;"
+        />
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              Other scripts can now use the API exposed via
+              <code>window.GGnUploadTemplator</code>, see API section for
+              details
+            </li>
+            <li>
+              Ask for confirmation before applying the template, show preview of
+              value changes
+            </li>
+            <li>Show variable hint information when editing a mask</li>
+            <li>
+              Managing variable hints is now more flexible: they can be reset to
+              default / all deleted / only import new ones
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.11": {
+      title: "What's New in v0.11?",
+      content: html`
+        <p>This is mostly a UX/UI fixes and improvements release.</p>
+        <img
+          src="https://files.catbox.moe/mum36l.png"
+          alt="v0.11 screenshot"
+          style="max-width: 100%; height: auto; margin-bottom: 1em;"
+        />
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              All variable hints are now treated equally, there's no more
+              default/custom hints, this allows editing/deleting any hint,
+              including previously default ones. You can reset to default using
+              the new button
+            </li>
+            <li>
+              Matched variable values are now truncated to sane lengths, hover
+              over them to see full match highlighted in the torrent name
+            </li>
+            <li>
+              Fix match highlights not working properly when the matched value
+              is too long
+            </li>
+            <li>
+              Modals get scaled down the further up the stack you go, i.e: if
+              you have one modal open then you open another on top of it, that
+              gets scaled down so you visually distinguish there are two modals
+            </li>
+            <li>
+              Modal width can be resized to your liking by dragging on the
+              left/right edge
+            </li>
+            <li>
+              Show number of extracted variables under the template selector,
+              even if the number is 0
+            </li>
+            <li>
+              Fix regression: Changing selected template MUST NOT automatically
+              apply the template
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.10": {
+      title: "What's New in v0.10?",
+      content: html`
+        <img
+          src="https://files.catbox.moe/qtnzfw.png"
+          alt="v0.10 screenshot"
+          style="max-width: 100%; height: auto; margin-bottom: 1em;"
+        />
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              Add variable hints that allows for variable disambiguation and
+              advanced pattern matching
+            </li>
+            <li>Toggle to show compiled regex in Mask Sandbox</li>
+            <li>Fix: Allow optionals to consist of white space</li>
+            <li>UX: Modals have fixed headers and footers now</li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.9": {
+      title: "What's New in v0.9?",
+      content: html`
+        <img
+          src="https://files.catbox.moe/g4mclk.png"
+          alt="v0.9 screenshot"
+          style="max-width: 100%; height: auto; margin-bottom: 1em;"
+        />
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              Add Mask Sandbox for testing masks against multiple sample names
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.8": {
+      title: "What's New in v0.8?",
+      content: html`
+        <img
+          src="https://files.catbox.moe/7xkrsw.png"
+          alt="v0.8 screenshot"
+          style="max-width: 100%; height: auto; margin-bottom: 1em;"
+        />
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              Add optional variables with <code>{? ... ?}</code> syntax for
+              flexible filename matching
+            </li>
+            <li>
+              Remove greedy matching setting (now uses smart non-greedy parsing
+              by default)
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.7": {
+      title: "What's New in v0.7?",
+      content: html`
+        <img
+          src="https://files.catbox.moe/snd92p.png"
+          alt="v0.7 screenshot"
+          style="max-width: 100%; height: auto; margin-bottom: 1em;"
+        />
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>Add mask validation and highlighting with helpful messages</li>
+            <li>
+              Fix: No longer inserts <code>\${varname}</code> in fields if
+              <code>\${varname}</code> is empty/not found
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.6": {
+      title: "What's New in v0.6?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              Added support for variables defined in the comment field of a
+              torrent file. These are extracted as <code>\${_foo}</code>,
+              <code>\${_bar}</code>, starting with an underscore. Mask variables
+              cannot be defined with an underscore in the beginning of their
+              name
+            </li>
+            <li>
+              The format for variables in the comment field is:
+              <code>foo=value1;bar=value2;</code>
+            </li>
+            <li>
+              Show variable count under the template selector. Clicking it shows
+              a modal with all variables and their values
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.5.1": {
+      title: "What's New in v0.5.1?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              Fix: Use textarea for textarea fields instead of text input,
+              respect newlines
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.5": {
+      title: "What's New in v0.5?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              <strong>BREAKING CHANGE:</strong> Templates are no longer
+              auto-applied when a file is selected. You have to either press the
+              new Apply Template button or use the default keybinding:
+              Ctrl+Shift+A
+            </li>
+            <li>
+              You can now customize keybindings for Form submission and Apply
+              Template in the settings
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.4.1": {
+      title: "What's New in v0.4.1?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              Going forward, posting the unminified version of the userscript
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.4": {
+      title: "What's New in v0.4?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              Added support for choosing select field values based on extracted
+              variables
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.3": {
+      title: "What's New in v0.3?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              Added support for extra custom fields to be included in the
+              template (e.g: GGn Infobox Builder)
+            </li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.2": {
+      title: "What's New in v0.2?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>Changed variable format from {var} to \${var}</li>
+            <li>Added support to escape special characters, e.g: $ { }</li>
+            <li>Added section to show list of extracted variables</li>
+            <li>Add edit shortcut for selected template</li>
+          </ul>
+        </div>
+      `,
+    },
+    "v0.1": {
+      title: "What's New in v0.1?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>Initial version</li>
           </ul>
         </div>
       `,
