@@ -47,14 +47,10 @@ import {
   editTemplate,
   refreshTemplateManager,
 } from "./template-operations.js";
-import { ModalStack } from "./modal-stack.js";
+import { ModalStack, createModal } from "./modal-stack.js";
 
 export function showTemplateAndSettingsManager(instance) {
-  const modal = document.createElement("div");
-  modal.className = "gut-modal";
-  modal.innerHTML = MODAL_HTML(instance);
-
-  ModalStack.push(modal, {
+  const modal = createModal(MODAL_HTML(instance), {
     type: "replace",
     canGoBack: false,
     metadata: { instance },
@@ -649,13 +645,13 @@ export function showTemplateAndSettingsManager(instance) {
     1,
     "#record-apply-keybinding-btn",
   );
+  setupRecordKeybindingHandler(
+    "#custom-help-keybinding-input",
+    2,
+    "#record-help-keybinding-btn",
+  );
 
   modal.addEventListener("click", (e) => {
-    if (e.target === modal && !ModalStack.isResizingModal()) {
-      ModalStack.pop();
-      return;
-    }
-
     const action = e.target.dataset.action;
     const templateName = e.target.dataset.template;
 
@@ -880,16 +876,7 @@ export function showTemplateAndSettingsManager(instance) {
     });
   }
 
-  modal.querySelector("#close-manager").addEventListener("click", () => {
-    ModalStack.pop();
-  });
 
-  const closeX = modal.querySelector("#modal-close-x");
-  if (closeX) {
-    closeX.addEventListener("click", () => {
-      ModalStack.pop();
-    });
-  }
 }
 
 export function saveSettingsFromModal(instance, modal) {
@@ -907,6 +894,12 @@ export function saveSettingsFromModal(instance, modal) {
   ).checked;
   const customApplyKeybinding = modal
     .querySelector("#custom-apply-keybinding-input")
+    .value.trim();
+  const helpKeybinding = modal.querySelector(
+    "#setting-help-keybinding",
+  ).checked;
+  const customHelpKeybinding = modal
+    .querySelector("#custom-help-keybinding-input")
     .value.trim();
   const customSelectorsText = modal
     .querySelector("#setting-custom-selectors")
@@ -931,6 +924,9 @@ export function saveSettingsFromModal(instance, modal) {
     APPLY_KEYBINDING: applyKeybinding,
     CUSTOM_APPLY_KEYBINDING:
       customApplyKeybinding || DEFAULT_CONFIG.CUSTOM_APPLY_KEYBINDING,
+    HELP_KEYBINDING: helpKeybinding,
+    CUSTOM_HELP_KEYBINDING:
+      customHelpKeybinding || DEFAULT_CONFIG.CUSTOM_HELP_KEYBINDING,
     CUSTOM_FIELD_SELECTORS:
       customSelectors.length > 0
         ? customSelectors
@@ -953,17 +949,11 @@ export function showHintEditor(
   hintName = null,
   hintData = null,
 ) {
-  const editorModal = document.createElement("div");
-  editorModal.innerHTML = HINT_EDITOR_MODAL_HTML(instance, hintName, hintData);
-  const modal = editorModal.firstElementChild;
-
-  ModalStack.push(modal, {
+  const modal = createModal(HINT_EDITOR_MODAL_HTML(instance, hintName, hintData), {
     type: "stack",
     onClose: null,
     metadata: { instance, parentModal, hintName, hintData },
   });
-  const closeBtn = modal.querySelector("#modal-close-x");
-  const cancelBtn = modal.querySelector("#hint-editor-cancel");
   const saveBtn = modal.querySelector("#hint-editor-save");
   const nameInput = modal.querySelector("#hint-editor-name");
   const typeInputs = modal.querySelectorAll('input[name="hint-type"]');
@@ -1000,19 +990,6 @@ export function showHintEditor(
   }
 
   setupAutoResize(descriptionInput, { minLines: 1, maxLines: 5 });
-
-  const closeModal = () => {
-    ModalStack.pop();
-  };
-
-  closeBtn.addEventListener("click", closeModal);
-  cancelBtn.addEventListener("click", closeModal);
-
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal && !ModalStack.isResizingModal()) {
-      closeModal();
-    }
-  });
 
   typeInputs.forEach((input) => {
     input.addEventListener("change", (e) => {
@@ -1226,17 +1203,24 @@ export function resetSettings(instance, modal) {
     instance.config.APPLY_KEYBINDING;
   modal.querySelector("#custom-apply-keybinding-input").value =
     instance.config.CUSTOM_APPLY_KEYBINDING;
+  modal.querySelector("#setting-help-keybinding").checked =
+    instance.config.HELP_KEYBINDING;
+  modal.querySelector("#custom-help-keybinding-input").value =
+    instance.config.CUSTOM_HELP_KEYBINDING;
   modal.querySelector("#setting-custom-selectors").value =
     instance.config.CUSTOM_FIELD_SELECTORS.join("\n");
   modal.querySelector("#setting-ignored-fields").value =
     instance.config.IGNORED_FIELDS_BY_DEFAULT.join("\n");
 
-  const submitKeybindingSpan = modal.querySelector(".gut-keybinding-text");
-  submitKeybindingSpan.textContent = instance.config.CUSTOM_SUBMIT_KEYBINDING;
-  const applyKeybindingSpans = modal.querySelectorAll(".gut-keybinding-text");
-  if (applyKeybindingSpans.length > 1) {
-    applyKeybindingSpans[1].textContent =
-      instance.config.CUSTOM_APPLY_KEYBINDING;
+  const keybindingSpans = modal.querySelectorAll(".gut-keybinding-text");
+  if (keybindingSpans[0]) {
+    keybindingSpans[0].textContent = instance.config.CUSTOM_SUBMIT_KEYBINDING;
+  }
+  if (keybindingSpans[1]) {
+    keybindingSpans[1].textContent = instance.config.CUSTOM_APPLY_KEYBINDING;
+  }
+  if (keybindingSpans[2]) {
+    keybindingSpans[2].textContent = instance.config.CUSTOM_HELP_KEYBINDING;
   }
 
   instance.showStatus(
@@ -1315,16 +1299,12 @@ export function showMapImportModal(
   editorModal = null,
   onComplete = null,
 ) {
-  const importModalContainer = document.createElement("div");
-  importModalContainer.innerHTML = MAP_IMPORT_MODAL_HTML(
+  const modal = createModal(MAP_IMPORT_MODAL_HTML(
     instance,
     hintName,
     existingMappings,
     mode,
-  );
-  const modal = importModalContainer.firstElementChild;
-
-  ModalStack.push(modal, {
+  ), {
     type: "stack",
     metadata: {
       instance,
@@ -1344,8 +1324,6 @@ export function showMapImportModal(
   const previewContent = modal.querySelector("#import-preview-content");
   const previewSummary = modal.querySelector("#import-preview-summary");
   const confirmBtn = modal.querySelector("#import-confirm-btn");
-  const cancelBtn = modal.querySelector("#import-cancel-btn");
-  const closeBtn = modal.querySelector("#modal-close-x");
 
   setupAutoResize(textarea, { minLines: 5, maxLines: 15 });
 
@@ -1526,14 +1504,6 @@ export function showMapImportModal(
   }
 
   confirmBtn.addEventListener("click", applyImport);
-  cancelBtn.addEventListener("click", () => ModalStack.pop());
-  closeBtn.addEventListener("click", () => ModalStack.pop());
-
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal && !ModalStack.isResizingModal()) {
-      ModalStack.pop();
-    }
-  });
 
   updatePreview();
 }
@@ -1548,25 +1518,19 @@ export function showImportNewHintsModal(instance) {
     return;
   }
 
-  const modal = document.createElement("div");
-  modal.innerHTML = IMPORT_NEW_HINTS_MODAL_HTML(
+  const modal = createModal(IMPORT_NEW_HINTS_MODAL_HTML(
     newHints,
     ignoredHints,
     instance,
-  );
-  const modalElement = modal.firstElementChild;
-
-  ModalStack.push(modalElement, {
+  ), {
     type: "stack",
     metadata: { instance, newHints, ignoredHints },
   });
 
-  const checkboxes = modalElement.querySelectorAll(".hint-select-checkbox");
-  const importBtn = modalElement.querySelector("#import-hints-confirm-btn");
-  const cancelBtn = modalElement.querySelector("#import-hints-cancel-btn");
-  const closeBtn = modalElement.querySelector("#modal-close-x");
-  const selectAllBtn = modalElement.querySelector("#import-select-all-btn");
-  const selectNoneBtn = modalElement.querySelector("#import-select-none-btn");
+  const checkboxes = modal.querySelectorAll(".hint-select-checkbox");
+  const importBtn = modal.querySelector("#import-hints-confirm-btn");
+  const selectAllBtn = modal.querySelector("#import-select-all-btn");
+  const selectNoneBtn = modal.querySelector("#import-select-none-btn");
 
   function updateSelectedCount() {
     const checkedCount = Array.from(checkboxes).filter(
@@ -1602,7 +1566,7 @@ export function showImportNewHintsModal(instance) {
     updateSelectedCount();
   });
 
-  modalElement.querySelectorAll(".hint-ignore-btn").forEach((btn) => {
+  modal.querySelectorAll(".hint-ignore-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       const hintName = e.target.dataset.hintName;
@@ -1650,15 +1614,6 @@ export function showImportNewHintsModal(instance) {
     );
   });
 
-  cancelBtn.addEventListener("click", () => ModalStack.pop());
-  closeBtn.addEventListener("click", () => ModalStack.pop());
-
-  modalElement.addEventListener("click", (e) => {
-    if (e.target === modalElement && !ModalStack.isResizingModal()) {
-      ModalStack.pop();
-    }
-  });
-
   updateSelectedCount();
 }
 
@@ -1667,26 +1622,20 @@ export function showResetDefaultsModal(instance) {
   const ignoredHints = loadIgnoredHints();
   const deletedHints = loadDeletedDefaultHints();
 
-  const modal = document.createElement("div");
-  modal.innerHTML = RESET_DEFAULTS_MODAL_HTML(
+  const modal = createModal(RESET_DEFAULTS_MODAL_HTML(
     userHints,
     ignoredHints,
     deletedHints,
     instance,
-  );
-  const modalElement = modal.firstElementChild;
-
-  ModalStack.push(modalElement, {
+  ), {
     type: "stack",
     metadata: { instance, ignoredHints },
   });
 
-  const checkboxes = modalElement.querySelectorAll(".hint-select-checkbox");
-  const resetBtn = modalElement.querySelector("#reset-hints-confirm-btn");
-  const cancelBtn = modalElement.querySelector("#reset-hints-cancel-btn");
-  const closeBtn = modalElement.querySelector("#modal-close-x");
-  const selectAllBtn = modalElement.querySelector("#reset-select-all-btn");
-  const selectNoneBtn = modalElement.querySelector("#reset-select-none-btn");
+  const checkboxes = modal.querySelectorAll(".hint-select-checkbox");
+  const resetBtn = modal.querySelector("#reset-hints-confirm-btn");
+  const selectAllBtn = modal.querySelector("#reset-select-all-btn");
+  const selectNoneBtn = modal.querySelector("#reset-select-none-btn");
 
   function updateSelectedCount() {
     const checkedCount = Array.from(checkboxes).filter(
@@ -1722,7 +1671,7 @@ export function showResetDefaultsModal(instance) {
     updateSelectedCount();
   });
 
-  modalElement.querySelectorAll(".hint-ignore-btn").forEach((btn) => {
+  modal.querySelectorAll(".hint-ignore-btn").forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       const hintName = e.target.dataset.hintName;
@@ -1770,31 +1719,16 @@ export function showResetDefaultsModal(instance) {
     );
   });
 
-  cancelBtn.addEventListener("click", () => ModalStack.pop());
-  closeBtn.addEventListener("click", () => ModalStack.pop());
-
-  modalElement.addEventListener("click", (e) => {
-    if (e.target === modalElement && !ModalStack.isResizingModal()) {
-      ModalStack.pop();
-    }
-  });
-
   updateSelectedCount();
 }
 
 export function showDeleteAllHintsModal(instance) {
-  const modal = document.createElement("div");
-  modal.innerHTML = DELETE_ALL_HINTS_MODAL_HTML(instance);
-  const modalElement = modal.firstElementChild;
-
-  ModalStack.push(modalElement, {
+  const modal = createModal(DELETE_ALL_HINTS_MODAL_HTML(instance), {
     type: "stack",
     metadata: { instance },
   });
 
-  const deleteBtn = modalElement.querySelector("#delete-all-hints-confirm-btn");
-  const cancelBtn = modalElement.querySelector("#delete-all-hints-cancel-btn");
-  const closeBtn = modalElement.querySelector("#modal-close-x");
+  const deleteBtn = modal.querySelector("#delete-all-hints-confirm-btn");
 
   deleteBtn.addEventListener("click", () => {
     if (resetAllHints()) {
@@ -1813,30 +1747,15 @@ export function showDeleteAllHintsModal(instance) {
       instance.showStatus("Failed to delete hints!", "error");
     }
   });
-
-  cancelBtn.addEventListener("click", () => ModalStack.pop());
-  closeBtn.addEventListener("click", () => ModalStack.pop());
-
-  modalElement.addEventListener("click", (e) => {
-    if (e.target === modalElement && !ModalStack.isResizingModal()) {
-      ModalStack.pop();
-    }
-  });
 }
 
 export function showApplyConfirmationModal(instance, changes, onConfirm) {
-  const modalContainer = document.createElement("div");
-  modalContainer.innerHTML = APPLY_CONFIRMATION_MODAL_HTML(changes, instance);
-  const modal = modalContainer.firstElementChild;
-
-  ModalStack.push(modal, {
+  const modal = createModal(APPLY_CONFIRMATION_MODAL_HTML(changes, instance), {
     type: "stack",
     metadata: { instance, changes, onConfirm },
   });
 
   const applyBtn = modal.querySelector("#apply-confirm-apply-btn");
-  const cancelBtn = modal.querySelector("#apply-confirm-cancel-btn");
-  const closeBtn = modal.querySelector("#modal-close-x");
 
   const handleConfirm = () => {
     ModalStack.pop();
@@ -1845,19 +1764,7 @@ export function showApplyConfirmationModal(instance, changes, onConfirm) {
     }
   };
 
-  const handleCancel = () => {
-    ModalStack.pop();
-  };
-
   applyBtn.addEventListener("click", handleConfirm);
-  cancelBtn.addEventListener("click", handleCancel);
-  closeBtn.addEventListener("click", handleCancel);
-
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal && !ModalStack.isResizingModal()) {
-      handleCancel();
-    }
-  });
 
   setTimeout(() => {
     applyBtn.focus();

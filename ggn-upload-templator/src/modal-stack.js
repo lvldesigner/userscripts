@@ -36,6 +36,28 @@ class ModalStackManager {
       }
     }
 
+    const overlayClickHandler = (e) => {
+      if (e.target === element && !this.isResizing) {
+        this.pop();
+      }
+    };
+
+    element.addEventListener('click', overlayClickHandler);
+
+    const closeButtons = element.querySelectorAll('.gut-modal-close-btn, #modal-close-x, [data-modal-action="close"]');
+    const closeButtonHandlers = [];
+    
+    closeButtons.forEach(btn => {
+      const handler = () => this.pop();
+      btn.addEventListener('click', handler);
+      closeButtonHandlers.push({ button: btn, handler });
+    });
+
+    const keyboardHandler = options.keyboardHandler || null;
+    if (keyboardHandler) {
+      document.addEventListener('keydown', keyboardHandler);
+    }
+
     const entry = {
       element,
       type,
@@ -44,6 +66,9 @@ class ModalStackManager {
       backFactory: options.backFactory || null,
       metadata: options.metadata || {},
       originalDimensions: null,
+      overlayClickHandler,
+      closeButtonHandlers,
+      keyboardHandler,
     };
 
     this.stack.push(entry);
@@ -73,6 +98,20 @@ class ModalStackManager {
 
     if (entry.onClose) {
       entry.onClose();
+    }
+
+    if (entry.overlayClickHandler && entry.element) {
+      entry.element.removeEventListener('click', entry.overlayClickHandler);
+    }
+
+    if (entry.closeButtonHandlers) {
+      entry.closeButtonHandlers.forEach(({ button, handler }) => {
+        button.removeEventListener('click', handler);
+      });
+    }
+
+    if (entry.keyboardHandler) {
+      document.removeEventListener('keydown', entry.keyboardHandler);
     }
 
     if (entry.element && document.body.contains(entry.element)) {
@@ -161,27 +200,74 @@ class ModalStackManager {
     return this.isResizing;
   }
 
+  parseDimensionWithUnit(value) {
+    if (!value || value === 'auto' || value === 'none') {
+      return { value: null, unit: null };
+    }
+    
+    const match = value.match(/^([\d.]+)(px|vh|vw|%)?$/);
+    if (match) {
+      return {
+        value: parseFloat(match[1]),
+        unit: match[2] || 'px'
+      };
+    }
+    
+    return {
+      value: parseFloat(value),
+      unit: 'px'
+    };
+  }
+
+  detectViewportUnit(computedValue, dimension) {
+    if (!computedValue) return null;
+    
+    const pxValue = parseFloat(computedValue);
+    if (isNaN(pxValue)) return null;
+    
+    const vh = window.innerHeight;
+    const vw = window.innerWidth;
+    
+    if (dimension === 'height' || dimension === 'maxHeight') {
+      const percentOfVh = (pxValue / vh) * 100;
+      if (Math.abs(percentOfVh - 90) < 0.5) return { value: 90, unit: 'vh' };
+      if (Math.abs(percentOfVh - 85) < 0.5) return { value: 85, unit: 'vh' };
+      if (Math.abs(percentOfVh - 80) < 0.5) return { value: 80, unit: 'vh' };
+    }
+    
+    if (dimension === 'width' || dimension === 'maxWidth') {
+      const percentOfVw = (pxValue / vw) * 100;
+      if (Math.abs(percentOfVw - 90) < 0.5) return { value: 90, unit: 'vw' };
+      if (Math.abs(percentOfVw - 85) < 0.5) return { value: 85, unit: 'vw' };
+      if (Math.abs(percentOfVw - 80) < 0.5) return { value: 80, unit: 'vw' };
+    }
+    
+    return null;
+  }
+
+  formatDimension(value, unit) {
+    return `${value}${unit}`;
+  }
+
   updateZIndices() {
     let previousWidth = null;
     let previousMaxWidth = null;
     let previousHeight = null;
     let previousMaxHeight = null;
+    let previousWidthUnit = 'px';
+    let previousMaxWidthUnit = 'px';
+    let previousHeightUnit = 'px';
+    let previousMaxHeightUnit = 'px';
     let previousAlpha = 0.4;
-    let stackDepth = 0;
 
     this.stack.forEach((entry, index) => {
       if (entry.element) {
         entry.element.style.zIndex = this.baseZIndex + index * 10;
 
-        if (entry.type === "stack") {
-          stackDepth++;
-        } else {
-          stackDepth = 0;
-        }
-
-        const isStacked = stackDepth > 0;
+        const isStacked = index > 0 && entry.type === "stack";
 
         if (isStacked) {
+          const stackDepth = this.stack.slice(0, index).filter(e => e.type === "stack").length + 1;
           const alpha = Math.max(0.05, previousAlpha * 0.5);
           entry.element.style.background = `rgba(0, 0, 0, ${alpha})`;
           previousAlpha = alpha;
@@ -196,33 +282,63 @@ class ModalStackManager {
           entry.element.classList.add("gut-modal-stacked");
 
           if (!entry.originalDimensions) {
-            const computedStyle = window.getComputedStyle(modalContent);
+            const inlineStyle = modalContent.style;
             entry.originalDimensions = {
-              width: computedStyle.width,
-              maxWidth: computedStyle.maxWidth,
-              height: computedStyle.height,
-              maxHeight: computedStyle.maxHeight,
+              width: inlineStyle.width || null,
+              maxWidth: inlineStyle.maxWidth || null,
+              height: inlineStyle.height || null,
+              maxHeight: inlineStyle.maxHeight || null,
             };
+            
+            if (!entry.originalDimensions.width) {
+              const computedStyle = window.getComputedStyle(modalContent);
+              entry.originalDimensions.width = computedStyle.width;
+            }
+            if (!entry.originalDimensions.maxWidth) {
+              const computedStyle = window.getComputedStyle(modalContent);
+              entry.originalDimensions.maxWidth = computedStyle.maxWidth;
+            }
+            if (!entry.originalDimensions.height) {
+              const computedStyle = window.getComputedStyle(modalContent);
+              entry.originalDimensions.height = computedStyle.height;
+            }
+            if (!entry.originalDimensions.maxHeight) {
+              const computedStyle = window.getComputedStyle(modalContent);
+              entry.originalDimensions.maxHeight = computedStyle.maxHeight;
+            }
           }
 
+          const stackDepth = this.stack.slice(0, index).filter(e => e.type === "stack").length + 1;
           const offsetAmount = stackDepth * 20;
 
           let targetWidth = previousWidth;
           let targetMaxWidth = previousMaxWidth;
           let targetHeight = previousHeight;
           let targetMaxHeight = previousMaxHeight;
+          let targetWidthUnit = previousWidthUnit;
+          let targetMaxWidthUnit = previousMaxWidthUnit;
+          let targetHeightUnit = previousHeightUnit;
+          let targetMaxHeightUnit = previousMaxHeightUnit;
 
           if (targetWidth === null) {
-            targetWidth = parseFloat(entry.originalDimensions.width);
+            const parsed = this.parseDimensionWithUnit(entry.originalDimensions.width);
+            targetWidth = parsed.value;
+            targetWidthUnit = parsed.unit;
           }
           if (targetMaxWidth === null) {
-            targetMaxWidth = parseFloat(entry.originalDimensions.maxWidth);
+            const parsed = this.parseDimensionWithUnit(entry.originalDimensions.maxWidth);
+            targetMaxWidth = parsed.value;
+            targetMaxWidthUnit = parsed.unit;
           }
           if (targetHeight === null) {
-            targetHeight = parseFloat(entry.originalDimensions.height);
+            const parsed = this.parseDimensionWithUnit(entry.originalDimensions.height);
+            targetHeight = parsed.value;
+            targetHeightUnit = parsed.unit;
           }
           if (targetMaxHeight === null) {
-            targetMaxHeight = parseFloat(entry.originalDimensions.maxHeight);
+            const parsed = this.parseDimensionWithUnit(entry.originalDimensions.maxHeight);
+            targetMaxHeight = parsed.value;
+            targetMaxHeightUnit = parsed.unit;
           }
 
           const scaledWidth = targetWidth * 0.95;
@@ -234,32 +350,36 @@ class ModalStackManager {
             entry.originalDimensions.width &&
             entry.originalDimensions.width !== "auto"
           ) {
-            modalContent.style.width = `${scaledWidth}px`;
+            modalContent.style.width = this.formatDimension(scaledWidth, targetWidthUnit);
             previousWidth = scaledWidth;
+            previousWidthUnit = targetWidthUnit;
           }
 
           if (
             entry.originalDimensions.maxWidth &&
             entry.originalDimensions.maxWidth !== "none"
           ) {
-            modalContent.style.maxWidth = `${scaledMaxWidth}px`;
+            modalContent.style.maxWidth = this.formatDimension(scaledMaxWidth, targetMaxWidthUnit);
             previousMaxWidth = scaledMaxWidth;
+            previousMaxWidthUnit = targetMaxWidthUnit;
           }
 
           if (
             entry.originalDimensions.height &&
             entry.originalDimensions.height !== "auto"
           ) {
-            modalContent.style.height = `${scaledHeight}px`;
+            modalContent.style.height = this.formatDimension(scaledHeight, targetHeightUnit);
             previousHeight = scaledHeight;
+            previousHeightUnit = targetHeightUnit;
           }
 
           if (
             entry.originalDimensions.maxHeight &&
             entry.originalDimensions.maxHeight !== "none"
           ) {
-            modalContent.style.maxHeight = `${scaledMaxHeight}px`;
+            modalContent.style.maxHeight = this.formatDimension(scaledMaxHeight, targetMaxHeightUnit);
             previousMaxHeight = scaledMaxHeight;
+            previousMaxHeightUnit = targetMaxHeightUnit;
           }
 
           modalContent.style.marginTop = `${offsetAmount}px`;
@@ -279,10 +399,40 @@ class ModalStackManager {
             }
 
             const computedStyle = window.getComputedStyle(modalContent);
-            previousWidth = parseFloat(computedStyle.width);
-            previousMaxWidth = savedWidth || parseFloat(computedStyle.maxWidth);
-            previousHeight = parseFloat(computedStyle.height);
-            previousMaxHeight = parseFloat(computedStyle.maxHeight);
+            const inlineStyle = modalContent.style;
+            
+            let widthParsed = this.parseDimensionWithUnit(inlineStyle.width);
+            if (!widthParsed.value && computedStyle.width) {
+              const detected = this.detectViewportUnit(computedStyle.width, 'width');
+              widthParsed = detected || this.parseDimensionWithUnit(computedStyle.width);
+            }
+            
+            let maxWidthParsed = this.parseDimensionWithUnit(inlineStyle.maxWidth || (savedWidth ? `${savedWidth}px` : null));
+            if (!maxWidthParsed.value && computedStyle.maxWidth) {
+              const detected = this.detectViewportUnit(computedStyle.maxWidth, 'maxWidth');
+              maxWidthParsed = detected || this.parseDimensionWithUnit(computedStyle.maxWidth);
+            }
+            
+            let heightParsed = this.parseDimensionWithUnit(inlineStyle.height);
+            if (!heightParsed.value && computedStyle.height) {
+              const detected = this.detectViewportUnit(computedStyle.height, 'height');
+              heightParsed = detected || this.parseDimensionWithUnit(computedStyle.height);
+            }
+            
+            let maxHeightParsed = this.parseDimensionWithUnit(inlineStyle.maxHeight);
+            if (!maxHeightParsed.value && computedStyle.maxHeight) {
+              const detected = this.detectViewportUnit(computedStyle.maxHeight, 'maxHeight');
+              maxHeightParsed = detected || this.parseDimensionWithUnit(computedStyle.maxHeight);
+            }
+            
+            previousWidth = widthParsed.value;
+            previousWidthUnit = widthParsed.unit;
+            previousMaxWidth = maxWidthParsed.value;
+            previousMaxWidthUnit = maxWidthParsed.unit;
+            previousHeight = heightParsed.value;
+            previousHeightUnit = heightParsed.unit;
+            previousMaxHeight = maxHeightParsed.value;
+            previousMaxHeightUnit = maxHeightParsed.unit;
           }
         }
       }
@@ -449,3 +599,11 @@ class ModalStackManager {
 }
 
 export const ModalStack = new ModalStackManager();
+
+export function createModal(htmlContent, options = {}) {
+  const container = document.createElement('div');
+  container.innerHTML = htmlContent;
+  const modal = container.firstElementChild;
+  ModalStack.push(modal, options);
+  return modal;
+}

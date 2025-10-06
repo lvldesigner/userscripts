@@ -1,7 +1,8 @@
 import { DEFAULT_HINTS, getNewDefaultHints } from '../hint-storage.js';
 
 export const MODAL_HTML = (instance) => `
-  <div class="gut-modal-content">
+  <div class="gut-modal">
+    <div class="gut-modal-content">
     <div class="gut-modal-header">
       <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
       <div class="gut-modal-tabs">
@@ -64,6 +65,17 @@ export const MODAL_HTML = (instance) => `
          <input type="hidden" id="custom-apply-keybinding-input" value="${instance.config.CUSTOM_APPLY_KEYBINDING || "Ctrl+Shift+A"}">
        </div>
 
+       <div class="gut-form-group">
+         <div class="gut-keybinding-controls">
+           <label class="gut-checkbox-label">
+             <input type="checkbox" id="setting-help-keybinding" ${instance.config.HELP_KEYBINDING ? "checked" : ""}>
+             <span class="gut-checkbox-text">⚡ Enable help modal keybinding: <span class="gut-keybinding-text">${instance.config.CUSTOM_HELP_KEYBINDING || "?"}</span></span>
+           </label>
+           <button type="button" id="record-help-keybinding-btn" class="gut-btn gut-btn-secondary gut-btn-small">Record</button>
+         </div>
+         <input type="hidden" id="custom-help-keybinding-input" value="${instance.config.CUSTOM_HELP_KEYBINDING || "?"}">
+       </div>
+
       <div class="gut-form-group">
         <label for="setting-custom-selectors">Custom Field Selectors (one per line):</label>
         <textarea id="setting-custom-selectors" rows="4" placeholder="div[data-field]\n.custom-input[name]\nbutton[data-value]">${(instance.config.CUSTOM_FIELD_SELECTORS || []).join("\n")}</textarea>
@@ -102,6 +114,7 @@ export const MODAL_HTML = (instance) => `
 
     <div class="gut-modal-footer">
       <button class="gut-btn" id="close-manager">Close</button>
+    </div>
     </div>
   </div>
 `;
@@ -1052,6 +1065,97 @@ export const APPLY_CONFIRMATION_MODAL_HTML = (changes, instance) => {
         <div class="gut-modal-footer">
           <button class="gut-btn" id="apply-confirm-cancel-btn">Cancel</button>
           <button class="gut-btn gut-btn-primary" id="apply-confirm-apply-btn">Apply Template</button>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+export const HELP_ICON_HTML = (tooltipKey) => {
+  return `<span class="gut-help-icon" data-tooltip="${tooltipKey}" title="Click for more help">ⓘ</span>`;
+};
+
+export const HELP_MODAL_HTML = (sections, currentVersion) => {
+  const sectionsList = Object.entries(sections).map(([id, section]) => ({
+    id,
+    ...section
+  }));
+
+  return `
+    <div class="gut-modal">
+      <div class="gut-modal-content gut-help-modal">
+        <div class="gut-modal-header">
+          <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
+          <h2 style="margin: 0; flex: 1; text-align: center;">Help & Documentation</h2>
+        </div>
+
+        <div class="gut-modal-body">
+          <div class="gut-help-subheader">
+            <button class="gut-btn gut-btn-secondary" id="help-toc-toggle" title="Toggle table of contents" style="padding: 8px 12px;">☰ Topics</button>
+            <input type="text" id="help-search-input" class="gut-help-search" placeholder="Search help..." autocomplete="off" style="flex: 1;">
+          </div>
+
+          <div class="gut-help-container">
+            <div class="gut-help-toc" id="help-toc" style="display: none;">
+              <div class="gut-help-toc-content">
+                ${sectionsList.map(section => `
+                  <div class="gut-help-toc-item" data-section="${section.id}">
+                    ${section.title}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <div class="gut-help-content" id="help-content">
+              <div class="gut-help-search-info" id="help-search-info" style="display: none;">
+                <span id="help-search-count"></span>
+                <button class="gut-btn gut-btn-secondary gut-btn-small" id="help-clear-search">Clear Search</button>
+              </div>
+              
+              ${sectionsList.map(section => `
+                <div class="gut-help-section" data-section-id="${section.id}">
+                  <h2 class="gut-help-section-title">${section.title}</h2>
+                  <div class="gut-help-section-content">
+                    ${section.content}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="gut-modal-footer" style="display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 12px; color: #888;">
+          <span>GGn Upload Templator v${currentVersion}</span>
+          <span>•</span>
+          <span>Press <kbd style="padding: 2px 6px; background: #1a1a1a; border-radius: 3px; font-family: monospace;">?</kbd> to toggle help</span>
+        </div>
+      </div>
+    </div>
+  `;
+};
+
+export const INTRO_MODAL_HTML = (content, isNewUser, currentVersion) => {
+  return `
+    <div class="gut-modal">
+      <div class="gut-modal-content gut-intro-modal">
+        <div class="gut-modal-header">
+          <h2 style="margin: 0; text-align: center; width: 100%;">${content.title}</h2>
+        </div>
+
+        <div class="gut-modal-body">
+          ${content.content}
+          
+          <div style="background: #2a2a2a; border-radius: 6px; padding: 16px; margin-top: 20px;">
+            <p style="margin: 0 0 8px 0; font-weight: 600;">Help is always available:</p>
+            <ul style="margin: 0; padding-left: 20px; line-height: 1.8;">
+              <li>Look for <span style="color: #64b5f6;">ⓘ</span> icons throughout the UI</li>
+              <li>Press <kbd style="padding: 2px 6px; background: #1a1a1a; border-radius: 3px; font-family: monospace;">?</kbd> to open the help modal anytime</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="gut-modal-footer" style="display: flex; justify-content: center; gap: 12px;">
+          <button class="gut-btn gut-btn-primary" id="intro-get-started" style="min-width: 120px;">Get Started</button>
         </div>
       </div>
     </div>

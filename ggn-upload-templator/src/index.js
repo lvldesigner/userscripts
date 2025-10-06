@@ -32,6 +32,7 @@ import {
 import {
   setupSubmitKeybinding,
   setupApplyKeybinding,
+  setupHelpKeybinding,
 } from "./keybinding-setup.js";
 import {
   showTemplateAndSettingsManager,
@@ -39,6 +40,8 @@ import {
 } from "./modal-manager.js";
 import { loadHints, saveHints } from "./hint-storage.js";
 import { parseTemplateWithOptionals } from "./utils/template.js";
+import { initializeHelpTooltips } from "./help-tooltip.js";
+import { checkAndShowIntro } from "./intro-modal.js";
 import style from "./style.css?raw";
 
 const firaCodeFont = `
@@ -100,6 +103,26 @@ class GGnUploadTemplator {
       } catch (error) {
         console.error("Apply keybinding setup failed:", error);
       }
+    }
+
+    if (this.config.HELP_KEYBINDING) {
+      try {
+        setupHelpKeybinding(this);
+      } catch (error) {
+        console.error("Help keybinding setup failed:", error);
+      }
+    }
+
+    try {
+      initializeHelpTooltips();
+    } catch (error) {
+      console.error("Help tooltips initialization failed:", error);
+    }
+
+    try {
+      checkAndShowIntro();
+    } catch (error) {
+      console.error("Intro modal check failed:", error);
     }
 
     logDebug("Initialized");
@@ -254,7 +277,7 @@ if (document.readyState === "loading") {
 }
 
 const GGnUploadTemplatorAPI = {
-  version: "0.11",
+  version: "0.13",
   
   getTemplates() {
     if (!ggnInstance) {
