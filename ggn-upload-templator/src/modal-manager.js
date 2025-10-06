@@ -31,6 +31,7 @@ import {
   RESET_DEFAULTS_MODAL_HTML,
   DELETE_ALL_HINTS_MODAL_HTML,
   APPLY_CONFIRMATION_MODAL_HTML,
+  UNSAVED_CHANGES_CONFIRMATION_MODAL_HTML,
 } from "./ui/template.js";
 import { setupAutoResize } from "./utils/textarea.js";
 import { renderSandboxResults, setupMaskValidation } from "./ui/manager.js";
@@ -53,6 +54,8 @@ export function showTemplateAndSettingsManager(instance) {
   const modal = createModal(MODAL_HTML(instance), {
     type: "replace",
     canGoBack: false,
+    trackChanges: true,
+    formSelector: '#settings-tab input, #settings-tab textarea, #settings-tab select, #sandbox-tab input, #sandbox-tab textarea',
     metadata: { instance },
   });
 
@@ -378,6 +381,12 @@ export function showTemplateAndSettingsManager(instance) {
       };
 
       saveSandboxSet(instance, currentLoadedSet, data);
+      
+      const currentModal = ModalStack.getCurrentModal();
+      if (currentModal) {
+        ModalStack.markChangesSaved(currentModal.id);
+      }
+      
       instance.showStatus(
         `Test set "${currentLoadedSet}" updated successfully!`,
       );
@@ -412,6 +421,12 @@ export function showTemplateAndSettingsManager(instance) {
         }
 
         updateButtonStates();
+        
+        const currentModal = ModalStack.getCurrentModal();
+        if (currentModal) {
+          ModalStack.markChangesSaved(currentModal.id);
+        }
+        
         instance.showStatus(`Test set "${trimmedName}" saved successfully!`);
       }
     }
@@ -938,6 +953,12 @@ export function saveSettingsFromModal(instance, modal) {
   };
 
   saveSettings(instance.config);
+  
+  const currentModal = ModalStack.getCurrentModal();
+  if (currentModal) {
+    ModalStack.markChangesSaved(currentModal.id);
+  }
+  
   instance.showStatus(
     "Settings saved successfully! Reload the page for some changes to take effect.",
   );
@@ -951,6 +972,8 @@ export function showHintEditor(
 ) {
   const modal = createModal(HINT_EDITOR_MODAL_HTML(instance, hintName, hintData), {
     type: "stack",
+    trackChanges: true,
+    formSelector: 'input, textarea, select',
     onClose: null,
     metadata: { instance, parentModal, hintName, hintData },
   });
@@ -1188,6 +1211,11 @@ export function showHintEditor(
     instance.hints[name] = hintDef;
     saveHints(instance.hints);
 
+    const currentModal = ModalStack.getCurrentModal();
+    if (currentModal) {
+      ModalStack.markChangesSaved(currentModal.id);
+    }
+
     ModalStack.pop();
     ModalStack.pop();
     showTemplateAndSettingsManager(instance);
@@ -1313,6 +1341,8 @@ export function showMapImportModal(
     mode,
   ), {
     type: "stack",
+    trackChanges: true,
+    formSelector: 'textarea, select, input[type="checkbox"]',
     metadata: {
       instance,
       hintName,
@@ -1492,6 +1522,12 @@ export function showMapImportModal(
 
     if (onComplete) {
       onComplete(finalMappings);
+      
+      const currentModal = ModalStack.getCurrentModal();
+      if (currentModal) {
+        ModalStack.markChangesSaved(currentModal.id);
+      }
+      
       ModalStack.pop();
     } else {
       const hintData = instance.hints[hintName] || {};
@@ -1501,6 +1537,11 @@ export function showMapImportModal(
       };
 
       saveHints(instance.hints);
+
+      const currentModal = ModalStack.getCurrentModal();
+      if (currentModal) {
+        ModalStack.markChangesSaved(currentModal.id);
+      }
 
       ModalStack.pop();
       ModalStack.pop();
@@ -1777,3 +1818,40 @@ export function showApplyConfirmationModal(instance, changes, onConfirm) {
     applyBtn.focus();
   }, 0);
 }
+
+export function showUnsavedChangesConfirmationModal(resolve) {
+  const modal = createModal(UNSAVED_CHANGES_CONFIRMATION_MODAL_HTML(), {
+    type: "stack",
+    metadata: { resolve },
+  });
+
+  const keepEditingBtn = modal.querySelector("#unsaved-keep-editing");
+  const discardBtn = modal.querySelector("#unsaved-discard");
+
+  const handleKeepEditing = () => {
+    ModalStack.popEscapeHandler();
+    ModalStack.pop(true);
+    resolve(false);
+  };
+
+  const handleDiscard = () => {
+    ModalStack.popEscapeHandler();
+    ModalStack.pop(true);
+    resolve(true);
+  };
+
+  keepEditingBtn.addEventListener("click", handleKeepEditing);
+  discardBtn.addEventListener("click", handleDiscard);
+
+  const escapeHandler = () => {
+    handleKeepEditing();
+    return true;
+  };
+  ModalStack.pushEscapeHandler(escapeHandler);
+
+  setTimeout(() => {
+    discardBtn.focus();
+  }, 0);
+}
+
+ModalStack.setUnsavedChangesHandler(showUnsavedChangesConfirmationModal);

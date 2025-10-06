@@ -12,6 +12,9 @@ class ModalStackManager {
     this.resizeStartX = 0;
     this.resizeStartWidth = 0;
     this.resizeSide = null;
+    this.changeTracking = new Map();
+    this.modalIdCounter = 0;
+    this.unsavedChangesHandler = null;
     this.setupGlobalHandlers();
   }
 
@@ -58,6 +61,8 @@ class ModalStackManager {
       document.addEventListener('keydown', keyboardHandler);
     }
 
+    const modalId = ++this.modalIdCounter;
+
     const entry = {
       element,
       type,
@@ -69,6 +74,11 @@ class ModalStackManager {
       overlayClickHandler,
       closeButtonHandlers,
       keyboardHandler,
+      id: modalId,
+      trackChanges: options.trackChanges || false,
+      formSelector: options.formSelector || 'input, textarea, select',
+      onUnsavedClose: options.onUnsavedClose || null,
+      customChangeCheck: options.customChangeCheck || null,
     };
 
     this.stack.push(entry);
@@ -83,18 +93,33 @@ class ModalStackManager {
 
     this.updateZIndices();
     this.updateResizeHandles();
+
+    if (entry.trackChanges) {
+      setTimeout(() => {
+        this.captureFormState(modalId, element, entry.formSelector);
+      }, 0);
+    }
   }
 
   replace(element, options = {}) {
     this.push(element, { ...options, type: "replace" });
   }
 
-  pop() {
+  async pop(force = false) {
     if (this.stack.length === 0) {
       return null;
     }
 
-    const entry = this.stack.pop();
+    const entry = this.stack[this.stack.length - 1];
+
+    if (!force && entry.trackChanges && this.hasUnsavedChanges(entry.id)) {
+      const shouldDiscard = await this.showUnsavedChangesConfirmation();
+      if (!shouldDiscard) {
+        return null;
+      }
+    }
+
+    this.stack.pop();
 
     if (entry.onClose) {
       entry.onClose();
@@ -119,6 +144,10 @@ class ModalStackManager {
       document.body.removeChild(entry.element);
     }
 
+    if (entry.trackChanges) {
+      this.stopTrackingChanges(entry.id);
+    }
+
     if (this.stack.length === 0) {
       this.clearEscapeHandlers();
       document.body.style.overflow = "";
@@ -130,7 +159,7 @@ class ModalStackManager {
     return entry;
   }
 
-  back() {
+  async back() {
     if (this.stack.length === 0) {
       return;
     }
@@ -148,14 +177,16 @@ class ModalStackManager {
       return;
     }
 
-    this.pop();
-
-    current.backFactory();
+    const poppedEntry = await this.pop();
+    
+    if (poppedEntry) {
+      current.backFactory();
+    }
   }
 
   clear() {
     while (this.stack.length > 0) {
-      this.pop();
+      this.pop(true);
     }
     this.clearEscapeHandlers();
   }
@@ -559,8 +590,129 @@ class ModalStackManager {
     }, 50);
   }
 
+  captureFormState(modalId, modalElement, formSelector) {
+    if (!modalElement) return;
+
+    const fields = modalElement.querySelectorAll(formSelector);
+    const state = {};
+
+    fields.forEach((field, index) => {
+      const key = field.id || field.name || `field_${index}`;
+      state[key] = this.serializeFormValue(field);
+    });
+
+    this.changeTracking.set(modalId, {
+      initialState: state,
+      formSelector,
+    });
+  }
+
+  serializeFormValue(element) {
+    if (!element) return null;
+
+    const tagName = element.tagName.toLowerCase();
+    const type = element.type ? element.type.toLowerCase() : '';
+
+    if (tagName === 'input') {
+      if (type === 'checkbox' || type === 'radio') {
+        return element.checked;
+      }
+      return element.value;
+    }
+
+    if (tagName === 'textarea') {
+      return element.value;
+    }
+
+    if (tagName === 'select') {
+      if (element.multiple) {
+        return Array.from(element.selectedOptions).map(opt => opt.value);
+      }
+      return element.value;
+    }
+
+    if (element.isContentEditable) {
+      return element.textContent;
+    }
+
+    return element.value || null;
+  }
+
+  hasUnsavedChanges(modalId) {
+    const tracking = this.changeTracking.get(modalId);
+    if (!tracking) return false;
+
+    const entry = this.stack.find(e => e.id === modalId);
+    if (!entry || !entry.element) return false;
+
+    if (entry.customChangeCheck) {
+      return entry.customChangeCheck(entry.element);
+    }
+
+    const currentState = {};
+    const fields = entry.element.querySelectorAll(tracking.formSelector);
+
+    fields.forEach((field, index) => {
+      const key = field.id || field.name || `field_${index}`;
+      currentState[key] = this.serializeFormValue(field);
+    });
+
+    return !this.compareFormStates(tracking.initialState, currentState);
+  }
+
+  compareFormStates(state1, state2) {
+    const keys1 = Object.keys(state1);
+    const keys2 = Object.keys(state2);
+
+    if (keys1.length !== keys2.length) return false;
+
+    for (const key of keys1) {
+      const val1 = state1[key];
+      const val2 = state2[key];
+
+      if (Array.isArray(val1) && Array.isArray(val2)) {
+        if (val1.length !== val2.length) return false;
+        for (let i = 0; i < val1.length; i++) {
+          if (val1[i] !== val2[i]) return false;
+        }
+      } else if (val1 !== val2) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  markChangesSaved(modalId) {
+    const entry = this.stack.find(e => e.id === modalId);
+    if (!entry || !entry.trackChanges) return;
+
+    const tracking = this.changeTracking.get(modalId);
+    if (!tracking) return;
+
+    this.captureFormState(modalId, entry.element, tracking.formSelector);
+  }
+
+  stopTrackingChanges(modalId) {
+    this.changeTracking.delete(modalId);
+  }
+
+  setUnsavedChangesHandler(handler) {
+    this.unsavedChangesHandler = handler;
+  }
+
+  async showUnsavedChangesConfirmation() {
+    if (!this.unsavedChangesHandler) {
+      console.error('ModalStack: No unsaved changes handler registered');
+      return true;
+    }
+    return new Promise((resolve) => {
+      this.unsavedChangesHandler(resolve);
+    });
+  }
+
   setupGlobalHandlers() {
-    document.addEventListener("keydown", (e) => {
+    document.addEventListener("keydown", async (e) => {
       if (e.key === "Escape" && this.stack.length > 0) {
         if (this.isKeybindingRecorderActive()) {
           return;
@@ -577,12 +729,12 @@ class ModalStackManager {
         const current = this.stack[this.stack.length - 1];
 
         if (current.type === "stack") {
-          this.pop();
+          await this.pop();
         } else if (current.type === "replace") {
           if (current.canGoBack) {
-            this.back();
+            await this.back();
           } else {
-            this.pop();
+            await this.pop();
           }
         }
       }

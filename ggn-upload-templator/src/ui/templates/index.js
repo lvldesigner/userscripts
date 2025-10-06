@@ -7,6 +7,7 @@ export { IMPORT_NEW_HINTS_MODAL_HTML } from './modals/import-new-hints.js';
 export { RESET_DEFAULTS_MODAL_HTML } from './modals/reset-defaults.js';
 export { DELETE_ALL_HINTS_MODAL_HTML } from './modals/delete-all-hints.js';
 export { APPLY_CONFIRMATION_MODAL_HTML } from './modals/apply-confirmation.js';
+export { UNSAVED_CHANGES_CONFIRMATION_MODAL_HTML } from './modals/unsaved-changes-confirmation.js';
 export { INTRO_MODAL_HTML } from './modals/intro.js';
 export { HELP_MODAL_HTML } from './modals/help.js';
 

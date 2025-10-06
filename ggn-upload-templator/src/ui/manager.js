@@ -494,6 +494,8 @@ export async function showTemplateCreator(
       ? () => instance.showTemplateAndSettingsManager()
       : null,
     metadata: { instance, editTemplateName, editTemplate },
+    trackChanges: true,
+    formSelector: 'input, textarea, select, [contenteditable="true"]',
   });
 
   // Setup live preview

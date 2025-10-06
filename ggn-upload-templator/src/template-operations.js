@@ -122,6 +122,10 @@ export function saveTemplate(instance, modal, editingTemplateName = null) {
   const action = editingTemplateName ? "updated" : "saved";
   instance.showStatus(`Template "${name}" ${action} successfully!`);
 
+  const currentModal = ModalStack.getCurrentModal();
+  if (currentModal) {
+    ModalStack.markChangesSaved(currentModal.id);
+  }
   ModalStack.pop();
 }
 
