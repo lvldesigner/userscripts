@@ -1,4 +1,5 @@
-import { CURRENT_VERSION, INTRO_CONTENT } from './help-content.js';
+import { version } from '../package.json';
+import { INTRO_CONTENT } from './help-content.js';
 import { INTRO_MODAL_HTML } from './ui/template.js';
 import { openHelpModal } from './help-modal.js';
 import { ModalStack, createModal } from './modal-stack.js';
@@ -12,7 +13,7 @@ export function checkAndShowIntro() {
   
   if (!lastSeenVersion) {
     showIntroModal('welcome');
-  } else if (lastSeenVersion !== CURRENT_VERSION) {
+  } else if (lastSeenVersion !== version) {
     showIntroModal('update');
   }
 }
@@ -23,12 +24,12 @@ export function showIntroModal(mode = 'welcome') {
   }
   
   const isNewUser = mode === 'welcome';
-  const content = isNewUser ? INTRO_CONTENT['new-user'] : INTRO_CONTENT[`v${CURRENT_VERSION}`];
+  const content = isNewUser ? INTRO_CONTENT['new-user'] : INTRO_CONTENT.changelog[`v${version}`];
   
-  introModal = createModal(INTRO_MODAL_HTML(content, isNewUser, CURRENT_VERSION), {
+  introModal = createModal(INTRO_MODAL_HTML(content, isNewUser, version), {
     keyboardHandler: handleIntroKeyboard,
     onClose: () => {
-      localStorage.setItem(STORAGE_KEY, CURRENT_VERSION);
+      localStorage.setItem(STORAGE_KEY, version);
       if (introModal) {
         introModal = null;
       }

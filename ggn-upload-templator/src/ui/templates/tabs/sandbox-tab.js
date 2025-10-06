@@ -1,4 +1,5 @@
 import { html, raw, map } from '../../template-engine.js';
+import { HELP_ICON_HTML } from '../components/help-icon.js';
 
 export const SANDBOX_TAB_HTML = (instance) => {
   const savedSets = instance.sandboxSets || {};
@@ -23,7 +24,7 @@ export const SANDBOX_TAB_HTML = (instance) => {
 
       <div class="gut-form-group">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-          <label for="sandbox-mask-input" style="margin-bottom: 0;">Mask:</label>
+          <label for="sandbox-mask-input" style="margin-bottom: 0;">Mask: ${raw(HELP_ICON_HTML('mask-syntax'))}</label>
           <a href="#" id="toggle-compiled-regex" class="gut-link" style="font-size: 11px;">Show compiled regex</a>
         </div>
         <div class="gut-mask-input-container">
@@ -36,7 +37,7 @@ export const SANDBOX_TAB_HTML = (instance) => {
       </div>
 
       <div class="gut-form-group">
-        <label for="sandbox-sample-input">Sample Torrent Names (one per line):</label>
+        <label for="sandbox-sample-input">Sample Torrent Names (one per line): ${raw(HELP_ICON_HTML('mask-sandbox'))}</label>
         <textarea id="sandbox-sample-input" style="font-family: 'Fira Code', monospace; font-size: 13px; resize: vertical; width: 100%; line-height: 1.4; overflow-y: auto; box-sizing: border-box;" placeholder="Artist Name - Album Title [2024]\nAnother Artist - Some Album\nThird Example - Test [2023]"></textarea>
       </div>
 

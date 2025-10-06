@@ -1,4 +1,5 @@
 import { html, raw, map, when } from '../../template-engine.js';
+import { HELP_ICON_HTML } from '../components/help-icon.js';
 
 const renderSelectFieldVariableToggle = (name, editTemplate) => {
   const hasVariableMatching =
@@ -8,8 +9,9 @@ const renderSelectFieldVariableToggle = (name, editTemplate) => {
   const isVariableMode = hasVariableMatching;
 
   return html`
-    <div style="display: flex; align-items: flex-start; width: 100%;">
+    <div style="display: flex; align-items: flex-start; width: 100%; gap: 4px;">
       <a href="#" class="gut-link gut-variable-toggle" data-field="${name}" data-state="${isVariableMode ? "on" : "off"}">Match from variable: ${isVariableMode ? "ON" : "OFF"}</a>
+      ${raw(HELP_ICON_HTML('variable-matching'))}
     </div>
   `;
 };
@@ -135,7 +137,7 @@ export const TEMPLATE_CREATOR_HTML = (
 
       <div class="gut-form-group" style="margin-bottom: 8px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-          <label for="torrent-mask" style="margin-bottom: 0;">Torrent Name Mask:</label>
+          <label for="torrent-mask" style="margin-bottom: 0;">Torrent Name Mask: ${raw(HELP_ICON_HTML('mask-syntax'))}</label>
           <a href="#" id="test-mask-sandbox-link" class="gut-link" style="font-size: 11px;">Test mask in sandbox →</a>
         </div>
         <div class="gut-mask-input-container">
@@ -147,7 +149,7 @@ export const TEMPLATE_CREATOR_HTML = (
       </div>
 
       <div class="gut-form-group">
-        <label>Extracted Variables:</label>
+        <label>Extracted Variables: ${raw(HELP_ICON_HTML('extracted-variables'))}</label>
         <div id="extracted-variables" class="gut-extracted-vars">
           <div class="gut-no-variables">No variables defined yet. Add variables like \${name} to your mask.</div>
         </div>
@@ -155,7 +157,7 @@ export const TEMPLATE_CREATOR_HTML = (
 
       <div class="gut-form-group">
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
-          <label style="margin: 0;">Form Fields:</label>
+          <label style="margin: 0;">Form Fields: ${raw(HELP_ICON_HTML('field-mappings'))}</label>
           <div style="display: flex; align-items: center; gap: 10px;">
             <input type="text" id="field-filter" placeholder="Filter fields..." autocomplete="off" style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #2a2a2a; color: #e0e0e0; font-size: 12px; min-width: 150px;">
             <button type="button" class="gut-btn gut-btn-secondary" id="toggle-unselected" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">Show Unselected</button>

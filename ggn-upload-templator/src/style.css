@@ -206,6 +206,10 @@
     gap: 10px;
 }
 
+.gut-modal-footer .gut-kbd {
+    background: #0a0a0a;
+}
+
 .gut-modal h2 {
     margin: 0;
     color: #ffffff;
@@ -1524,20 +1528,24 @@
     border-radius: 50%;
     background: #404040;
     color: #b0b0b0;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
-    cursor: help;
+    font-family: 'Fira Code', monospace;
+    cursor: pointer;
     margin-left: 6px;
     transition: all 0.2s ease;
     border: 1px solid #555555;
     flex-shrink: 0;
 }
 
+.gut-help-icon.gut-help-icon-no-margin {
+    margin-left: 0;
+}
+
 .gut-help-icon:hover {
     background: #0d7377;
     color: #ffffff;
     border-color: #0d7377;
-    transform: scale(1.1);
 }
 
 .gut-help-tooltip {
@@ -1548,8 +1556,8 @@
     padding: 10px 12px;
     font-size: 12px;
     color: #e0e0e0;
-    z-index: 10002;
-    pointer-events: none;
+    z-index: 99999;
+    pointer-events: auto;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
     max-width: 300px;
     line-height: 1.5;
@@ -1599,7 +1607,7 @@
 
 .gut-help-search {
     width: 100%;
-    padding: 8px 12px 8px 32px;
+    padding: 8px 12px;
     border: 1px solid #404040;
     border-radius: 4px;
     background: #2a2a2a;
@@ -1991,5 +1999,130 @@
 .gut-intro-actions {
     display: flex;
     gap: 10px;
+}
+
+.gut-intro-section-box {
+    background: #2a2a2a;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.gut-intro-section-title {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+}
+
+.gut-intro-section-list {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.8;
+}
+
+.gut-help-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+
+.gut-help-table tr {
+    border-bottom: 1px solid #444;
+}
+
+.gut-help-table td {
+    padding: 8px;
+}
+
+.gut-help-section-highlight {
+    background: #2a3a2a;
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.gut-help-section-highlight-title {
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    color: #4caf50;
+}
+
+.gut-help-pre {
+    background: #1a1a1a;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.gut-intro-modal-header-centered {
+    margin: 0;
+    text-align: center;
+    width: 100%;
+}
+
+.gut-intro-help-box {
+    background: #2a2a2a;
+    border-radius: 6px;
+    padding: 16px;
+    margin-top: 20px;
+}
+
+.gut-intro-help-box p {
+    margin: 0 0 8px 0;
+    font-weight: 600;
+}
+
+.gut-intro-help-box ul {
+    margin: 0;
+    padding-left: 20px;
+    line-height: 1.8;
+}
+
+.gut-intro-footer-centered {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+}
+
+.gut-intro-footer-centered .gut-btn {
+    min-width: 120px;
+}
+
+.gut-kbd {
+    padding: 2px 6px;
+    background: #1a1a1a;
+    border-radius: 3px;
+    font-family: monospace;
+}
+
+.gut-changelog-entry {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid #404040;
+}
+
+.gut-changelog-entry:last-child {
+    border-bottom: none;
+}
+
+.gut-changelog-version {
+    font-size: 20px;
+    font-weight: 600;
+    color: #4dd0e1;
+    margin: 0 0 16px 0;
+}
+
+.gut-changelog-content {
+    color: #b0b0b0;
+}
+
+#help-version-link {
+    color: #888 !important;
+    text-decoration: none !important;
+    transition: color 0.2s ease;
+}
+
+#help-version-link:hover {
+    color: #4dd0e1 !important;
+    text-decoration: underline !important;
 }
 

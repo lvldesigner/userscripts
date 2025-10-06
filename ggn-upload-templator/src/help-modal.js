@@ -1,9 +1,11 @@
-import { HELP_SECTIONS, CURRENT_VERSION } from './help-content.js';
+import { version } from '../package.json';
+import { HELP_SECTIONS, getChangelogContent } from './help-content.js';
 import { HELP_MODAL_HTML } from './ui/template.js';
 import { ModalStack, createModal } from './modal-stack.js';
 
 let helpModal = null;
 let currentSection = 'quick-start';
+let helpSectionsCache = null;
 
 export function isHelpModalOpen() {
   return helpModal !== null;
@@ -24,11 +26,15 @@ export function openHelpModal(sectionId = 'quick-start') {
 
   currentSection = sectionId;
   
-  helpModal = createModal(HELP_MODAL_HTML(HELP_SECTIONS, CURRENT_VERSION), {
+  helpSectionsCache = { ...HELP_SECTIONS };
+  helpSectionsCache.changelog.content = getChangelogContent();
+  
+  helpModal = createModal(HELP_MODAL_HTML(helpSectionsCache, version), {
     keyboardHandler: handleHelpKeyboard,
     onClose: () => {
       if (helpModal) {
         helpModal = null;
+        helpSectionsCache = null;
       }
     }
   });
@@ -46,6 +52,7 @@ function setupHelpModal() {
   const tocToggle = helpModal.querySelector('#help-toc-toggle');
   const toc = helpModal.querySelector('#help-toc');
   const tocItems = helpModal.querySelectorAll('.gut-help-toc-item');
+  const versionLink = helpModal.querySelector('#help-version-link');
   
   searchInput?.addEventListener('input', handleSearch);
   
@@ -61,17 +68,24 @@ function setupHelpModal() {
       showSection(sectionId);
     });
   });
+  
+  versionLink?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showSection('changelog');
+  });
 }
 
 function showSection(sectionId) {
-  if (!HELP_SECTIONS[sectionId]) {
+  const sections = helpSectionsCache || HELP_SECTIONS;
+  
+  if (!sections[sectionId]) {
     sectionId = 'quick-start';
   }
   
   currentSection = sectionId;
   
-  const sections = helpModal.querySelectorAll('.gut-help-section');
-  sections.forEach(section => {
+  const sectionElements = helpModal.querySelectorAll('.gut-help-section');
+  sectionElements.forEach(section => {
     section.classList.remove('active');
   });
   
@@ -108,9 +122,10 @@ function handleSearch(e) {
   }
   
   const matchingSections = [];
+  const sections = helpSectionsCache || HELP_SECTIONS;
   
-  Object.keys(HELP_SECTIONS).forEach(sectionId => {
-    const section = HELP_SECTIONS[sectionId];
+  Object.keys(sections).forEach(sectionId => {
+    const section = sections[sectionId];
     const titleMatch = section.title.toLowerCase().includes(query);
     const contentMatch = section.content.toLowerCase().includes(query);
     const keywordMatch = section.keywords?.some(keyword => 
@@ -123,7 +138,7 @@ function handleSearch(e) {
   });
   
   const tocItems = helpModal.querySelectorAll('.gut-help-toc-item');
-  const sections = helpModal.querySelectorAll('.gut-help-section');
+  const sectionElements = helpModal.querySelectorAll('.gut-help-section');
   
   if (matchingSections.length === 0) {
     showNoResults();
@@ -139,7 +154,7 @@ function handleSearch(e) {
     }
   });
   
-  sections.forEach(section => {
+  sectionElements.forEach(section => {
     section.classList.remove('active');
   });
   

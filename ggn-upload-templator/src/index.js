@@ -1,3 +1,4 @@
+import { version } from "../package.json";
 import { DEFAULT_CONFIG } from "./config.js";
 import { logDebug } from "./utils/log.js";
 import {
@@ -277,7 +278,7 @@ if (document.readyState === "loading") {
 }
 
 const GGnUploadTemplatorAPI = {
-  version: "0.13",
+  version,
   
   getTemplates() {
     if (!ggnInstance) {

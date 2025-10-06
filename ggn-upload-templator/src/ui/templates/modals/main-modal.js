@@ -2,6 +2,7 @@ import { html, raw } from '../../template-engine.js';
 import { TEMPLATE_LIST_HTML } from '../components/template-list.js';
 import { HINTS_TAB_HTML } from '../tabs/hints-tab.js';
 import { SANDBOX_TAB_HTML } from '../tabs/sandbox-tab.js';
+import { HELP_ICON_HTML } from '../components/help-icon.js';
 
 export const MODAL_HTML = (instance) => html`
   <div class="gut-modal">
@@ -23,7 +24,7 @@ export const MODAL_HTML = (instance) => html`
 
     <div class="gut-tab-content" id="settings-tab">
       <div class="gut-form-group">
-        <label for="setting-form-selector">Target Form Selector:</label>
+        <label for="setting-form-selector">Target Form Selector: ${raw(HELP_ICON_HTML('form-selector'))}</label>
         <input type="text" id="setting-form-selector" value="${instance.config.TARGET_FORM_SELECTOR}" placeholder="#upload_table">
       </div>
 
@@ -61,7 +62,7 @@ export const MODAL_HTML = (instance) => html`
        </div>
 
       <div class="gut-form-group">
-        <label for="setting-custom-selectors">Custom Field Selectors (one per line):</label>
+        <label for="setting-custom-selectors">Custom Field Selectors (one per line): ${raw(HELP_ICON_HTML('custom-selectors'))}</label>
         <textarea id="setting-custom-selectors" rows="4" placeholder="div[data-field]\n.custom-input[name]\nbutton[data-value]">${(instance.config.CUSTOM_FIELD_SELECTORS || []).join("\n")}</textarea>
         <div style="font-size: 12px; color: #888; margin-top: 5px;">
           Additional CSS selectors to find form fields. e.g: <a href="#" id="ggn-infobox-link" class="gut-link">GGn Infobox</a>
@@ -76,7 +77,7 @@ export const MODAL_HTML = (instance) => html`
       </div>
 
       <div class="gut-form-group">
-        <label for="setting-ignored-fields">Ignored Fields (one per line):</label>
+        <label for="setting-ignored-fields">Ignored Fields (one per line): ${raw(HELP_ICON_HTML('ignored-fields'))}</label>
         <textarea id="setting-ignored-fields" rows="6" placeholder="linkgroup\ngroupid\napikey">${instance.config.IGNORED_FIELDS_BY_DEFAULT.join("\n")}</textarea>
       </div>
 

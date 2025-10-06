@@ -50,9 +50,9 @@ export const HELP_MODAL_HTML = (sections, currentVersion) => {
         </div>
 
         <div class="gut-modal-footer" style="display: flex; justify-content: center; align-items: center; gap: 8px; font-size: 12px; color: #888;">
-          <span>GGn Upload Templator v${currentVersion}</span>
+          <a href="#" id="help-version-link">GGn Upload Templator v${currentVersion}</a>
           <span>•</span>
-          <span>Press <kbd style="padding: 2px 6px; background: #1a1a1a; border-radius: 3px; font-family: monospace;">?</kbd> to toggle help</span>
+          <span>Press <kbd class="gut-kbd">?</kbd> to toggle help</span>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { html, raw, map, when } from '../../template-engine.js';
 import { DEFAULT_HINTS } from '../../../hint-storage.js';
+import { HELP_ICON_HTML } from '../components/help-icon.js';
 
 export const HINT_EDITOR_MODAL_HTML = (
   instance,
@@ -56,7 +57,7 @@ export const HINT_EDITOR_MODAL_HTML = (
         </div>
 
         <div class="gut-form-group">
-          <label>Hint Type *</label>
+          <label>Hint Type * ${raw(HELP_ICON_HTML('hint-types'))}</label>
           <div class="gut-hint-type-selector">
             <label class="gut-radio-label" title="Use # for digits, @ for letters, * for alphanumeric">
               <input type="radio" name="hint-type" value="pattern" ${hint.type === "pattern" ? "checked" : ""}>
@@ -76,6 +77,7 @@ export const HINT_EDITOR_MODAL_HTML = (
         <div class="gut-form-group" id="hint-pattern-group" style="display: ${hint.type === "pattern" || hint.type === "regex" ? "block" : "none"};">
           <label for="hint-editor-pattern">
             <span id="hint-pattern-label">${hint.type === "regex" ? "Regex Pattern" : "Pattern"} *</span>
+            ${raw(hint.type === "pattern" ? HELP_ICON_HTML('hint-pattern-syntax') : hint.type === "regex" ? HELP_ICON_HTML('hint-regex-syntax') : '')}
           </label>
           <input
             type="text"
@@ -88,7 +90,7 @@ export const HINT_EDITOR_MODAL_HTML = (
 
         <div class="gut-form-group" id="hint-mappings-group" style="display: ${hint.type === "map" ? "block" : "none"};">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <label style="margin: 0;">Value Mappings *</label>
+            <label style="margin: 0;">Value Mappings * ${raw(HELP_ICON_HTML('hint-value-mappings'))}</label>
             <div style="display: flex; gap: 8px; align-items: center;">
               <a href="#" class="gut-link" id="hint-editor-import-btn">Import</a>
               <a href="#" class="gut-link" id="hint-editor-mass-edit-btn">Mass Edit</a>
@@ -96,7 +98,7 @@ export const HINT_EDITOR_MODAL_HTML = (
           </div>
           <label class="gut-checkbox-label" style="margin-top: 10px;">
             <input type="checkbox" id="hint-editor-strict" ${hint.strict === false ? "" : "checked"}>
-            <span class="gut-checkbox-text">Strict mode (reject values not in map)</span>
+            <span class="gut-checkbox-text">Strict mode (reject values not in map) ${raw(HELP_ICON_HTML('hint-strict-mode'))}</span>
           </label>
           <div id="hint-mappings-table">
             <div class="gut-mappings-table-header">

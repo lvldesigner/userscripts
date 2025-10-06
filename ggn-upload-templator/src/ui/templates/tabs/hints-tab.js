@@ -1,5 +1,6 @@
 import { html, raw, map, when } from '../../template-engine.js';
 import { getNewDefaultHints } from '../../../hint-storage.js';
+import { HELP_ICON_HTML } from '../components/help-icon.js';
 
 export const HINTS_TAB_HTML = (instance) => {
   const hints = instance.hints || {};
@@ -67,7 +68,7 @@ export const HINTS_TAB_HTML = (instance) => {
 
       <div class="gut-form-group">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-          <label>Hints</label>
+          <label>Hints ${raw(HELP_ICON_HTML('variable-hints'))}</label>
           <div style="display: flex; gap: 8px; align-items: center;">
             ${raw((() => {
               const newHints = getNewDefaultHints(instance.hints);

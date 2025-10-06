@@ -994,16 +994,23 @@ export function showHintEditor(
   typeInputs.forEach((input) => {
     input.addEventListener("change", (e) => {
       const type = e.target.value;
+      const helpIcon = modal.querySelector("#hint-pattern-group label .gut-help-icon");
       if (type === "pattern") {
         patternGroup.style.display = "block";
         mappingsGroup.style.display = "none";
         patternLabel.textContent = "Pattern *";
         patternInput.placeholder = "e.g., ##.##.####";
+        if (helpIcon) {
+          helpIcon.dataset.tooltip = "hint-pattern-syntax";
+        }
       } else if (type === "regex") {
         patternGroup.style.display = "block";
         mappingsGroup.style.display = "none";
         patternLabel.textContent = "Regex Pattern *";
         patternInput.placeholder = "e.g., v\\d+(?:\\.\\d+)*";
+        if (helpIcon) {
+          helpIcon.dataset.tooltip = "hint-regex-syntax";
+        }
       } else if (type === "map") {
         patternGroup.style.display = "none";
         mappingsGroup.style.display = "block";
