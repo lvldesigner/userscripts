@@ -805,11 +805,11 @@ export async function showTemplateCreator(
       );
 
       if (newState === "on") {
-        staticSelect.classList.add("hidden");
-        variableControls.classList.add("visible");
+        staticSelect.style.display = "none";
+        variableControls.style.display = "flex";
       } else {
-        staticSelect.classList.remove("hidden");
-        variableControls.classList.remove("visible");
+        staticSelect.style.display = "";
+        variableControls.style.display = "none";
       }
 
       // Trigger preview update
