@@ -54,11 +54,11 @@ export const MODAL_HTML = (instance) => html`
          <div class="gut-keybinding-controls">
            <label class="gut-checkbox-label">
              <input type="checkbox" id="setting-help-keybinding" ${raw(instance.config.HELP_KEYBINDING ? "checked" : "")}>
-             <span class="gut-checkbox-text">⚡ Enable help modal keybinding: <span class="gut-keybinding-text">${instance.config.CUSTOM_HELP_KEYBINDING || "?"}</span></span>
+              <span class="gut-checkbox-text">⚡ Enable help modal keybinding: <span class="gut-keybinding-text">${instance.config.CUSTOM_HELP_KEYBINDING || "?"}</span></span>
            </label>
            <button type="button" id="record-help-keybinding-btn" class="gut-btn gut-btn-secondary gut-btn-small">Record</button>
          </div>
-         <input type="hidden" id="custom-help-keybinding-input" value="${instance.config.CUSTOM_HELP_KEYBINDING || "?"}">
+          <input type="hidden" id="custom-help-keybinding-input" value="${instance.config.CUSTOM_HELP_KEYBINDING || "?"}">
        </div>
 
       <div class="gut-form-group">

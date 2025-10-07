@@ -35,7 +35,7 @@ export function setupSubmitKeybinding(instance) {
 }
 
 export function setupApplyKeybinding(instance) {
-  const keybinding = instance.config.CUSTOM_APPLY_KEYBINDING || "Ctrl+Shift+A";
+  const keybinding = instance.config.CUSTOM_APPLY_KEYBINDING || "Alt+A";
   const keys = parseKeybinding(keybinding);
 
   document.addEventListener("keydown", (e) => {
@@ -47,21 +47,21 @@ export function setupApplyKeybinding(instance) {
 }
 
 export function setupHelpKeybinding(instance) {
-  const keybinding = instance.config.CUSTOM_HELP_KEYBINDING || "?";
+  const keybinding = instance.config.CUSTOM_HELP_KEYBINDING || "Shift+?";
   const keys = parseKeybinding(keybinding);
 
   document.addEventListener("keydown", (e) => {
     const activeElement = document.activeElement;
-    const isInputField = activeElement && (
-      activeElement.tagName === 'INPUT' ||
-      activeElement.tagName === 'TEXTAREA' ||
-      activeElement.isContentEditable
-    );
-    
+    const isInputField =
+      activeElement &&
+      (activeElement.tagName === "INPUT" ||
+        activeElement.tagName === "TEXTAREA" ||
+        activeElement.isContentEditable);
+
     if (isInputField) {
       return;
     }
-    
+
     if (matchesKeybinding(e, keys)) {
       e.preventDefault();
       toggleHelpModal();
