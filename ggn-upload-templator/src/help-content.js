@@ -724,6 +724,11 @@ export const INTRO_CONTENT = {
           templator easier.
         </p>
 
+        <img
+          src="https://files.catbox.moe/en4jfi.png"
+          alt="v0.13 screenshot"
+          style="max-width: 100%; height: auto; margin-bottom: 1em;"
+        />
         <div class="gut-intro-section-box">
           <ul class="gut-intro-section-list">
             <li>
@@ -744,6 +749,10 @@ export const INTRO_CONTENT = {
             <li>
               <strong>First-Run Experience:</strong> Welcome modal for new users
               and version updates
+            </li>
+            <li>
+              <strong>Unsaved Changes Warning:</strong> Show warning modal on
+              close if there are unsaved changes
             </li>
           </ul>
         </div>

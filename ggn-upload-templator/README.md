@@ -8,6 +8,16 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.13
+
+![](https://files.catbox.moe/en4jfi.png)
+
+- Built-in Help System: Access contextual help via icons or press `?` anytime
+- Rich Tooltips: Hover over help icons for quick explanations
+- Searchable Help Modal: Find answers quickly with full-text search
+- First-Run Experience: Welcome modal for new users and version updates
+- Unsaved Changes Warning: Show warning modal on close if there are unsaved changes
+
 ### v0.12
 
 ![](https://files.catbox.moe/kkbd0a.png)
