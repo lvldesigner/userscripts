@@ -8,6 +8,10 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.14
+- Added Select All / Select None to form fields list in template creator/editor modal
+- Fix help modal default keybinding (?) now functions properly
+
 ### v0.13
 
 ![](https://files.catbox.moe/en4jfi.png)
