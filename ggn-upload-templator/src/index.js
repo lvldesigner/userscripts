@@ -129,8 +129,8 @@ class GGnUploadTemplator {
     logDebug("Initialized");
   }
 
-  async showTemplateCreator(editTemplateName = null, editTemplate = null) {
-    await showTemplateCreator(this, editTemplateName, editTemplate);
+  async showTemplateCreator(editTemplateName = null, editTemplate = null, openMode = "manage") {
+    await showTemplateCreator(this, editTemplateName, editTemplate, openMode);
   }
 
   async getCurrentVariables() {
@@ -211,8 +211,8 @@ class GGnUploadTemplator {
     cloneTemplate(this, templateName);
   }
 
-  editTemplate(templateName) {
-    editTemplate(this, templateName);
+  editTemplate(templateName, openMode) {
+    editTemplate(this, templateName, openMode);
   }
 
   showSandboxWithMask(mask, sample) {

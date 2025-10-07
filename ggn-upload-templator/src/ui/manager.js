@@ -390,7 +390,7 @@ export function injectUI(instance) {
     if (createBtn) {
       createBtn.addEventListener(
         "click",
-        async () => await instance.showTemplateCreator(),
+        async () => await instance.showTemplateCreator(null, null, "direct"),
       );
     }
 
@@ -409,7 +409,7 @@ export function injectUI(instance) {
     if (editBtn) {
       editBtn.addEventListener("click", (e) => {
         e.preventDefault();
-        instance.editTemplate(instance.selectedTemplate);
+        instance.editTemplate(instance.selectedTemplate, "direct");
       });
     }
 
@@ -439,6 +439,7 @@ export async function showTemplateCreator(
   instance,
   editTemplateName = null,
   editTemplate = null,
+  openMode = "manage",
 ) {
   const formData = getCurrentFormData(instance.config);
 
@@ -483,9 +484,10 @@ export async function showTemplateCreator(
     editTemplateName,
     editTemplate,
     selectedTorrentName,
+    openMode,
   );
 
-  const canGoBack = editTemplateName !== null;
+  const canGoBack = openMode === "manage" && editTemplateName !== null;
 
   ModalStack.replace(modal, {
     type: "replace",

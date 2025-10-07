@@ -164,11 +164,11 @@ export function cloneTemplate(instance, templateName) {
   instance.showStatus(`Template "${cloneName}" created`);
 }
 
-export function editTemplate(instance, templateName) {
+export function editTemplate(instance, templateName, openMode = "manage") {
   const template = instance.templates[templateName];
   if (!template) return;
 
-  instance.showTemplateCreator(templateName, template);
+  instance.showTemplateCreator(templateName, template, openMode);
 }
 
 export function selectTemplate(instance, templateName) {

@@ -673,7 +673,7 @@ export function showTemplateAndSettingsManager(instance) {
     if (action && templateName) {
       switch (action) {
         case "edit":
-          editTemplate(instance, templateName);
+          editTemplate(instance, templateName, "manage");
           break;
         case "clone":
           cloneTemplate(instance, templateName);

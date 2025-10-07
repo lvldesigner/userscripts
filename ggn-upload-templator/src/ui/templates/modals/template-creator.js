@@ -79,6 +79,7 @@ export const TEMPLATE_CREATOR_HTML = (
   editTemplateName,
   editTemplate,
   selectedTorrentName,
+  openMode = "manage",
 ) => {
   const renderFieldRow = ([name, fieldData]) => {
     const isIgnoredByDefault =
@@ -118,7 +119,7 @@ export const TEMPLATE_CREATOR_HTML = (
       <div class="gut-modal-header">
         <button class="gut-modal-close-btn" id="modal-close-x" title="Close">&times;</button>
         <h2>
-          ${raw(when(editTemplateName, raw('<button class="gut-modal-back-btn" id="back-to-manager" title="Back to Template Manager">&lt;</button>')))}
+          ${raw(when(editTemplateName && openMode === "manage", raw('<button class="gut-modal-back-btn" id="back-to-manager" title="Back to Template Manager">&lt;</button>')))}
           ${editTemplateName ? "Edit Template" : "Create Template"}
         </h2>
       </div>
