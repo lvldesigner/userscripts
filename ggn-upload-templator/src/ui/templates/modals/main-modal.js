@@ -65,7 +65,7 @@ export const MODAL_HTML = (instance) => html`
         <label for="setting-custom-selectors">Custom Field Selectors (one per line): ${raw(HELP_ICON_HTML('custom-selectors'))}</label>
         <textarea id="setting-custom-selectors" rows="4" placeholder="div[data-field]\n.custom-input[name]\nbutton[data-value]">${(instance.config.CUSTOM_FIELD_SELECTORS || []).join("\n")}</textarea>
         <div style="font-size: 12px; color: #888; margin-top: 5px;">
-          Additional CSS selectors to find form fields. e.g: <a href="#" id="ggn-infobox-link" class="gut-link">GGn Infobox</a>
+          Additional CSS selectors to find form fields. e.g: <a href="#" id="ggn-infobox-link" class="gut-link">GGn Infobox</a> (<a href="https://greasyfork.org/en/scripts/543815-ggn-infobox-builder" target="_blank" rel="noopener noreferrer" class="gut-link">userscript</a>)
         </div>
       </div>
 

@@ -585,6 +585,28 @@ export async function showTemplateCreator(
   toggleBtn.addEventListener("click", toggleUnselectedFields);
   filterInput.addEventListener("input", filterFields);
 
+  // Select All / Select None functionality
+  const selectAllBtn = modal.querySelector("#template-select-all-btn");
+  const selectNoneBtn = modal.querySelector("#template-select-none-btn");
+
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const fieldCheckboxes = modal.querySelectorAll('.gut-field-row input[type="checkbox"][data-field]');
+      fieldCheckboxes.forEach((cb) => (cb.checked = true));
+      filterFields();
+    });
+  }
+
+  if (selectNoneBtn) {
+    selectNoneBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const fieldCheckboxes = modal.querySelectorAll('.gut-field-row input[type="checkbox"][data-field]');
+      fieldCheckboxes.forEach((cb) => (cb.checked = false));
+      filterFields();
+    });
+  }
+
   // Setup mask validation with cursor info
   const overlayDiv = modal.querySelector("#mask-highlight-overlay");
   const statusContainer = modal.querySelector("#mask-status-container");

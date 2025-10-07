@@ -164,6 +164,11 @@ export const TEMPLATE_CREATOR_HTML = (
             <button type="button" class="gut-btn gut-btn-secondary" id="toggle-unselected" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">Show Unselected</button>
           </div>
         </div>
+        <div style="display: flex; gap: 8px; margin-bottom: 12px; font-size: 12px;">
+          <a href="#" class="gut-link" id="template-select-all-btn">Select All</a>
+          <span style="color: #666;">•</span>
+          <a href="#" class="gut-link" id="template-select-none-btn">Select None</a>
+        </div>
         <div class="gut-field-list">
           ${map(Object.entries(formData), renderFieldRow)}
         </div>
