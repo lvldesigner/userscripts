@@ -1,0 +1,26 @@
+{
+  "name": "ddl-link-queue",
+  "author": {
+    "name": "leveldesigner"
+  },
+  "description": "Fetch and queue DDL links from whitelisted domains, with keybindings and toasts.",
+  "private": true,
+  "version": "0.1",
+  "type": "module",
+  "repository": {
+    "url": "https://github.com/lvldesigner/userscripts/tree/main/ddl-link-queue"
+  },
+  "license": "Unlicense",
+  "scripts": {
+    "dev": "vite build --watch --mode development",
+    "build": "vite build",
+    "format": "prettier --write src",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vite": "7.1.7",
+    "vite-userscript-plugin": "1.11.0",
+    "vitest": "^3.2.4"
+  }
+}
