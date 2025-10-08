@@ -1,4 +1,4 @@
-import styles from "./style.css?raw";
+import style from "./style.css?raw";
 import {
   initToastContainer,
   showToast,
@@ -7,7 +7,7 @@ import {
 import { getQueue } from "./utils/queue.js";
 import { initKeybindings } from "./ui/keybindings.js";
 
-GM_addStyle(styles);
+GM_addStyle(style);
 
 initToastContainer();
 

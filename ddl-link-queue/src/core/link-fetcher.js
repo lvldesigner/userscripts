@@ -7,6 +7,7 @@ import {
   removePersistentToast,
 } from "../utils/toast.js";
 import { makeRequest } from "../utils/http.js";
+import { postProcessLink } from "./link-post-processor.js";
 
 export async function fetchRedirectedLinks() {
   const queue = await getQueue();
@@ -22,8 +23,11 @@ export async function fetchRedirectedLinks() {
       const link = config.getUrl(el);
       if (!link || queue.includes(link)) continue;
       if (!config.request) {
-        queue.push(link);
-        totalAdded++;
+        const processedLink = await postProcessLink(link);
+        if (processedLink && !queue.includes(processedLink)) {
+          queue.push(processedLink);
+          totalAdded++;
+        }
       } else {
         const response = await makeRequest({
           method: config.request.method,
@@ -38,8 +42,11 @@ export async function fetchRedirectedLinks() {
           const urls = config.request.parseResponse(response);
           for (const u of urls) {
             if (u && !queue.includes(u)) {
-              queue.push(u);
-              totalAdded++;
+              const processedUrl = await postProcessLink(u);
+              if (processedUrl && !queue.includes(processedUrl)) {
+                queue.push(processedUrl);
+                totalAdded++;
+              }
             }
           }
         }
