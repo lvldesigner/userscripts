@@ -160,7 +160,7 @@ export const TEMPLATE_CREATOR_HTML = (
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
           <label style="margin: 0;">Form Fields: ${raw(HELP_ICON_HTML('field-mappings'))}</label>
           <div style="display: flex; align-items: center; gap: 10px;">
-            <input type="text" id="field-filter" placeholder="Filter fields..." autocomplete="off" style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #2a2a2a; color: #e0e0e0; font-size: 12px; min-width: 150px;">
+            <input type="text" id="field-filter" data-no-track placeholder="Filter fields..." autocomplete="off" style="padding: 6px 8px; border: 1px solid #404040; border-radius: 3px; background: #2a2a2a; color: #e0e0e0; font-size: 12px; min-width: 150px;">
             <button type="button" class="gut-btn gut-btn-secondary" id="toggle-unselected" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">Show Unselected</button>
           </div>
         </div>

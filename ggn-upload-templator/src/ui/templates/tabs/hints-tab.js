@@ -60,7 +60,7 @@ export const HINTS_TAB_HTML = (instance) => {
     <div class="gut-tab-content" id="hints-tab">
       <div class="gut-form-group">
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px;">
-          <input type="text" id="hint-filter-input" class="gut-input" placeholder="Filter hints by name, description, pattern..." style="flex: 1;">
+          <input type="text" id="hint-filter-input" class="gut-input" placeholder="Filter hints by name, description, pattern..." style="flex: 1;" data-no-track>
           <button class="gut-btn gut-btn-primary gut-btn-small" id="add-hint-btn">+ Add Hint</button>
         </div>
         <div id="hint-filter-count" style="font-size: 11px; color: #888; margin-top: 5px;"></div>

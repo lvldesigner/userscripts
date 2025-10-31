@@ -597,6 +597,9 @@ class ModalStackManager {
     const state = {};
 
     fields.forEach((field, index) => {
+      // Skip fields marked with data-no-track attribute
+      if (field.hasAttribute('data-no-track')) return;
+      
       const key = field.id || field.name || `field_${index}`;
       state[key] = this.serializeFormValue(field);
     });
@@ -653,6 +656,9 @@ class ModalStackManager {
     const fields = entry.element.querySelectorAll(tracking.formSelector);
 
     fields.forEach((field, index) => {
+      // Skip fields marked with data-no-track attribute
+      if (field.hasAttribute('data-no-track')) return;
+      
       const key = field.id || field.name || `field_${index}`;
       currentState[key] = this.serializeFormValue(field);
     });
