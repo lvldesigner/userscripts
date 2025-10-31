@@ -36,7 +36,8 @@ export function getCurrentFormData(config) {
       !isCustomField &&
       (input.type === "file" ||
         input.type === "button" ||
-        input.type === "submit")
+        input.type === "submit" ||
+        input.type === "hidden")
     ) {
       return;
     }
@@ -243,12 +244,13 @@ export function findElementByFieldName(fieldName, config) {
 
     if (!hasValidIdentifier) continue;
 
-    // Skip file, button, submit inputs for standard fields
+    // Skip file, button, submit, hidden inputs for standard fields
     if (
       !isCustomField &&
       (input.type === "file" ||
         input.type === "button" ||
-        input.type === "submit")
+        input.type === "submit" ||
+        input.type === "hidden")
     ) {
       continue;
     }

@@ -8,6 +8,9 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.14.1
+- Fix: Checkboxes were not being applied correctly when a form had both a hidden input and checkbox with the same name attribute
+
 ### v0.14
 - Added Select All / Select None to form fields list in template creator/editor modal
 - Fix help modal default keybinding (?) now functions properly

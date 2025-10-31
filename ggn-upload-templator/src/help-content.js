@@ -716,6 +716,20 @@ export const INTRO_CONTENT = {
     `,
   },
   changelog: {
+    "v0.14.1": {
+      title: "What's New in v0.14.1?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              <strong>Bug Fix:</strong> Checkboxes are now applied correctly
+              when a form has both a hidden input and checkbox with the same
+              name attribute
+            </li>
+          </ul>
+        </div>
+      `,
+    },
     "v0.14": {
       title: "What's New in v0.14?",
       content: html`
@@ -725,7 +739,9 @@ export const INTRO_CONTENT = {
               Added Select All / Select None to form fields list in template
               creator/editor modal
             </li>
-            <li>Fix help modal default keybinding (?) now functions properly</li>
+            <li>
+              Fix help modal default keybinding (?) now functions properly
+            </li>
           </ul>
         </div>
       `,
