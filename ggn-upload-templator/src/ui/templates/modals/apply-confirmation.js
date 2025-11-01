@@ -24,7 +24,7 @@ export const APPLY_CONFIRMATION_MODAL_HTML = (changes, instance) => {
               <div class="gut-field-change-item">
                 <div class="gut-field-change-row">
                   <div class="gut-field-name">
-                    <strong>${change.label || change.fieldName}</strong>
+                    <strong title="${change.label || change.fieldName}">${change.label || change.fieldName}</strong>
                     <span class="gut-field-type-badge">${change.fieldType || 'text'}</span>
                   </div>
                   <div class="gut-field-values">

@@ -5,7 +5,8 @@ export function getCurrentFormData(config) {
   const targetForm = document.querySelector(formSelector);
 
   // Build the field selector with custom selectors
-  const defaultSelector = "input[name], select[name], textarea[name]";
+  // Include fields with either name or id attributes to support fields like Steam ID
+  const defaultSelector = "input[name], input[id], select[name], select[id], textarea[name], textarea[id]";
   const customSelectors = config.CUSTOM_FIELD_SELECTORS || [];
   const fieldSelector =
     customSelectors.length > 0
@@ -17,16 +18,22 @@ export function getCurrentFormData(config) {
     : document.querySelectorAll(fieldSelector);
 
   inputs.forEach((input) => {
+    // Exclude fields that are part of our own injected UI
+    if (input.closest('#ggn-upload-templator-ui')) {
+      return; // Skip our own UI elements
+    }
+
     // Check if this is a custom field element
     const isCustomField = isElementMatchedByCustomSelector(input, config);
 
     // For custom fields, we need a different validation approach
+    // For standard fields, accept either name or id attribute
     const hasValidIdentifier = isCustomField
       ? input.name ||
         input.id ||
         input.getAttribute("data-field") ||
         input.getAttribute("data-name")
-      : input.name;
+      : input.name || input.id;
 
     // Skip invalid elements
     if (!hasValidIdentifier) return;
@@ -128,10 +135,60 @@ export function cleanLabelText(text) {
   const tempElement = document.createElement("div");
   tempElement.innerHTML = text;
 
-  // Remove all link tags completely (including their text content)
+  // Handle link tags: distinguish between bracketed helper links and standalone label links
   const linkElements = tempElement.querySelectorAll("a");
   linkElements.forEach((link) => {
-    link.remove();
+    const linkText = link.textContent.trim();
+    
+    // Get surrounding text to check if link is inside brackets
+    let parent = link.parentNode;
+    if (parent) {
+      // Get the full text of parent to check for bracket context
+      const parentText = parent.textContent || '';
+      const linkIndex = parentText.indexOf(linkText);
+      
+      // Look for brackets around the link text
+      let beforeLink = '';
+      let afterLink = '';
+      
+      // Walk through previous siblings to find bracket
+      let prevNode = link.previousSibling;
+      while (prevNode) {
+        if (prevNode.nodeType === Node.TEXT_NODE) {
+          beforeLink = prevNode.textContent + beforeLink;
+        }
+        prevNode = prevNode.previousSibling;
+      }
+      
+      // Walk through next siblings to find bracket
+      let nextNode = link.nextSibling;
+      while (nextNode) {
+        if (nextNode.nodeType === Node.TEXT_NODE) {
+          afterLink += nextNode.textContent;
+        }
+        nextNode = nextNode.nextSibling;
+      }
+      
+      // Check if link is surrounded by brackets (with optional whitespace)
+      const isBracketed = /\[\s*$/.test(beforeLink) && /^\s*\]/.test(afterLink);
+      
+      if (isBracketed) {
+        // This is a helper/action link in brackets - remove it entirely
+        link.remove();
+      } else {
+        // This is a standalone label link - keep its text content
+        link.replaceWith(document.createTextNode(linkText));
+      }
+    } else {
+      // No parent, just replace with text
+      link.replaceWith(document.createTextNode(linkText));
+    }
+  });
+
+  // Remove all hidden elements (elements with .hidden class)
+  const hiddenElements = tempElement.querySelectorAll(".hidden");
+  hiddenElements.forEach((hidden) => {
+    hidden.remove();
   });
 
   // Get the cleaned text content
@@ -140,12 +197,99 @@ export function cleanLabelText(text) {
   // Trim whitespace
   cleanedText = cleanedText.trim();
 
+  // Remove empty brackets that result from removed links (e.g., ": []")
+  cleanedText = cleanedText.replace(/:\s*\[\s*\]/g, '');
+  cleanedText = cleanedText.replace(/\[\s*\]/g, '').trim();
+
   // Remove trailing colon
   if (cleanedText.endsWith(":")) {
     cleanedText = cleanedText.slice(0, -1).trim();
   }
 
   return cleanedText;
+}
+
+// Get adjacent text node content next to an input
+function getAdjacentText(input) {
+  const siblings = [];
+  let node = input.nextSibling;
+  
+  // Look at the next few siblings for text content
+  let count = 0;
+  while (node && count < 3) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const text = node.textContent.trim();
+      if (text && text !== '&nbsp;') {
+        siblings.push(text);
+      }
+    } else if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'BR') {
+      // Stop at line breaks
+      break;
+    }
+    node = node.nextSibling;
+    count++;
+  }
+  
+  return siblings.join(' ').trim();
+}
+
+// Get structural label from nested table hierarchy
+function getNestedTableLabel(input) {
+  const labelParts = [];
+  
+  // Find the immediate parent cell
+  const parentCell = input.closest('td');
+  if (!parentCell) return null;
+  
+  // Find the parent row
+  const parentRow = parentCell.closest('tr');
+  if (!parentRow) return null;
+  
+  // Check if this row is inside a nested table
+  const nestedTable = parentRow.closest('table');
+  if (!nestedTable) return null;
+  
+  // Find the outer row that contains this nested table
+  const outerCell = nestedTable.closest('td');
+  if (!outerCell) return null;
+  
+  const outerRow = outerCell.closest('tr');
+  if (!outerRow) return null;
+  
+  // Get the main label from td.label in outer row
+  const mainLabelCell = outerRow.querySelector('td.label');
+  if (mainLabelCell) {
+    const mainLabel = cleanLabelText(mainLabelCell.textContent || '');
+    if (mainLabel) {
+      labelParts.push(mainLabel);
+    }
+  }
+  
+  // Get the section label from the same row (e.g., td.weblinksTitle)
+  const sectionCell = parentRow.querySelector('td.weblinksTitle, td[class*="Title"]');
+  if (sectionCell) {
+    // Get only direct text nodes, not link text
+    const textNodes = Array.from(sectionCell.childNodes)
+      .filter(node => node.nodeType === Node.TEXT_NODE)
+      .map(node => node.textContent.trim())
+      .filter(text => text && text !== ':')
+      .join(' ');
+    
+    if (textNodes) {
+      const sectionLabel = cleanLabelText(textNodes);
+      if (sectionLabel) {
+        labelParts.push(sectionLabel);
+      }
+    }
+  }
+  
+  // Get adjacent text that describes this specific input
+  const adjacentText = getAdjacentText(input);
+  if (adjacentText) {
+    labelParts.push(adjacentText);
+  }
+  
+  return labelParts.length > 0 ? labelParts.join(' - ') : null;
 }
 
 // Get field label from parent table structure
@@ -180,32 +324,69 @@ export function getFieldLabel(input, config) {
     return input.id || input.name || "Custom Field";
   }
 
-  // Original logic for standard form elements
-  // For radio buttons, look for associated label elements first
-  if (input.type === "radio" && input.id) {
-    const parentTd = input.closest("td");
-    if (parentTd) {
-      const associatedLabel = parentTd.querySelector(
-        `label[for="${input.id}"]`,
-      );
-      if (associatedLabel) {
-        const rawText =
-          associatedLabel.innerHTML || associatedLabel.textContent || "";
+  // Priority 1: Check for direct <label for="input-id"> (most specific)
+  if (input.id) {
+    const parentCell = input.closest('td');
+    if (parentCell) {
+      const directLabel = parentCell.querySelector(`label[for="${input.id}"]`);
+      if (directLabel) {
+        const rawText = directLabel.innerHTML || directLabel.textContent || "";
         const cleanedText = cleanLabelText(rawText);
-        return cleanedText || input.value;
+        if (cleanedText) {
+          // Check if there's a parent row with td.label for context
+          const parentRow = input.closest("tr");
+          if (parentRow) {
+            const labelCell = parentRow.querySelector("td.label");
+            if (labelCell) {
+              const parentLabelText = labelCell.innerHTML || labelCell.textContent || "";
+              const cleanedParentLabel = cleanLabelText(parentLabelText);
+              if (cleanedParentLabel) {
+                // Combine parent label with direct label for better context
+                return `${cleanedParentLabel} - ${cleanedText}`;
+              }
+            }
+          }
+          // No parent label found, return just the direct label
+          return cleanedText;
+        }
       }
     }
   }
 
+  // Priority 2: Check for nested table structure (composite labels)
+  const nestedLabel = getNestedTableLabel(input);
+  if (nestedLabel) {
+    return nestedLabel;
+  }
+
+  // Priority 3: Original logic - parent row's td.label
   const parentRow = input.closest("tr");
   if (parentRow) {
     const labelCell = parentRow.querySelector("td.label");
     if (labelCell) {
       const rawText = labelCell.innerHTML || labelCell.textContent || "";
       const cleanedText = cleanLabelText(rawText);
+      
+      // For simple cases (single input in cell), don't append field name
+      const parentCell = input.closest('td');
+      if (parentCell) {
+        // Count how many non-hidden, non-file inputs are in this cell
+        const inputsInCell = parentCell.querySelectorAll('input[name], select[name], textarea[name]');
+        const visibleInputs = Array.from(inputsInCell).filter(inp => 
+          inp.type !== 'hidden' && inp.type !== 'file'
+        );
+        
+        // If only one visible input, use just the label
+        if (visibleInputs.length === 1 && visibleInputs[0] === input) {
+          return cleanedText || input.name;
+        }
+      }
+      
+      // Multiple inputs or other cases - append field name for clarity
       return cleanedText ? `${cleanedText} (${input.name})` : input.name;
     }
   }
+  
   return input.name;
 }
 
@@ -216,7 +397,8 @@ export function findElementByFieldName(fieldName, config) {
     : "";
 
   // Build the field selector with custom selectors
-  const defaultSelector = "input[name], select[name], textarea[name]";
+  // Include fields with either name or id attributes to support fields like Steam ID
+  const defaultSelector = "input[name], input[id], select[name], select[id], textarea[name], textarea[id]";
   const customSelectors = config.CUSTOM_FIELD_SELECTORS || [];
   const fieldSelector =
     customSelectors.length > 0
@@ -233,14 +415,20 @@ export function findElementByFieldName(fieldName, config) {
 
   // Find element that matches the fieldName using the same logic as getCurrentFormData
   for (const input of inputs) {
+    // Exclude fields that are part of our own injected UI
+    if (input.closest('#ggn-upload-templator-ui')) {
+      continue; // Skip our own UI elements
+    }
+
     const isCustomField = isElementMatchedByCustomSelector(input, config);
 
+    // For standard fields, accept either name or id attribute
     const hasValidIdentifier = isCustomField
       ? input.name ||
         input.id ||
         input.getAttribute("data-field") ||
         input.getAttribute("data-name")
-      : input.name;
+      : input.name || input.id;
 
     if (!hasValidIdentifier) continue;
 

@@ -357,6 +357,7 @@
 
 .gut-field-row label {
     min-width: 150px;
+    max-width: 50%;
     margin: 0;
     font-size: 13px;
     color: #b0b0b0;
@@ -853,7 +854,7 @@
     padding: 6px 10px;
     font-size: 12px;
     color: #e0e0e0;
-    font-family: 'Courier New', monospace;
+    font-family: "Courier New", monospace;
     z-index: 10000;
     pointer-events: none;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
@@ -1474,13 +1475,21 @@
     font-size: 13px;
 }
 
+.gut-field-name strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: help;
+    max-width: 250px;
+}
+
 .gut-field-type-badge {
     background: #2a2a2a;
     color: #888;
     padding: 1px 6px;
     border-radius: 3px;
     font-size: 10px;
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
     text-transform: lowercase;
 }
 
@@ -1489,7 +1498,7 @@
     align-items: center;
     gap: 8px;
     font-size: 12px;
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
 }
 
 .gut-value {
@@ -1530,7 +1539,7 @@
     color: #b0b0b0;
     font-size: 12px;
     font-weight: bold;
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
     cursor: pointer;
     margin-left: 6px;
     transition: all 0.2s ease;
@@ -1574,7 +1583,7 @@
     background: #1a1a1a;
     padding: 2px 5px;
     border-radius: 3px;
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
     font-size: 11px;
     color: #4dd0e1;
 }
@@ -1776,7 +1785,7 @@
     background: #2a2a2a;
     padding: 2px 6px;
     border-radius: 3px;
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
     font-size: 13px;
     color: #4dd0e1;
     border: 1px solid #404040;
@@ -1860,7 +1869,7 @@
     border: 1px solid #404040;
     border-radius: 4px;
     padding: 4px 8px;
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
     font-size: 12px;
     color: #4dd0e1;
     margin: 0 4px;
@@ -1965,7 +1974,7 @@
     background: #2a2a2a;
     padding: 2px 6px;
     border-radius: 3px;
-    font-family: 'Fira Code', monospace;
+    font-family: "Fira Code", monospace;
     font-size: 13px;
     color: #4dd0e1;
 }
@@ -2125,4 +2134,3 @@
     color: #4dd0e1 !important;
     text-decoration: underline !important;
 }
-

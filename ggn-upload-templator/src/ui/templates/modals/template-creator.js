@@ -107,7 +107,7 @@ export const TEMPLATE_CREATOR_HTML = (
       <div class="gut-field-row${raw(hiddenClass)}">
         ${raw(when(fieldData.type === "select", raw(renderSelectFieldVariableToggle(name, editTemplate))))}
         <input type="checkbox" ${raw(shouldBeChecked ? "checked" : "")} data-field="${name}">
-        <label title="${name}">${fieldData.label}:</label>
+        <label title="${fieldData.label}">${fieldData.label}:</label>
         ${raw(renderFieldInput(name, fieldData, templateValue, editTemplate))}
         <span class="gut-preview" data-preview="${name}"></span>
       </div>
