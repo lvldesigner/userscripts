@@ -716,6 +716,31 @@ export const INTRO_CONTENT = {
     `,
   },
   changelog: {
+    "v0.14.2": {
+      title: "What's New in v0.14.2?",
+      content: html`
+        <div class="gut-intro-section-box">
+          <ul class="gut-intro-section-list">
+            <li>
+              <strong>Bug Fix:</strong> Support fields that only have an
+              <code>id</code> attribute (no <code>name</code> attribute)
+            </li>
+            <li>
+              <strong>Bug Fix:</strong> Improved label detection for fields where
+              the label is a clickable link
+            </li>
+            <li>
+              <strong>Bug Fix:</strong> Exclude the templator's own UI elements
+              from field selection
+            </li>
+            <li>
+              <strong>UX Improvement:</strong> Long field labels are now truncated
+              with hover tooltips showing the full text
+            </li>
+          </ul>
+        </div>
+      `,
+    },
     "v0.14.1": {
       title: "What's New in v0.14.1?",
       content: html`

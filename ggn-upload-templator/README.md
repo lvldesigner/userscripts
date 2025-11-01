@@ -8,6 +8,12 @@ Install the userscript from [Greasy Fork](https://greasyfork.org/en/scripts/5508
 
 ## Changelog
 
+### v0.14.2
+- Fix: Support fields that only have an `id` attribute (no `name` attribute)
+- Fix: Improved label detection for fields where the label is a clickable link
+- Fix: Exclude the templator's own UI elements from field selection
+- UX: Long field labels are now truncated with hover tooltips showing the full text
+
 ### v0.14.1
 - Fix: Checkboxes were not being applied correctly when a form had both a hidden input and checkbox with the same name attribute
 
